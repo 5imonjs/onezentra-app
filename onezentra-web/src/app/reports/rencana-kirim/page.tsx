@@ -23,6 +23,7 @@ interface ReportItem {
   total_qty: number;
   total_kubikasi: number;
   item_count: number;
+  item_names: string[];
   status: string;
 }
 
@@ -447,7 +448,7 @@ export default function RencanaKirimReportPage() {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                   </span>
-                  <input id="rf-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleApply(); }} placeholder="PO / driver / nopol / tujuan" className="input-field text-sm py-2 pl-9 bg-popover focus:bg-card" />
+                  <input id="rf-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleApply(); }} placeholder="PO / driver / nopol / tujuan / kode / nama barang" className="input-field text-sm py-2 pl-9 bg-popover focus:bg-card" />
                 </div>
               </div>
             </div>
@@ -656,6 +657,7 @@ export default function RencanaKirimReportPage() {
                   <th scope="col" className="table-header whitespace-nowrap">Expedisi</th>
                   <th scope="col" className="table-header whitespace-nowrap">Jenis</th>
                   <th scope="col" className="table-header whitespace-nowrap">Tujuan</th>
+                  <th scope="col" className="table-header min-w-[220px]">Barang</th>
                   <th scope="col" className="table-header text-center whitespace-nowrap">Item</th>
                   <th scope="col" className="table-header text-right whitespace-nowrap">Qty</th>
                   <th scope="col" className="table-header text-right whitespace-nowrap">Kubikasi (m³)</th>
@@ -668,14 +670,14 @@ export default function RencanaKirimReportPage() {
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="animate-pulse" aria-hidden="true">
-                      {Array.from({ length: canDelete ? 14 : 13 }).map((__, j) => (
+                      {Array.from({ length: canDelete ? 15 : 14 }).map((__, j) => (
                         <td key={j} className="table-cell"><div className="h-3.5 w-20 bg-slate-100 rounded" /></td>
                       ))}
                     </tr>
                   ))
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={canDelete ? 14 : 13} className="table-cell text-center py-16">
+                    <td colSpan={canDelete ? 15 : 14} className="table-cell text-center py-16">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
                           <svg className="w-7 h-7 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
@@ -718,6 +720,15 @@ export default function RencanaKirimReportPage() {
                           {item.jenis_kendaraan !== '-' ? <span className="inline-flex rounded-md bg-blue-50 border border-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{item.jenis_kendaraan}</span> : <span className="text-sm text-gray-400">-</span>}
                         </td>
                         <td className="table-cell text-sm text-foreground whitespace-nowrap">{item.destination_name}</td>
+                        <td className="table-cell text-sm text-foreground">
+                          {item.item_names.length === 0
+                            ? <span className="text-muted-foreground">-</span>
+                            : (
+                              <span className="line-clamp-2 max-w-[260px]" title={item.item_names.join(', ')}>
+                                {item.item_names.slice(0, 3).join(', ')}{item.item_names.length > 3 ? ` +${item.item_names.length - 3}` : ''}
+                              </span>
+                            )}
+                        </td>
                         <td className="table-cell text-sm text-center tabular-nums text-foreground whitespace-nowrap">{item.item_count}</td>
                         <td className="table-cell text-sm text-right font-bold text-foreground tabular-nums whitespace-nowrap">{fmtNum(item.total_qty)}</td>
                         <td className="table-cell text-sm text-right font-semibold text-emerald-700 tabular-nums whitespace-nowrap">{Number(item.total_kubikasi).toFixed(2)}</td>
@@ -807,6 +818,11 @@ export default function RencanaKirimReportPage() {
                     <span>{item.expedisi}</span>
                     <span className="ml-auto">{item.nama_depo || item.kode_depo}</span>
                   </div>
+                  {item.item_names.length > 0 && (
+                    <p className="line-clamp-2 text-xs text-muted-foreground" title={item.item_names.join(', ')}>
+                      Barang: {item.item_names.slice(0, 3).join(', ')}{item.item_names.length > 3 ? ` +${item.item_names.length - 3}` : ''}
+                    </p>
+                  )}
                   <button
                     type="button"
                     onClick={() => openDetail(item)}

@@ -323,6 +323,14 @@ class ReportController extends Controller
             'total_qty' => (float) $rk->total_qty,
             'total_kubikasi' => round($rk->items->sum(fn ($item) => (float) ($item->kubikasi ?? 0)), 2),
             'item_count' => $rk->items->count(),
+            // Ditampilkan di baris agar pencarian barang tidak mengharuskan
+            // membuka detail satu per satu.
+            'item_names' => $rk->items
+                ->map(fn ($item) => $item->nama_barang ?: $item->kode_barang)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all(),
             'status' => $rk->status,
         ];
     }

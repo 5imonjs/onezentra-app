@@ -138,6 +138,61 @@ class RencanaKirimReportTest extends TestCase
             ->assertJsonPath('data.0.id', $other->id);
     }
 
+    public function test_search_menemukan_nama_atau_kode_barang_tanpa_buka_detail(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        $target = $this->createRk($user, ['po_transporter' => 'PO-ITEM-01']);
+        RencanaKirimItem::create([
+            'rencana_kirim_id' => $target->id,
+            'item_number' => 1,
+            'kode_barang' => 'BRG-BERAS',
+            'nama_barang' => 'Beras Premium',
+            'jumlah' => 5,
+            'satuan' => 'CRT',
+        ]);
+        $other = $this->createRk($user, ['po_transporter' => 'PO-ITEM-02']);
+        RencanaKirimItem::create([
+            'rencana_kirim_id' => $other->id,
+            'item_number' => 1,
+            'kode_barang' => 'BRG-GULA',
+            'nama_barang' => 'Gula Pasir',
+            'jumlah' => 5,
+            'satuan' => 'CRT',
+        ]);
+
+        $res = $this->getJson('/api/v1/reports/rencana-kirim?search=Beras')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $target->id)
+            ->assertJsonPath('data.0.item_count', 1)
+            ->assertJsonPath('data.0.item_names.0', 'Beras Premium');
+
+        $this->assertSame(['Beras Premium'], $res->json('data.0.item_names'));
+    }
+
+    public function test_search_barang_memperlakukan_wildcard_sebagai_literal(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        $target = $this->createRk($user, ['po_transporter' => 'PO-ITEM-WILD']);
+        RencanaKirimItem::create([
+            'rencana_kirim_id' => $target->id,
+            'item_number' => 1,
+            'kode_barang' => 'BRG-PCT',
+            'nama_barang' => 'Beras%Premium',
+            'jumlah' => 5,
+            'satuan' => 'CRT',
+        ]);
+
+        $this->getJson('/api/v1/reports/rencana-kirim?search='.rawurlencode('%'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $target->id);
+    }
+
     public function test_report_rejects_invalid_status_filter(): void
     {
         $user = $this->viewer();

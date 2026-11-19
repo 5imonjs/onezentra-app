@@ -65,7 +65,12 @@ class RencanaKirimReportExport implements FromQuery, ShouldAutoSize, WithHeading
                 ->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereRaw('nopol LIKE ? ESCAPE ?', [$like, '\\'])
-                ->orWhereRaw('destination_name LIKE ? ESCAPE ?', [$like, '\\']));
+                ->orWhereRaw('destination_name LIKE ? ESCAPE ?', [$like, '\\'])
+                // Pencarian cepat barang: user tak perlu membuka detail untuk
+                // tahu kode/nama barang yang ada di PO transporter.
+                ->orWhereHas('items', fn ($items) => $items->where(fn ($itemQuery) => $itemQuery
+                    ->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\']))));
         }
 
         return $query;
