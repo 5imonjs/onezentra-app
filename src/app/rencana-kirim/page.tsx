@@ -33,6 +33,7 @@ interface RencanaKirimItem {
 interface RencanaKirim {
   id: number;
   rkh_date: string;
+  eta_date: string;
   po_transporter: string;
   driver_name: string;
   nopol: string;
@@ -82,7 +83,7 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; d
 };
 
 const emptyForm: Partial<RencanaKirim> = {
-  rkh_date: '', po_transporter: '',
+  rkh_date: '', eta_date: '', po_transporter: '',
   driver_name: '', nopol: '',
   jenis_kendaraan: '', expedisi: '',
   shipper_name: '', shipper_address: '', shipper_phone: '',
@@ -510,7 +511,7 @@ export default function RencanaKirimPage() {
     setTypingItems(new Set());
     setCurrentStep(1);
     const editForm = {
-      rkh_date: item.rkh_date?.split('T')[0] ?? '', po_transporter: item.po_transporter ?? '',
+      rkh_date: item.rkh_date?.split('T')[0] ?? '', eta_date: item.eta_date?.split('T')[0] ?? '', po_transporter: item.po_transporter ?? '',
       driver_name: item.driver_name ?? '', nopol: item.nopol ?? '',
       jenis_kendaraan: item.jenis_kendaraan ?? '', expedisi: item.expedisi ?? '',
       shipper_name: item.shipper_name ?? '', shipper_address: item.shipper_address ?? '', shipper_phone: item.shipper_phone ?? '',
@@ -860,7 +861,7 @@ export default function RencanaKirimPage() {
               onDateClick={handleDateClick}
               selectedDate={selectedDate}
             />
-            <p className="mt-3 text-center text-xs text-muted-foreground">Klik tanggal untuk melihat rencana kirim pada tanggal tersebut.</p>
+            <p className="mt-3 text-center text-xs text-muted-foreground">Kalender mengikuti tanggal Rencana Kirim (RKH), bukan rencana tiba. Klik tanggal untuk memfilter.</p>
             {selectedDate && hasPermission('rencana_kirim.create') && (
               <button
                 onClick={() => openCreate(selectedDate >= todayDateStr() ? selectedDate : todayDateStr())}
@@ -988,7 +989,8 @@ export default function RencanaKirimPage() {
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">No</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Tgl Create</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">PO Transporter</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap" title="RKH = tanggal barang direncanakan berangkat, bukan waktu input dokumen.">Tgl Rencana Kirim</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap" title="RKH = tanggal barang direncanakan berangkat.">Tgl Rencana Kirim</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-info uppercase tracking-wider whitespace-nowrap" title="Kapan barang diharapkan tiba di depo tujuan.">Rencana Tiba</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Driver</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Nopol</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Expedisi</th>
@@ -1005,7 +1007,7 @@ export default function RencanaKirimPage() {
                   <>
                     {Array.from({ length: 4 }).map((_, i) => (
                       <tr key={`skel-rk-${i}`} className="animate-pulse">
-                        {Array.from({ length: 13 }).map((__, j) => (
+                        {Array.from({ length: 14 }).map((__, j) => (
                           <td key={j} className="px-5 py-3.5"><div className="h-4 w-24 rounded bg-muted" /></td>
                         ))}
                       </tr>
@@ -1021,7 +1023,7 @@ export default function RencanaKirimPage() {
                     <Fragment key={item.id}>
                       {showGroup && (
                         <tr>
-                          <td colSpan={13} className="bg-chip-primary/40 px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-accent-text">
+                          <td colSpan={14} className="bg-chip-primary/40 px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-accent-text">
                             {kirimGroupLabel(groupKey)} · {groupCount} PO
                           </td>
                         </tr>
@@ -1031,6 +1033,7 @@ export default function RencanaKirimPage() {
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{item.created_at?.split('T')[0] || '-'}</span></td>
                     <td className="px-5 py-3.5 text-sm text-foreground font-medium whitespace-nowrap"><span className="font-mono">{fmt(item.po_transporter)}</span></td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{fmt(item.rkh_date?.split('T')[0])}</span></td>
+                    <td className="px-5 py-3.5 text-sm whitespace-nowrap"><span className="inline-flex items-center gap-1 font-mono font-semibold text-info">{item.eta_date ? fmt(item.eta_date.split('T')[0]) : '-'}</span></td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap">{fmt(item.driver_name)}</td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{fmt(item.nopol)}</span></td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap">{fmt(item.expedisi)}</td>
@@ -1097,7 +1100,7 @@ export default function RencanaKirimPage() {
                 })}
                 {!loading && items.length === 0 && (
                   <tr>
-                    <td colSpan={13} className="px-5 py-16 text-center">
+                    <td colSpan={14} className="px-5 py-16 text-center">
                       <div role="status" className="flex flex-col items-center gap-2">
                         <div className="mx-auto mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
                           <svg className="h-7 w-7 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
@@ -1150,7 +1153,7 @@ export default function RencanaKirimPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-mono text-sm font-bold text-foreground truncate">{fmt(item.po_transporter)}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">Kirim {kirimGroupLabel(item.rkh_date?.split('T')[0] || '-')} • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Kirim {item.rkh_date?.split('T')[0] || '-'} • Tiba <span className="font-semibold text-info">{item.eta_date?.split('T')[0] || '-'}</span> • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
                     </div>
                     <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${st?.bg || 'bg-card'} ${st?.color || 'text-foreground'} ${st?.border || 'border-border'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-muted-foreground'}`} />
@@ -1273,7 +1276,7 @@ export default function RencanaKirimPage() {
                 <div>
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">PO Transporter</p>
                   <h3 className="mt-1 text-xl font-black tracking-tight">{fmt(viewItem.po_transporter)}</h3>
-                  <p className="mt-1 text-xs text-white/70"><span className="font-semibold">Rencana kirim:</span> {fmtDateId(viewItem.rkh_date?.split('T')[0])} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
+                  <p className="mt-1 text-xs text-white/70"><span className="font-semibold">Rencana kirim:</span> {fmtDateId(viewItem.rkh_date?.split('T')[0])} <span className="text-white/40">•</span> <span className="font-semibold text-info">Rencana tiba:</span> {viewItem.eta_date ? fmtDateId(viewItem.eta_date.split('T')[0]) : '-'} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white ring-1 ring-inset ring-white/20">
                   <span className={`w-2 h-2 rounded-full ${statusConfig[viewItem.status]?.dot || 'bg-slate-400'}`} />{statusConfig[viewItem.status]?.label || viewItem.status}
@@ -1445,6 +1448,11 @@ export default function RencanaKirimPage() {
                 <input id="f-rkh-date" type="date" min={editingId ? undefined : todayDateStr()} value={createForm.rkh_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, rkh_date: e.target.value }))} className="input-field text-sm py-2" />
                 <p className="mt-1 text-[11px] text-muted-foreground">RKH = kapan barang direncanakan berangkat. Berbeda dengan &quot;Dibuat&quot; (waktu input dokumen).</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Tanggal pengiriman rencana</p>
+              </div>
+              <div>
+                <label htmlFor="f-eta-date" className="block text-xs font-medium text-muted-foreground mb-1">Rencana Tiba di Depo</label>
+                <input id="f-eta-date" type="date" value={createForm.eta_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, eta_date: e.target.value }))} className="input-field text-sm py-2" />
+                <p className="mt-1 text-[11px] text-info">Rencana tiba = kapan barang diharapkan sampai di depo tujuan. Berbeda dengan RKH (rencana berangkat).</p>
               </div>
             </div>
           </div>
@@ -1684,6 +1692,7 @@ export default function RencanaKirimPage() {
             <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
               <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">PO Transporter</span><span className="font-mono font-bold text-foreground">{createForm.po_transporter || '-'}</span></div>
               <div className="flex items-baseline gap-2"><span className="w-40 shrink-0 text-muted-foreground">Tanggal Rencana Kirim</span><span className="font-semibold text-foreground">{createForm.rkh_date ? new Date(createForm.rkh_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</span></div>
+              <div className="flex items-baseline gap-2"><span className="w-40 shrink-0 text-muted-foreground">Rencana Tiba di Depo</span><span className="font-semibold text-info">{createForm.eta_date ? new Date(createForm.eta_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</span></div>
               <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">Kendaraan</span><span className="font-semibold text-foreground">{createForm.driver_name || '-'}{createForm.nopol ? ` • ${createForm.nopol}` : ''}</span></div>
               <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">Ekspedisi</span><span className="font-semibold text-foreground">{createForm.expedisi || '-'}{createForm.jenis_kendaraan ? ` • ${createForm.jenis_kendaraan}` : ''}</span></div>
               <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">Pengirim</span><span className="font-semibold text-foreground">{createForm.shipper_name || '-'}</span></div>
