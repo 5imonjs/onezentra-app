@@ -2,15 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/store/auth';
-import DashboardActivityChart from '@/components/DashboardActivityChart';
 import DashboardBiayaQueue from '@/components/DashboardBiayaQueue';
-import DashboardLiveActivity from '@/components/DashboardLiveActivity';
-import DashboardOpnameChart from '@/components/DashboardOpnameChart';
 import DashboardRecent from '@/components/DashboardRecent';
+import DashboardInsights from '@/components/DashboardInsights';
 import DashboardOverview from '@/components/DashboardOverview';
 import DashboardReminders from '@/components/DashboardReminders';
 import PendingActions from '@/components/PendingActions';
-import RencanaKirimStatusChart from '@/components/RencanaKirimStatusChart';
 import { visibleDashboardBlocks, type DashboardBlockKey } from './dashboardBlocks';
 import { depo, getErrorMessage } from '@/lib/api';
 
@@ -42,7 +39,6 @@ export default function DashboardPage() {
   }, []);
 
   const canFilterDepot = hasPermission('depot.view_all');
-  const canSeeRencanaKirimChart = hasPermission('rencana_kirim.view');
 
   const loadDepos = useCallback(async () => {
     if (!canFilterDepot) return;
@@ -68,9 +64,6 @@ export default function DashboardPage() {
     ? allBlocks.filter((key) => key === 'pending' || key === 'biayaQueue')
     : allBlocks;
 
-  const canSeeActivityChart = hasPermission('users.view');
-  const bothCharts = canSeeActivityChart && canSeeRencanaKirimChart;
-
   if (!hasPermission('dashboard.view')) {
     return null;
   }
@@ -82,17 +75,9 @@ export default function DashboardPage() {
       case 'pending':
         return <PendingActions key={key} kodeDepo={kodeDepo || undefined} />;
       case 'charts':
-        return (
-          <div key={key} className="space-y-5">
-            <div className={`grid grid-cols-1 gap-5 ${bothCharts ? 'xl:grid-cols-2' : ''}`}>
-              {canSeeActivityChart && <DashboardActivityChart kodeDepo={kodeDepo || undefined} />}
-              {canSeeRencanaKirimChart && <RencanaKirimStatusChart kodeDepo={kodeDepo || undefined} />}
-            </div>
-            {canSeeActivityChart && <DashboardLiveActivity kodeDepo={kodeDepo || undefined} />}
-          </div>
-        );
       case 'opname':
-        return <DashboardOpnameChart key={key} />;
+        // Sudah digantikan DashboardInsights (chart-driven) di atas.
+        return null;
       case 'recent':
         return <DashboardRecent key={key} kodeDepo={kodeDepo || undefined} />;
       default:
@@ -188,6 +173,7 @@ export default function DashboardPage() {
       </section>
 
       <DashboardOverview />
+      {!compact && <DashboardInsights kodeDepo={kodeDepo || undefined} />}
       <DashboardReminders kodeDepo={kodeDepo || undefined} />
 
       {depotError && (
