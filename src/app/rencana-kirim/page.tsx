@@ -420,12 +420,15 @@ export default function RencanaKirimPage() {
 
   // Titik kalender dari agregat server (semua depo yang diizinkan),
   // bukan dari 20 item halaman aktif.
-  const calendarEvents = (rkStats?.calendar ?? []).map(entry => ({
-    date: entry.date ?? '',
-    count: 1,
-    status: undefined as string | undefined,
-    breakdown: entry.breakdown ?? {},
-  }));
+  // Satu event per status agar warna titik kalender membedakan "rencana"
+  // dari "sudah receiving". Backend sudah mengirim breakdown per tanggal.
+  const calendarEvents = (rkStats?.calendar ?? []).flatMap(entry =>
+    Object.entries(entry.breakdown ?? {}).map(([status, count]) => ({
+      date: entry.date ?? '',
+      count: Number(count) || 0,
+      status,
+    })),
+  );
 
   const todayDateStr = () => {
     const d = new Date();

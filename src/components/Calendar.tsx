@@ -17,6 +17,27 @@ interface CalendarProps {
 const DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
+/** Warna titik: biru/abu = masih rencana, cyan/hijau = sudah receiving. */
+const STATUS_COLOR: Record<string, string> = {
+  DRAFT: 'bg-gray-400',
+  SCHEDULED: 'bg-blue-500',
+  CHECKED_IN: 'bg-amber-500',
+  VERIFIED: 'bg-violet-500',
+  IN_PROGRESS: 'bg-cyan-500',
+  COMPLETED: 'bg-emerald-500',
+  CANCELLED: 'bg-red-500',
+};
+
+const LEGEND: ReadonlyArray<readonly [string, string]> = [
+  ['DRAFT', 'Draft'],
+  ['SCHEDULED', 'Dijadwalkan'],
+  ['CHECKED_IN', 'Di Gate'],
+  ['VERIFIED', 'Terverifikasi'],
+  ['IN_PROGRESS', 'Receiving'],
+  ['COMPLETED', 'Selesai'],
+  ['CANCELLED', 'Dibatalkan'],
+];
+
 export default function Calendar({ events = [], onDateClick, selectedDate }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const today = new Date();
@@ -116,12 +137,13 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
           const dateStr = formatDate(day);
           const dayEvents = getEventsForDate(dateStr);
           const hasEvents = dayEvents.length > 0;
+          const totalCount = dayEvents.reduce((sum, e) => sum + (e.count || 1), 0);
 
           return (
             <button
               key={day}
               onClick={() => onDateClick?.(dateStr)}
-              aria-label={`${day} ${MONTHS[month]} ${year}${hasEvents ? `, ${dayEvents.length} jadwal` : ''}`}
+              aria-label={`${day} ${MONTHS[month]} ${year}${hasEvents ? `, ${totalCount} rencana: ${dayEvents.map(e => `${e.count} ${e.status ?? 'tanpa status'}`).join(', ')}` : ''}`}
               aria-selected={isSelected(day)}
               role="gridcell"
               className={`aspect-square rounded-lg flex flex-col items-center justify-center transition-all relative group ${
@@ -141,17 +163,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
                     <div
                       key={i}
                       className={`w-1 h-1 rounded-full ${
-                        isToday(day)
-                          ? 'bg-card'
-                          : event.status === 'DRAFT'
-                          ? 'bg-gray-400'
-                          : event.status === 'SCHEDULED'
-                          ? 'bg-blue-500'
-                          : event.status === 'COMPLETED'
-                          ? 'bg-emerald-500'
-                          : event.status === 'CANCELLED'
-                          ? 'bg-red-500'
-                          : 'bg-yellow-500'
+                        isToday(day) ? 'bg-card' : (STATUS_COLOR[event.status ?? ''] ?? 'bg-yellow-500')
                       }`}
                     />
                   ))}
@@ -161,7 +173,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
                 <span className={`absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-[1.25rem] px-1 text-[10px] font-bold rounded-full flex items-center justify-center border-2 ${
                   isToday(day) ? 'bg-card text-accent-text border-chip-primary-border' : 'bg-primary-500 text-white border-white'
                 }`}>
-                  {dayEvents.length}
+                  {totalCount}
                 </span>
               )}
             </button>
@@ -171,22 +183,12 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
 
       {/* Legend */}
       <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 mt-5 pt-4 border-t border-border" aria-label="Legenda warna status">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-gray-400" aria-hidden="true" />
-          <span className="text-[11px] text-foreground">Draft</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-blue-500" aria-hidden="true" />
-          <span className="text-[11px] text-foreground">Dijadwalkan</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
-          <span className="text-[11px] text-foreground">Completed</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-red-500" aria-hidden="true" />
-          <span className="text-[11px] text-foreground">Cancelled</span>
-        </div>
+        {LEGEND.map(([status, label]) => (
+          <div key={status} className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full ${STATUS_COLOR[status]}`} aria-hidden="true" />
+            <span className="text-[11px] text-foreground">{label}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
