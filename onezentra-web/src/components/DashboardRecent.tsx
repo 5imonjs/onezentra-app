@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { formatRelativeTime, useDashboardSummary } from '@/lib/dashboardSummary';
 import DashboardPanel from '@/components/DashboardPanel';
+import { MiniBars } from '@/components/MiniCharts';
 
 const HISTORY_ICON = <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />;
 
@@ -47,6 +48,15 @@ export default function DashboardRecent({ kodeDepo }: { kodeDepo?: string }) {
       ariaLabel="Aktivitas terbaru"
       title="Aktivitas Terbaru"
       subtitle="Perubahan terakhir lintas modul"
+      badge={
+        <MiniBars
+          rows={Array.from(new Set(summary.recent.map((item) => item.type))).map((type) => ({
+            label: type,
+            value: summary.recent.filter((item) => item.type === type).length,
+          }))}
+          className="text-info"
+        />
+      }
       icon={HISTORY_ICON}
     >
       <ul className="space-y-1 px-3 py-3">

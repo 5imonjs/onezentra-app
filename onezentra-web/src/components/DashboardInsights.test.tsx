@@ -10,6 +10,7 @@ const { hasPermission, activity, stats, progress, useSummary } = vi.hoisted(() =
   useSummary: vi.fn(),
 }));
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('@/store/auth', () => ({ useAuthStore: () => ({ hasPermission }) }));
 vi.mock('@/lib/dashboardSummary', () => ({ useDashboardSummary: useSummary }));
 vi.mock('@/lib/api', () => ({

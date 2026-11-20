@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { dashboard, getErrorMessage } from '@/lib/api';
 import DashboardPanel from '@/components/DashboardPanel';
+import { MiniBars } from '@/components/MiniCharts';
 
 type ReminderItem = {
   id: number;
@@ -108,10 +109,17 @@ export default function DashboardReminders({ kodeDepo }: { kodeDepo?: string }) 
       subtitle={`Belum selesai lebih dari ${data.threshold_minutes} menit`}
       icon={REMINDER_ICON}
       badge={
-        <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-bold tabular-nums text-amber-600 ring-1 ring-amber-500/20">
-          <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
-          {data.total} perlu tindakan
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <MiniBars rows={data.groups.map((g) => ({
+            label: g.label,
+            value: g.count,
+            color: (TONES[g.key] ?? TONES.sj_validation).dot.replace('bg-', 'text-'),
+          }))} />
+          <span className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-bold tabular-nums text-amber-600 ring-1 ring-amber-500/20">
+            <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+            {data.total} perlu tindakan
+          </span>
+        </div>
       }
     >
       <div className="divide-y divide-border/60">
