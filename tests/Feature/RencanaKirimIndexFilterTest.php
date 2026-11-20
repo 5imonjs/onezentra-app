@@ -135,10 +135,50 @@ class RencanaKirimIndexFilterTest extends TestCase
         );
     }
 
+    public function test_store_menyimpan_rencana_tiba_terpisah_dari_rkh(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        $rkh = now()->addDay()->toDateString();
+        $eta = now()->addDays(3)->toDateString();
+
+        $res = $this->postJson('/api/v1/rencana-kirim', [
+            'po_transporter' => 'PO-ETA-1',
+            'status' => 'DRAFT',
+            'rkh_date' => $rkh,
+            'eta_date' => $eta,
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+        ])->assertCreated();
+
+        $this->assertSame($rkh, substr($res->json('data.rkh_date'), 0, 10));
+        $this->assertSame($eta, substr($res->json('data.eta_date'), 0, 10));
+        $this->assertDatabaseHas('rencana_kirim', [
+            'po_transporter' => 'PO-ETA-1',
+            'rkh_date' => $rkh.' 00:00:00',
+            'eta_date' => $eta.' 00:00:00',
+        ]);
+    }
+
+    public function test_rencana_tiba_tidak_boleh_sebelum_rkh(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/rencana-kirim', [
+            'po_transporter' => 'PO-ETA-BAD',
+            'rkh_date' => now()->addDays(3)->toDateString(),
+            'eta_date' => now()->addDay()->toDateString(),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+        ])->assertStatus(422)->assertJsonValidationErrors(['eta_date']);
+    }
+
     private function viewer(): User
     {
         $role = Role::firstOrCreate(['slug' => 'rk_filter_view'], ['name' => 'RK Filter View']);
-        foreach (['rencana_kirim.view', 'depot.view_all'] as $slug) {
+        foreach (['rencana_kirim.view', 'rencana_kirim.create', 'depot.view_all'] as $slug) {
             $perm = Permission::firstOrCreate(
                 ['slug' => $slug],
                 ['name' => $slug, 'menu_group' => 'Rencana Kirim']

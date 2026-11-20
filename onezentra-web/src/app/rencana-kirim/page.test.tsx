@@ -296,3 +296,36 @@ describe('Rencana Kirim — panel kalender', () => {
     expect(screen.getByRole('button', { name: 'Sembunyikan kalender' })).toHaveAttribute('aria-expanded', 'true');
   });
 });
+
+describe('Rencana Kirim — rencana tiba terpisah dari RKH', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    list.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
+  });
+
+  it('form menampilkan field Rencana Tiba di Depo yang berbeda dari RKH', async () => {
+    render(<RencanaKirimPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Buat rencana kirim baru' }));
+
+    expect(screen.getByLabelText(/Tanggal Rencana Kirim/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Rencana Tiba di Depo/)).toBeInTheDocument();
+    expect(screen.getByText(/Rencana tiba = kapan barang diharapkan sampai/)).toBeInTheDocument();
+  });
+
+  it('tabel menampilkan kolom Rencana Tiba', async () => {
+    list.mockResolvedValue({ data: { data: [
+      {
+        id: 1, po_transporter: 'PO-ETA', rkh_date: '2026-11-21T00:00:00',
+        eta_date: '2026-11-23T00:00:00', status: 'DRAFT', created_at: '2026-11-20T08:00:00',
+      },
+    ], last_page: 1 } });
+
+    render(<RencanaKirimPage />);
+
+    expect(await screen.findByText('Rencana Tiba')).toBeInTheDocument();
+    expect(screen.getAllByText('2026-11-23').length).toBeGreaterThan(0);
+  });
+});

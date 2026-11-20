@@ -16,7 +16,7 @@ class RencanaKirim extends Model
     protected $table = 'rencana_kirim';
 
     protected $fillable = [
-        'rkh_date', 'po_transporter',
+        'rkh_date', 'eta_date', 'po_transporter',
         'driver_name', 'nopol', 'jenis_kendaraan', 'expedisi',
         'shipper_name', 'shipper_address', 'shipper_phone',
         'destination_name', 'destination_address',
@@ -29,6 +29,7 @@ class RencanaKirim extends Model
     {
         return [
             'rkh_date' => 'date',
+            'eta_date' => 'date',
             'total_qty' => 'decimal:2',
             'scheduled_at' => 'datetime',
             'checked_in_at' => 'datetime',

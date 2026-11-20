@@ -176,6 +176,7 @@ class RencanaKirimController extends Controller
                 }),
             ],
             'rkh_date' => 'nullable|date|after_or_equal:today',
+            'eta_date' => 'nullable|date',
             'driver_name' => 'nullable|string|max:100',
             'nopol' => 'nullable|string|max:50',
             'jenis_kendaraan' => 'nullable|string|max:50',
@@ -201,6 +202,13 @@ class RencanaKirimController extends Controller
             'po_transporter.unique' => 'PO Transporter ini sudah dipakai pada rencana kirim lain di depo yang sama.',
             'rkh_date.after_or_equal' => 'Tanggal RKH tidak boleh di masa lalu.',
         ]);
+
+        if (! empty($validated['eta_date']) && ! empty($validated['rkh_date'])
+            && $validated['eta_date'] < $validated['rkh_date']) {
+            throw ValidationException::withMessages([
+                'eta_date' => ['Rencana tiba tidak boleh sebelum tanggal rencana kirim (RKH).'],
+            ]);
+        }
 
         $validated['created_by'] = $request->user()->id;
         $validated['status'] = 'DRAFT';
@@ -315,6 +323,7 @@ class RencanaKirimController extends Controller
             // (tidak bisa lewat after_or_equal di sini, karena rule itu menolak juga tanggal
             // lama yang tidak diubah sama sekali sehingga RK lama tidak bisa diedit sama sekali).
             'rkh_date' => 'nullable|date',
+            'eta_date' => 'nullable|date',
             'driver_name' => 'nullable|string|max:100',
             'nopol' => 'nullable|string|max:50',
             'jenis_kendaraan' => 'nullable|string|max:50',
@@ -353,6 +362,15 @@ class RencanaKirimController extends Controller
                 }
                 $validated['rkh_date'] = $request->input('rkh_date');
             }
+        }
+
+        // Rencana tiba tidak boleh sebelum RKH efektif (baru diubah atau lama).
+        $effectiveRkh = $validated['rkh_date'] ?? $rencanaKirim->rkh_date;
+        if (! empty($validated['eta_date']) && $effectiveRkh
+            && $validated['eta_date'] < $effectiveRkh) {
+            throw ValidationException::withMessages([
+                'eta_date' => ['Rencana tiba tidak boleh sebelum tanggal rencana kirim (RKH).'],
+            ]);
         }
 
         $items = null;
