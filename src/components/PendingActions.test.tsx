@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PendingActions from './PendingActions';
 
@@ -170,5 +170,40 @@ describe('PendingActions', () => {
     expect(standarisasiList).not.toHaveBeenCalled();
     expect(screen.queryByText('Barang luar rencana menunggu keputusan')).not.toBeInTheDocument();
     expect(screen.queryByText('Standarisasi menunggu approval BLC')).not.toBeInTheDocument();
+  });
+});
+describe('PendingActions — penanda terlewat & filter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hasPermission.mockReturnValue(true);
+    for (const fn of [retribusiList, sjList, rkList, gateList, standarisasiList]) {
+      fn.mockResolvedValue(kosong);
+    }
+    thlList.mockResolvedValue({
+      data: {
+        total: 2,
+        data: [
+          { id: 1, no_kendaraan: 'PO-LAMA', nama_depo: 'Depo A', created_at: new Date(Date.now() - 2 * 3600_000).toISOString() },
+          { id: 2, no_kendaraan: 'PO-BARU', nama_depo: 'Depo A', created_at: new Date(Date.now() - 5 * 60_000).toISOString() },
+        ],
+      },
+    });
+  });
+
+  it('menandai dokumen yang lewat 30 menit dan bisa memfilter hanya yang terlewat', async () => {
+    render(<PendingActions />);
+
+    expect(await screen.findByText('PO-LAMA')).toBeInTheDocument();
+    expect(screen.getByText('PO-BARU')).toBeInTheDocument();
+    expect(screen.getByText(/1 terlewat/)).toBeInTheDocument();
+    expect(screen.getByText('2 jam')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Terlewat' }));
+
+    expect(screen.getByText('PO-LAMA')).toBeInTheDocument();
+    expect(screen.queryByText('PO-BARU')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Semua' }));
+    expect(screen.getByText('PO-BARU')).toBeInTheDocument();
   });
 });

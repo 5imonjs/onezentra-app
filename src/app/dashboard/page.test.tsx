@@ -20,7 +20,6 @@ vi.mock('@/components/DashboardOverview', () => ({ default: () => <div data-test
 vi.mock('@/components/DashboardInsights', () => ({ default: () => <div data-testid="dashboard-insights" /> }));
 vi.mock('@/components/DashboardAlerts', () => ({ default: () => <div data-testid="alerts-panel" /> }));
 vi.mock('@/components/DashboardBiayaQueue', () => ({ default: () => null }));
-vi.mock('@/components/DashboardReminders', () => ({ default: () => null }));
 vi.mock('@/components/DashboardRecent', () => ({ default: () => null }));
 vi.mock('@/components/PendingActions', () => ({ default: () => null }));
 

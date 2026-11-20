@@ -6,7 +6,6 @@ import DashboardBiayaQueue from '@/components/DashboardBiayaQueue';
 import DashboardRecent from '@/components/DashboardRecent';
 import DashboardInsights from '@/components/DashboardInsights';
 import DashboardOverview from '@/components/DashboardOverview';
-import DashboardReminders from '@/components/DashboardReminders';
 import PendingActions from '@/components/PendingActions';
 import { visibleDashboardBlocks, type DashboardBlockKey } from './dashboardBlocks';
 import { depo, getErrorMessage } from '@/lib/api';
@@ -174,7 +173,6 @@ export default function DashboardPage() {
 
       <DashboardOverview />
       {!compact && <DashboardInsights kodeDepo={kodeDepo || undefined} />}
-      <DashboardReminders kodeDepo={kodeDepo || undefined} />
 
       {depotError && (
         <div role="alert" className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
