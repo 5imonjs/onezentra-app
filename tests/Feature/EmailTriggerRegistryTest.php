@@ -113,6 +113,7 @@ class EmailTriggerRegistryTest extends TestCase
         $dynamicSites = [
             'Services/BiayaApprovalService.php' => ['biaya_thl', 'biaya_retribusi'],
             'Http/Controllers/Api/V1/StandarisasiTumpukanController.php' => ['standarisasi_tumpukan'],
+            'Console/Commands/SendOverdueReminders.php' => ['sj_ba', 'gate', 'rencana_kirim'],
         ];
 
         foreach ($dynamicSites as $relativePath => $documentTypes) {

@@ -15,3 +15,9 @@ Schedule::command('sanctum:prune-expired --hours=24')->daily();
 // Generate wave opname expired setiap Senin pagi: rantai roll-forward
 // mingguan tidak boleh bergantung seseorang mengingat klik "Generate".
 Schedule::command('opname-expired:generate')->weeklyOn(1, '06:00');
+
+// Pengingat otomatis proses yang terlambat > 30 menit (SJ/gate/RK).
+// withoutOverlapping mencegah dua run mengirim email ganda untuk dokumen sama.
+Schedule::command('reminders:send-overdue')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();

@@ -128,14 +128,17 @@ const triggerOptions: Record<string, { value: string; label: string; description
   rencana_kirim: [
     { value: 'created', label: 'Rencana Kirim dibuat', description: 'Terpicu saat jadwal Rencana Kirim baru dibuat (pemroses: modul Rencana Kirim).' },
     { value: 'cancelled', label: 'Rencana Kirim dibatalkan', description: 'Terpicu saat Rencana Kirim dibatalkan dari status apa pun yang valid (pemroses: modul Rencana Kirim).' },
+    { value: 'reminder', label: 'Pengingat verifikasi terlambat', description: 'Terpicu otomatis saat rencana kirim CHECKED_IN belum diverifikasi lebih dari 30 menit (pemroses: scheduler pengingat).' },
   ],
   gate: [
     { value: 'checked_in', label: 'Check In selesai', description: 'Terpicu saat unit check-in di gate dan rencana berubah menjadi CHECKED_IN (pemroses: modul Check In / Gate).' },
+    { value: 'reminder', label: 'Pengingat gate terlambat', description: 'Terpicu otomatis saat kendaraan CHECKED_IN di gate lebih dari 30 menit (pemroses: scheduler pengingat).' },
   ],
   sj_ba: [
     { value: 'validated', label: 'Validasi SJ/BA selesai', description: 'Terpicu saat dokumen SJ/BA selesai divalidasi (pemroses: modul Validasi Dokumen).' },
     { value: 'extra_item', label: 'Barang luar rencana dilaporkan', description: 'Terpicu saat checker mencatat barang di luar rencana kirim beserta foto bukti (pemroses: modul Validasi Dokumen).' },
     { value: 'extra_item_decision', label: 'Keputusan barang luar rencana', description: 'Terpicu saat planner menyetujui atau menolak barang luar rencana — disetujui berarti label batch otomatis diterbitkan (pemroses: modul Validasi Dokumen).' },
+    { value: 'reminder', label: 'Pengingat validasi terlambat', description: 'Terpicu otomatis saat sesi validasi SJ belum selesai lebih dari 30 menit (pemroses: scheduler pengingat).' },
   ],
   receiving: [
     { value: 'completed', label: 'Proses bongkar selesai', description: 'Terpicu saat unit dinyatakan selesai bongkar (pemroses: modul Receiving).' },

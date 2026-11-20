@@ -104,9 +104,11 @@ class EmailRecipientControllerTest extends TestCase
             $res->json('document_type_triggers.standarisasi_tumpukan'),
         );
         $this->assertSame(
-            ['created', 'cancelled'],
+            ['created', 'cancelled', 'reminder'],
             $res->json('document_type_triggers.rencana_kirim'),
         );
+        $this->assertContains('reminder', $res->json('document_type_triggers.gate'));
+        $this->assertContains('reminder', $res->json('document_type_triggers.sj_ba'));
     }
 
     public function test_store_rejects_trigger_not_valid_for_document_type(): void

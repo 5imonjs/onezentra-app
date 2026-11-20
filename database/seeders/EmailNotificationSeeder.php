@@ -70,6 +70,34 @@ class EmailNotificationSeeder extends Seeder
             ['label' => 'CC admin distribusi info check-in gate', 'is_active' => true]
         );
 
+        // Pengingat keterlambatan proses: mengikuti pola penerima email yang
+        // sudah dipakai tiap modul (BLC di TO, admin/cheker di CC). Admin bisa
+        // mengubahnya lewat halaman Penerima Email.
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'sj_ba', 'trigger' => 'reminder', 'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
+            ['label' => 'BLC penerima pengingat validasi terlambat', 'is_active' => true]
+        );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'sj_ba', 'trigger' => 'reminder', 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'admin_distirbusi'],
+            ['label' => 'CC admin distribusi pengingat validasi', 'is_active' => true]
+        );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'gate', 'trigger' => 'reminder', 'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
+            ['label' => 'BLC penerima pengingat gate terlambat', 'is_active' => true]
+        );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'gate', 'trigger' => 'reminder', 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'admin_distirbusi'],
+            ['label' => 'CC admin distribusi pengingat gate', 'is_active' => true]
+        );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'rencana_kirim', 'trigger' => 'reminder', 'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
+            ['label' => 'BLC penerima pengingat rencana kirim', 'is_active' => true]
+        );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'rencana_kirim', 'trigger' => 'reminder', 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'cheker'],
+            ['label' => 'CC cheker depo pengingat rencana kirim', 'is_active' => true]
+        );
+
         // Selisih qty notifications
         EmailRecipient::updateOrCreate(
             ['document_type' => 'selisih', 'trigger' => 'selisih_qty', 'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
