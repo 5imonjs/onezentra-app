@@ -62,6 +62,14 @@ describe('DashboardBiayaQueue', () => {
     await waitFor(() => expect(biayaThlList).toHaveBeenCalledWith({ per_page: 1, kode_depo: 'DPO' }));
   });
 
+  it('menampilkan placeholder saat antrean masih dimuat', () => {
+    biayaThlList.mockReturnValue(new Promise(() => {}));
+
+    render(<DashboardBiayaQueue />);
+
+    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+  });
+
   it('tidak merender apa pun bila semua antrean kosong', async () => {
     const { container } = render(<DashboardBiayaQueue />);
 

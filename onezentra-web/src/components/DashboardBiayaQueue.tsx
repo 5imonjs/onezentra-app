@@ -124,7 +124,18 @@ export default function DashboardBiayaQueue({ kodeDepo }: { kodeDepo?: string })
     load();
   }, [load]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <section aria-label="Antrean persetujuan biaya" role="status" aria-busy="true">
+        <div className="mb-3 h-4 w-48 rounded-full bg-popover animate-pulse" />
+        <DashboardCardGrid>
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="h-24 rounded-2xl border border-border bg-popover animate-pulse" />
+          ))}
+        </DashboardCardGrid>
+      </section>
+    );
+  }
   if (cards.length === 0 && !failed) return null;
 
   return (
