@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback, Fragment } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { rencanaKirim, depo, depotSettings, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
@@ -222,6 +222,37 @@ function NamaDepoInput({
   );
 }
 
+const toYmd = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const addDaysYmd = (ymd: string, days: number): string => {
+  const d = new Date(`${ymd}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return toYmd(d);
+};
+
+/** Preset tanggal kirim -> param date_from/date_to yang sudah didukung backend. */
+const dateRangeFor = (preset: string, from: string, to: string): { from?: string; to?: string } => {
+  const today = toYmd(new Date());
+  switch (preset) {
+    case 'today': return { from: today, to: today };
+    case 'tomorrow': return { from: addDaysYmd(today, 1), to: addDaysYmd(today, 1) };
+    case 'next7': return { from: today, to: addDaysYmd(today, 7) };
+    case 'custom': return { from: from || undefined, to: to || undefined };
+    default: return {};
+  }
+};
+
+/** Label grup tanggal kirim di tabel. */
+const kirimGroupLabel = (ymd: string): string => {
+  if (!ymd || ymd === '-') return 'Tanpa tanggal kirim';
+  const today = toYmd(new Date());
+  const label = new Date(`${ymd}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  if (ymd === today) return `Hari ini, ${label}`;
+  if (ymd === addDaysYmd(today, 1)) return `Besok, ${label}`;
+  return label;
+};
+
 export default function RencanaKirimPage() {
   const [items, setItems] = useState<RencanaKirim[]>([]);
   const [search, setSearch] = useState('');
@@ -264,6 +295,10 @@ export default function RencanaKirimPage() {
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
+  // Filter tanggal KIRIM (rkh_date) — backend sudah menerima date_from/date_to.
+  const [filterDate, setFilterDate] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   // Statistik global dari server (bukan hitungan halaman aktif).
   const [rkStats, setRkStats] = useState<RkStats | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -293,6 +328,9 @@ export default function RencanaKirimPage() {
       const filterParams: Record<string, unknown> = { search, page: requestPage, per_page: 20 };
       if (filterStatus) filterParams.status = filterStatus;
       if (filterKodeDepo) filterParams.kode_depo = filterKodeDepo;
+      const range = dateRangeFor(filterDate, dateFrom, dateTo);
+      if (range.from) filterParams.date_from = range.from;
+      if (range.to) filterParams.date_to = range.to;
       const res = await rencanaKirim.list(filterParams);
       if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
@@ -308,7 +346,7 @@ export default function RencanaKirimPage() {
     } finally {
       if (reqIdRef.current === reqId) setLoading(false);
     }
-  }, [search, page, filterStatus, filterKodeDepo]);
+  }, [search, page, filterStatus, filterKodeDepo, filterDate, dateFrom, dateTo]);
 
   useEffect(() => { loadItems(true); }, [loadItems]);
 
@@ -452,11 +490,13 @@ export default function RencanaKirimPage() {
   };
 
   const handleDateClick = (date: string) => {
-    // Tanggal lampau di-clamp ke hari ini — backend menolak rkh_date sebelum hari ini.
-    const today = todayDateStr();
-    const effective = date < today ? today : date;
-    setSelectedDate(effective);
-    openCreate(effective);
+    // Klik kalender sekarang memfilter daftar ke tanggal itu (boleh lampau),
+    // bukan langsung membuka form. Tombol terpisah dipakai untuk membuat.
+    setSelectedDate(date);
+    setFilterDate('custom');
+    setDateFrom(date);
+    setDateTo(date);
+    setPage(1);
   };
 
   const handleEdit = (item: RencanaKirim) => {
@@ -815,7 +855,15 @@ export default function RencanaKirimPage() {
               onDateClick={handleDateClick}
               selectedDate={selectedDate}
             />
-            <p className="mt-3 text-center text-xs text-muted-foreground">Klik tanggal di kalender untuk langsung membuka form baru pada tanggal tersebut.</p>
+            <p className="mt-3 text-center text-xs text-muted-foreground">Klik tanggal untuk melihat rencana kirim pada tanggal tersebut.</p>
+            {selectedDate && hasPermission('rencana_kirim.create') && (
+              <button
+                onClick={() => openCreate(selectedDate >= todayDateStr() ? selectedDate : todayDateStr())}
+                className="btn-secondary mt-3 w-full text-xs"
+              >
+                Buat rencana untuk {selectedDate}
+              </button>
+            )}
           </div>
 
           {/* Table */}
@@ -848,7 +896,7 @@ export default function RencanaKirimPage() {
                   {/* Baris pencarian + filter */}
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                     <div className="flex-1 lg:max-w-md">
-                      <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari PO Transporter/RKH/driver..." resultCount={items.length} totalCount={rkStats?.total} currentFrom={items.length > 0 ? (page - 1) * 20 + 1 : 0} currentTo={(page - 1) * 20 + items.length} resultLabel="rencana" />
+                      <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari PO Transporter/tanggal kirim/driver..." resultCount={items.length} totalCount={rkStats?.total} currentFrom={items.length > 0 ? (page - 1) * 20 + 1 : 0} currentTo={(page - 1) * 20 + items.length} resultLabel="rencana" />
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="relative">
@@ -869,6 +917,28 @@ export default function RencanaKirimPage() {
                         </select>
                         <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
                       </div>
+                      <div className="relative">
+                        <select
+                          aria-label="Filter tanggal kirim"
+                          value={filterDate}
+                          onChange={(e) => { setFilterDate(e.target.value); setPage(1); }}
+                          className="appearance-none py-2 pl-3 pr-9 border border-border rounded-xl bg-card text-foreground text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[150px]"
+                        >
+                          <option value="">Semua tanggal</option>
+                          <option value="today">Hari ini</option>
+                          <option value="tomorrow">Besok</option>
+                          <option value="next7">7 hari ke depan</option>
+                          <option value="custom">Rentang tanggal…</option>
+                        </select>
+                        <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
+                      </div>
+                      {filterDate === 'custom' && (
+                        <div className="flex items-center gap-2">
+                          <input type="date" aria-label="Dari tanggal kirim" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="input-field text-sm py-2" />
+                          <span className="text-xs text-muted-foreground">s/d</span>
+                          <input type="date" aria-label="Sampai tanggal kirim" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="input-field text-sm py-2" />
+                        </div>
+                      )}
                       <div className="relative">
                         <select
                           aria-label="Filter depo"
@@ -898,7 +968,7 @@ export default function RencanaKirimPage() {
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">No</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Tgl Create</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">PO Transporter</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Tanggal RKH</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap" title="RKH = tanggal barang direncanakan berangkat, bukan waktu input dokumen.">Tgl Rencana Kirim</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Driver</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Nopol</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Expedisi</th>
@@ -922,8 +992,21 @@ export default function RencanaKirimPage() {
                     ))}
                   </>
                 )}
-                {items.map((item, index) => (
-                  <tr key={item.id} className="group hover:bg-overlay-70 transition-colors">
+                {items.map((item, index) => {
+                  const groupKey = item.rkh_date?.split('T')[0] || '-';
+                  const previousKey = items[index - 1]?.rkh_date?.split('T')[0] || '-';
+                  const showGroup = index === 0 || groupKey !== previousKey;
+                  const groupCount = items.filter((it) => (it.rkh_date?.split('T')[0] || '-') === groupKey).length;
+                  return (
+                    <Fragment key={item.id}>
+                      {showGroup && (
+                        <tr>
+                          <td colSpan={13} className="bg-chip-primary/40 px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-accent-text">
+                            {kirimGroupLabel(groupKey)} · {groupCount} PO
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="group hover:bg-overlay-70 transition-colors">
                     <td className="px-5 py-3.5 text-sm text-muted-foreground whitespace-nowrap">{(page - 1) * 20 + index + 1}</td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{item.created_at?.split('T')[0] || '-'}</span></td>
                     <td className="px-5 py-3.5 text-sm text-foreground font-medium whitespace-nowrap"><span className="font-mono">{fmt(item.po_transporter)}</span></td>
@@ -988,8 +1071,10 @@ export default function RencanaKirimPage() {
                         </div>
                       </div>
                     </td>
-                  </tr>
-                ))}
+                      </tr>
+                    </Fragment>
+                  );
+                })}
                 {!loading && items.length === 0 && (
                   <tr>
                     <td colSpan={13} className="px-5 py-16 text-center">
@@ -1045,7 +1130,7 @@ export default function RencanaKirimPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-mono text-sm font-bold text-foreground truncate">{fmt(item.po_transporter)}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">RK {item.rkh_date?.split('T')[0] || '-'} • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Kirim {kirimGroupLabel(item.rkh_date?.split('T')[0] || '-')} • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
                     </div>
                     <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${st?.bg || 'bg-card'} ${st?.color || 'text-foreground'} ${st?.border || 'border-border'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-muted-foreground'}`} />
@@ -1168,7 +1253,7 @@ export default function RencanaKirimPage() {
                 <div>
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">PO Transporter</p>
                   <h3 className="mt-1 text-xl font-black tracking-tight">{fmt(viewItem.po_transporter)}</h3>
-                  <p className="mt-1 text-xs text-white/70"><span className="font-semibold">RK:</span> {fmtDateId(viewItem.rkh_date?.split('T')[0])} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
+                  <p className="mt-1 text-xs text-white/70"><span className="font-semibold">Rencana kirim:</span> {fmtDateId(viewItem.rkh_date?.split('T')[0])} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white ring-1 ring-inset ring-white/20">
                   <span className={`w-2 h-2 rounded-full ${statusConfig[viewItem.status]?.dot || 'bg-slate-400'}`} />{statusConfig[viewItem.status]?.label || viewItem.status}
@@ -1336,8 +1421,9 @@ export default function RencanaKirimPage() {
                 )}
               </div>
               <div>
-                <label htmlFor="f-rkh-date" className="block text-xs font-medium text-muted-foreground mb-1">Tanggal RKH <span className="text-destructive">*</span></label>
+                <label htmlFor="f-rkh-date" className="block text-xs font-medium text-muted-foreground mb-1">Tanggal Rencana Kirim (RKH) <span className="text-destructive">*</span></label>
                 <input id="f-rkh-date" type="date" min={editingId ? undefined : todayDateStr()} value={createForm.rkh_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, rkh_date: e.target.value }))} className="input-field text-sm py-2" />
+                <p className="mt-1 text-[11px] text-muted-foreground">RKH = kapan barang direncanakan berangkat. Berbeda dengan &quot;Dibuat&quot; (waktu input dokumen).</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Tanggal pengiriman rencana</p>
               </div>
             </div>
@@ -1523,7 +1609,7 @@ export default function RencanaKirimPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (currentStep === 1 && !sectionComplete.dokumen) { notifyGlobal('Lengkapi PO Transporter & Tanggal RKH dulu', 'error'); return; }
+                  if (currentStep === 1 && !sectionComplete.dokumen) { notifyGlobal('Lengkapi PO Transporter & Tanggal Rencana Kirim dulu', 'error'); return; }
                   if (currentStep === 2 && !sectionComplete.kendaraan) { notifyGlobal('Lengkapi Nama Driver, Nopol, Expedisi & Jenis Kendaraan dulu', 'error'); return; }
                   if (currentStep === 3 && !sectionComplete.pengirim) { notifyGlobal('Lengkapi Asal Pengirim & Nama Depo dulu', 'error'); return; }
                   setCurrentStep(s => Math.min(5, s + 1));
@@ -1577,7 +1663,7 @@ export default function RencanaKirimPage() {
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Dokumen & Kendaraan</p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
               <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">PO Transporter</span><span className="font-mono font-bold text-foreground">{createForm.po_transporter || '-'}</span></div>
-              <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">Tanggal RKH</span><span className="font-semibold text-foreground">{createForm.rkh_date ? new Date(createForm.rkh_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</span></div>
+              <div className="flex items-baseline gap-2"><span className="w-40 shrink-0 text-muted-foreground">Tanggal Rencana Kirim</span><span className="font-semibold text-foreground">{createForm.rkh_date ? new Date(createForm.rkh_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</span></div>
               <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">Kendaraan</span><span className="font-semibold text-foreground">{createForm.driver_name || '-'}{createForm.nopol ? ` • ${createForm.nopol}` : ''}</span></div>
               <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">Ekspedisi</span><span className="font-semibold text-foreground">{createForm.expedisi || '-'}{createForm.jenis_kendaraan ? ` • ${createForm.jenis_kendaraan}` : ''}</span></div>
               <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">Pengirim</span><span className="font-semibold text-foreground">{createForm.shipper_name || '-'}</span></div>

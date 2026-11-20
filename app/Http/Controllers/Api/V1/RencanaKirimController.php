@@ -130,7 +130,14 @@ class RencanaKirimController extends Controller
         }
 
         $perPage = $this->perPage($request);
-        $rencana_kirim = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        // Urutkan berdasarkan KAPAN BARANG DIKIRIM (rkh_date), bukan kapan
+        // dokumen di-input. Tanggal kosong ditaruh di bawah; dalam tanggal yang
+        // sama, input terakhir tetap muncul lebih dulu.
+        $rencana_kirim = $query
+            ->orderByRaw('rkh_date IS NULL')
+            ->orderBy('rkh_date', 'asc')
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
 
         foreach ($rencana_kirim as $rencanaKirim) {
             $this->attachStandarUmur($rencanaKirim->items);

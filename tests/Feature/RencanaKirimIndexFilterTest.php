@@ -105,6 +105,36 @@ class RencanaKirimIndexFilterTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_index_diurutkan_berdasarkan_tanggal_kirim_bukan_waktu_input(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        // Input terakhir justru untuk tanggal paling jauh — harus tetap muncul
+        // paling bawah karena urutan memakai rkh_date.
+        RencanaKirim::create([
+            'po_transporter' => 'PO-LATER', 'status' => 'DRAFT',
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->addDays(5)->toDateString(),
+        ]);
+        RencanaKirim::create([
+            'po_transporter' => 'PO-TOMORROW', 'status' => 'DRAFT',
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->addDay()->toDateString(),
+        ]);
+        RencanaKirim::create([
+            'po_transporter' => 'PO-NODATE', 'status' => 'DRAFT',
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+        ]);
+
+        $res = $this->getJson('/api/v1/rencana-kirim')->assertOk();
+
+        $this->assertSame(
+            ['PO-TOMORROW', 'PO-LATER', 'PO-NODATE'],
+            collect($res->json('data'))->pluck('po_transporter')->all(),
+        );
+    }
+
     private function viewer(): User
     {
         $role = Role::firstOrCreate(['slug' => 'rk_filter_view'], ['name' => 'RK Filter View']);
