@@ -296,6 +296,7 @@ export default function RencanaKirimPage() {
   const [deleting, setDeleting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
   // Filter tanggal KIRIM (rkh_date) — backend sudah menerima date_from/date_to.
+  const [calendarOpen, setCalendarOpen] = useState(true);
   const [filterDate, setFilterDate] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -850,8 +851,9 @@ export default function RencanaKirimPage() {
         </header>
 
         {/* Calendar + Table Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={`grid grid-cols-1 gap-6 transition-all duration-300 ${calendarOpen ? 'lg:grid-cols-3' : 'lg:grid-cols-1'}`}>
           {/* Calendar */}
+          {calendarOpen && (
           <div className="lg:col-span-1">
             <Calendar
               events={calendarEvents}
@@ -867,10 +869,14 @@ export default function RencanaKirimPage() {
                 Buat rencana untuk {selectedDate}
               </button>
             )}
+            <button onClick={() => setCalendarOpen(false)} className="mt-2 w-full rounded-lg border border-border py-1.5 text-xs text-muted-foreground transition-colors hover:bg-popover">
+              Tutup kalender
+            </button>
           </div>
+          )}
 
           {/* Table */}
-          <div className="lg:col-span-2">
+          <div className={calendarOpen ? 'lg:col-span-2' : 'lg:col-span-1'}>
             {/* Table Card */}
             <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
               <div className="px-5 py-4 border-b border-border">
@@ -886,6 +892,17 @@ export default function RencanaKirimPage() {
                         <p className="mt-0.5 text-xs text-muted-foreground">Pantau jadwal, kendaraan, tujuan, dan status pengiriman</p>
                       </div>
                     </div>
+                    <button
+                      onClick={() => setCalendarOpen((open) => !open)}
+                      aria-label={calendarOpen ? 'Sembunyikan kalender' : 'Tampilkan kalender'}
+                      aria-expanded={calendarOpen}
+                      className="btn-secondary text-sm px-3 py-2"
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d={calendarOpen ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} /></svg>
+                        {calendarOpen ? 'Tutup Kalender' : 'Buka Kalender'}
+                      </span>
+                    </button>
                     {hasPermission('rencana_kirim.create') && (
                       <button onClick={() => openCreate()} aria-label="Buat rencana kirim baru" className="btn-primary text-sm px-4 py-2 shadow-none">
                         <span className="flex items-center gap-2">

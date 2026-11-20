@@ -270,3 +270,29 @@ describe('Rencana Kirim — tanggal kirim vs waktu input', () => {
     expect(screen.getAllByText(/ PO$/).length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('Rencana Kirim — panel kalender', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    list.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
+  });
+
+  it('bisa ditutup agar tabel melebar lalu dibuka lagi', async () => {
+    render(<RencanaKirimPage />);
+    await waitFor(() => expect(list).toHaveBeenCalled());
+
+    expect(screen.getByRole('region', { name: 'Kalender pengiriman' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sembunyikan kalender' }));
+    expect(screen.queryByRole('region', { name: 'Kalender pengiriman' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tampilkan kalender' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Daftar Rencana Pengiriman')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tampilkan kalender' }));
+    expect(screen.getByRole('region', { name: 'Kalender pengiriman' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sembunyikan kalender' })).toHaveAttribute('aria-expanded', 'true');
+  });
+});
