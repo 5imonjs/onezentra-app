@@ -200,6 +200,44 @@ class BiayaThlFlowTest extends TestCase
         ]);
     }
 
+    public function test_store_keeps_full_vehicle_summary_for_multiple_vehicles(): void
+    {
+        Sanctum::actingAs($this->user);
+
+        $nopol = ['B 9614 SCN', 'KB 8281 MN', 'KB 8183 MV', 'B 9097 KCG'];
+        $details = [];
+        foreach ($nopol as $index => $plat) {
+            $details[] = [
+                'no_surat_jalan' => 'SJ-'.($index + 1),
+                'nama_thl' => 'Budi',
+                'driver_name' => 'Andi',
+                'nopol_kendaraan' => $plat,
+                'type_kendaraan' => 'CDD',
+                'nominal_biaya' => 100000,
+                'kubikasi' => 1.5,
+                'droppoint' => 'Terminal A',
+                'posisi' => 'THL HELPER',
+                'jam_datang' => '2026-09-18T08:00',
+                'jam_pulang' => '2026-09-18T17:00',
+                'order' => $index,
+            ];
+        }
+
+        $joinedNopol = implode(', ', $nopol);
+        $this->assertGreaterThan(20, strlen($joinedNopol));
+
+        $response = $this->postJson('/api/v1/biaya-thl', [
+            'tanggal_pengajuan' => '2026-09-18',
+            'details' => $details,
+        ])->assertCreated();
+
+        $this->assertSame($joinedNopol, $response->json('data.no_kendaraan'));
+        $this->assertDatabaseHas('biaya_thls', [
+            'id' => $response->json('data.id'),
+            'no_kendaraan' => $joinedNopol,
+        ]);
+    }
+
     public function test_draft_saves_incomplete_and_submit_guards_completeness(): void
     {
         Sanctum::actingAs($this->user);
