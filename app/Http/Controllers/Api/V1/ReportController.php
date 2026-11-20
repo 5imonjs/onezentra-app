@@ -300,9 +300,16 @@ class ReportController extends Controller
     {
         $query = RencanaKirim::query()->with(['items.npn']);
 
-        return RencanaKirimReportExport::applyFilters($query, $request->date_from, $request->date_to, $request->status, $request->kode_depo, $request->search, $request->user())
-            ->orderByDesc('rkh_date')
-            ->orderByDesc('id');
+        $query = RencanaKirimReportExport::applyFilters($query, $request->date_from, $request->date_to, $request->status, $request->kode_depo, $request->search, $request->user());
+
+        if ($request->filled('eta_from')) {
+            $query->whereDate('eta_date', '>=', $request->eta_from);
+        }
+        if ($request->filled('eta_to')) {
+            $query->whereDate('eta_date', '<=', $request->eta_to);
+        }
+
+        return $query->orderByDesc('rkh_date')->orderByDesc('id');
     }
 
     private function rencanaKirimRow(RencanaKirim $rk): array
@@ -312,6 +319,7 @@ class ReportController extends Controller
         return [
             'id' => $rk->id,
             'rkh_date' => $rk->rkh_date?->toDateString(),
+            'eta_date' => $rk->eta_date?->toDateString(),
             'po_transporter' => $rk->po_transporter ?? '-',
             'driver_name' => $rk->driver_name ?? '-',
             'nopol' => $rk->nopol ?? '-',

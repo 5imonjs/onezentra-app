@@ -159,4 +159,22 @@ class RencanaKirimStatsTest extends TestCase
         $this->assertEquals(15.0, $res->json('data.SCHEDULED.sum_kubikasi'));
         $this->assertEquals(15.0, $res->json('total_kubikasi'));
     }
+
+    public function test_stats_menyediakan_kalender_berbasis_eta(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        RencanaKirim::create([
+            'po_transporter' => 'CAL-ETA', 'status' => 'DRAFT', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->subDays(5)->toDateString(),
+            'eta_date' => now()->addDay()->toDateString(),
+        ]);
+
+        $res = $this->getJson('/api/v1/rencana-kirim/stats')->assertOk();
+        $dates = collect($res->json('calendar_eta'))->pluck('date')->all();
+
+        $this->assertContains(now()->addDay()->toDateString(), $dates);
+    }
 }

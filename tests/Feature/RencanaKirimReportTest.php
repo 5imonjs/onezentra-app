@@ -409,4 +409,23 @@ class RencanaKirimReportTest extends TestCase
         $this->assertSame(7.0, $row[array_search('Qty Diterima', $headings)]);
         $this->assertEqualsWithDelta(0.6, $row[array_search('Kubikasi (m³)', $headings)], 0.001);
     }
+
+    public function test_laporan_menyediakan_kolom_dan_filter_eta(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        RencanaKirim::create([
+            'po_transporter' => 'REPORT-ETA', 'status' => 'DRAFT', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->subDays(5)->toDateString(),
+            'eta_date' => now()->addDay()->toDateString(),
+        ]);
+
+        $etaDay = now()->addDay()->toDateString();
+        $res = $this->getJson("/api/v1/reports/rencana-kirim?eta_from={$etaDay}&eta_to={$etaDay}")->assertOk();
+
+        $this->assertSame($etaDay, $res->json('data.0.eta_date'));
+        $this->assertSame('REPORT-ETA', $res->json('data.0.po_transporter'));
+    }
 }

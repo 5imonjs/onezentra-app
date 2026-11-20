@@ -707,6 +707,26 @@ class RencanaKirimController extends Controller
             $calendar[] = ['date' => $date, 'count' => $entry['count'], 'breakdown' => $entry['breakdown']];
         }
 
+        // Kalender alternatif berbasis RENCANA TIBA (ETA), supaya user bisa
+        // melihat beban kedatangan depo terlepas dari tanggal dokumen/SJ.
+        $etaRows = (clone $base)->toBase()
+            ->selectRaw('DATE(eta_date) as d, status, COUNT(*) as c')
+            ->whereNotNull('eta_date')
+            ->groupBy('d', 'status')
+            ->orderByDesc('d')
+            ->get();
+        $etaByDate = [];
+        foreach ($etaRows as $row) {
+            $date = $row->d ?? '';
+            $etaByDate[$date]['count'] = ($etaByDate[$date]['count'] ?? 0) + (int) $row->c;
+            $etaByDate[$date]['breakdown'][$row->status] = (int) $row->c;
+        }
+        krsort($etaByDate);
+        $calendarEta = [];
+        foreach ($etaByDate as $date => $entry) {
+            $calendarEta[] = ['date' => $date, 'count' => $entry['count'], 'breakdown' => $entry['breakdown']];
+        }
+
         return response()->json([
             'data' => $stats,
             'total' => (int) (clone $base)->toBase()->count(),
@@ -714,6 +734,7 @@ class RencanaKirimController extends Controller
             'total_kubikasi' => round($totalKubikasi, 2),
             'today_count' => (int) (clone $base)->whereDate('rkh_date', $today)->count(),
             'calendar' => $calendar,
+            'calendar_eta' => $calendarEta,
         ]);
     }
 

@@ -17,6 +17,7 @@ class RencanaKirimTemplate implements FromCollection, ShouldAutoSize, WithHeadin
             [
                 '0127-26-000000001',
                 '2026-09-07',
+                '2026-09-09',
                 'RANGGA',
                 'KB8292GF',
                 'POJOK EKSPEDISI',
@@ -42,6 +43,7 @@ class RencanaKirimTemplate implements FromCollection, ShouldAutoSize, WithHeadin
         return [
             'No. PO Transporter',
             'Tanggal RKH',
+            'Tanggal Tiba',
             'Nama Driver',
             'Nopol',
             'Expedisi',

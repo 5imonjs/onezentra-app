@@ -36,6 +36,10 @@ class RencanaKirimImport implements ToCollection, WithHeadingRow
         'rkh_tanggal' => 'rkh_date',
         'tanggal_rkh' => 'rkh_date',
         'rkh_date' => 'rkh_date',
+        'eta_date' => 'eta_date',
+        'eta_tanggal' => 'eta_date',
+        'tanggal_tiba' => 'eta_date',
+        'rencana_tiba' => 'eta_date',
         'nama_driver' => 'driver_name',
         'driver' => 'driver_name',
         'nopol' => 'nopol',
@@ -294,7 +298,9 @@ class RencanaKirimImport implements ToCollection, WithHeadingRow
         }
 
         if ($value instanceof DateTimeInterface) {
-            return $dbKey === 'rkh_date' ? $value->format('Y-m-d') : $value->format('Y-m-d H:i:s');
+            return in_array($dbKey, ['rkh_date', 'eta_date'], true)
+                ? $value->format('Y-m-d')
+                : $value->format('Y-m-d H:i:s');
         }
 
         if (is_string($value)) {

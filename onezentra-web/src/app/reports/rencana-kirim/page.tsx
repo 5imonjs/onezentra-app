@@ -12,6 +12,7 @@ import Modal from '@/components/Modal';
 interface ReportItem {
   id: number;
   rkh_date: string | null;
+  eta_date?: string | null;
   po_transporter: string;
   driver_name: string;
   nopol: string;
@@ -110,6 +111,7 @@ export default function RencanaKirimReportPage() {
   const [error, setError] = useState('');
   const [depotError, setDepotError] = useState('');
   const [dateFrom, setDateFrom] = useState('');
+  const [dateBasis, setDateBasis] = useState<'rkh' | 'eta'>('rkh');
   const [dateTo, setDateTo] = useState('');
   const [status, setStatus] = useState('');
   const [kodeDepo, setKodeDepo] = useState('');
@@ -165,13 +167,13 @@ export default function RencanaKirimReportPage() {
 
   const buildParams = useCallback((): Record<string, unknown> => {
     const params: Record<string, unknown> = { page, per_page: PER_PAGE };
-    if (dateFrom) params.date_from = dateFrom;
-    if (dateTo) params.date_to = dateTo;
+    if (dateFrom) params[dateBasis === 'eta' ? 'eta_from' : 'date_from'] = dateFrom;
+    if (dateTo) params[dateBasis === 'eta' ? 'eta_to' : 'date_to'] = dateTo;
     if (status) params.status = status;
     if (kodeDepo) params.kode_depo = kodeDepo;
     if (debouncedSearch) params.search = debouncedSearch;
     return params;
-  }, [dateFrom, dateTo, status, kodeDepo, debouncedSearch, page]);
+  }, [dateFrom, dateTo, dateBasis, status, kodeDepo, debouncedSearch, page]);
 
   const fetchData = useCallback(async () => {
     if (!hasPermission('reports.rencana_kirim')) return;
@@ -422,6 +424,13 @@ export default function RencanaKirimReportPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mt-4">
               <div>
+                <label htmlFor="rf-basis" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Basis Tanggal</label>
+                <select id="rf-basis" value={dateBasis} onChange={(e) => { setDateBasis(e.target.value as 'rkh' | 'eta'); setPage(1); }} className="select-field w-full text-sm py-2 bg-popover focus:bg-card">
+                  <option value="rkh">Tanggal RKH</option>
+                  <option value="eta">Rencana Tiba (ETA)</option>
+                </select>
+              </div>
+              <div>
                 <label htmlFor="rf-from" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Dari Tanggal</label>
                 <input id="rf-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-popover focus:bg-card" />
               </div>
@@ -651,6 +660,7 @@ export default function RencanaKirimReportPage() {
                     </th>
                   )}
                   <th scope="col" className="table-header whitespace-nowrap">Tgl RKH</th>
+                  <th scope="col" className="table-header whitespace-nowrap">Rencana Tiba</th>
                   <th scope="col" className="table-header whitespace-nowrap">PO Transporter</th>
                   <th scope="col" className="table-header whitespace-nowrap">Driver</th>
                   <th scope="col" className="table-header whitespace-nowrap">Nopol</th>
@@ -707,6 +717,7 @@ export default function RencanaKirimReportPage() {
                           </td>
                         )}
                         <td className="table-cell text-sm font-mono text-foreground whitespace-nowrap">{fmtDate(item.rkh_date)}</td>
+                        <td className="table-cell text-sm font-mono font-semibold text-info whitespace-nowrap">{fmtDate(item.eta_date ?? null)}</td>
                         <td className="table-cell text-sm font-mono font-medium text-foreground whitespace-nowrap">{item.po_transporter}</td>
                         <td className="table-cell text-sm text-foreground whitespace-nowrap">
                           <span className="inline-flex items-center gap-2">
@@ -907,6 +918,7 @@ export default function RencanaKirimReportPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 ['Tgl RKH', fmtDate(detail.rkh_date)],
+                ['Rencana Tiba', fmtDate(detail.eta_date ?? null)],
                 ['Driver', detail.driver_name],
                 ['Nopol', detail.nopol],
                 ['Tujuan', detail.destination_name],

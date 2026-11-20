@@ -70,6 +70,7 @@ interface RkStats {
   scheduled: number;
   completed: number;
   calendar: { date: string | null; count: number; breakdown: Record<string, number> }[];
+  calendarEta: { date: string | null; count: number; breakdown: Record<string, number> }[];
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; dot: string; border: string }> = {
@@ -298,6 +299,7 @@ export default function RencanaKirimPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   // Filter tanggal KIRIM (rkh_date) — backend sudah menerima date_from/date_to.
   const [calendarOpen, setCalendarOpen] = useState(true);
+  const [calendarBasis, setCalendarBasis] = useState<'rkh' | 'eta'>('rkh');
   const [etaFilter, setEtaFilter] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -385,6 +387,7 @@ export default function RencanaKirimPage() {
         scheduled: Number(res.data.data?.SCHEDULED?.count ?? 0),
         completed: Number(res.data.data?.COMPLETED?.count ?? 0),
         calendar: Array.isArray(res.data.calendar) ? res.data.calendar : [],
+        calendarEta: Array.isArray(res.data.calendar_eta) ? res.data.calendar_eta : [],
       });
     } catch {
       // Statistik bersifat pelengkap — kegagalan tidak boleh memblokir halaman.
@@ -442,7 +445,7 @@ export default function RencanaKirimPage() {
   // bukan dari 20 item halaman aktif.
   // Satu event per status agar warna titik kalender membedakan "rencana"
   // dari "sudah receiving". Backend sudah mengirim breakdown per tanggal.
-  const calendarEvents = (rkStats?.calendar ?? []).flatMap(entry =>
+  const calendarEvents = (calendarBasis === 'eta' ? (rkStats?.calendarEta ?? []) : (rkStats?.calendar ?? [])).flatMap(entry =>
     Object.entries(entry.breakdown ?? {}).map(([status, count]) => ({
       date: entry.date ?? '',
       count: Number(count) || 0,
@@ -879,7 +882,23 @@ export default function RencanaKirimPage() {
               onDateClick={handleDateClick}
               selectedDate={selectedDate}
             />
-            <p className="mt-3 text-center text-xs text-muted-foreground">Kalender mengikuti tanggal Rencana Kirim (RKH), bukan rencana tiba. Klik tanggal untuk memfilter.</p>
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <button
+                onClick={() => setCalendarBasis('rkh')}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors ${calendarBasis === 'rkh' ? 'bg-primary-600 text-white' : 'bg-popover text-muted-foreground hover:text-foreground'}`}
+              >
+                Rencana Kirim
+              </button>
+              <button
+                onClick={() => setCalendarBasis('eta')}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors ${calendarBasis === 'eta' ? 'bg-info text-background' : 'bg-popover text-muted-foreground hover:text-foreground'}`}
+              >
+                Rencana Tiba
+              </button>
+            </div>
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Titik kalender mengikuti {calendarBasis === 'eta' ? 'Rencana Tiba (ETA)' : 'Rencana Kirim (RKH)'}. Klik tanggal untuk memfilter.
+            </p>
             {selectedDate && hasPermission('rencana_kirim.create') && (
               <button
                 onClick={() => openCreate(selectedDate >= todayDateStr() ? selectedDate : todayDateStr())}
