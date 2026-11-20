@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
-import 'package:onezentra_mobile/features/home/repositories/reminder_repository.dart';
 import 'package:onezentra_mobile/features/home/widgets/reminder_banner.dart';
+import 'package:onezentra_mobile/features/home/repositories/reminder_repository.dart';
 
 ReminderRepository _repository(Map<String, dynamic> payload) =>
     ReminderRepository(get: (endpoint) async => {'data': payload});
+
+String _today() => DateTime.now().toIso8601String().substring(0, 10);
 
 Map<String, dynamic> _payload({int total = 2, bool withGroups = true}) => {
   'threshold_minutes': 30,
@@ -60,20 +63,40 @@ Future<void> _pump(WidgetTester tester, ReminderRepository repository) async {
 }
 
 void main() {
-  testWidgets('banner menampilkan grup dan durasi keterlambatan', (
+  setUp(() {
+    // Default: auto-open sudah dipakai hari ini supaya test tidak kena popup.
+    SharedPreferences.setMockInitialValues({
+      'reminder_last_auto_shown': _today(),
+    });
+  });
+
+  testWidgets('kartu ringkas membuka sheet berisi grup dan durasi', (
     tester,
   ) async {
     await _pump(tester, _repository(_payload()));
 
     expect(find.text('Proses Tertunda'), findsOneWidget);
-    expect(find.text('Validasi SJ belum selesai · 1'), findsOneWidget);
-    expect(find.text('Kendaraan tertahan di gate · 1'), findsOneWidget);
+    expect(find.text('2 item · belum selesai > 30 menit'), findsOneWidget);
+    expect(find.text('Validasi SJ belum selesai'), findsNothing);
+
+    await tester.tap(find.text('Lihat'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Validasi SJ belum selesai'), findsOneWidget);
+    expect(find.text('Kendaraan tertahan di gate'), findsOneWidget);
     expect(find.text('47 mnt'), findsOneWidget);
     expect(find.text('1 jam 15 mnt'), findsOneWidget);
-    expect(find.text('2 item'), findsOneWidget);
   });
 
-  testWidgets('banner tidak tampil bila tidak ada proses tertunda', (
+  testWidgets('sheet terbuka otomatis sekali sehari', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await _pump(tester, _repository(_payload()));
+
+    expect(find.text('Validasi SJ belum selesai'), findsOneWidget);
+    expect(find.byTooltip('Tutup'), findsWidgets);
+  });
+
+  testWidgets('kartu tidak tampil bila tidak ada proses tertunda', (
     tester,
   ) async {
     await _pump(tester, _repository(_payload(total: 0, withGroups: false)));
