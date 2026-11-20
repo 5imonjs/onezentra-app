@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useRef, useCallback, Fragment } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/app/dashboard/layout';
 import { rencanaKirim, depo, depotSettings, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
@@ -48,6 +49,7 @@ interface RencanaKirim {
   nama_depo: string;
   total_qty: number;
   total_kubikasi?: number | null;
+  items_tanpa_npn?: number;
   status: string;
   notes: string;
   scheduled_at: string;
@@ -300,6 +302,9 @@ export default function RencanaKirimPage() {
   // Filter tanggal KIRIM (rkh_date) — backend sudah menerima date_from/date_to.
   const [calendarOpen, setCalendarOpen] = useState(true);
   const [calendarBasis, setCalendarBasis] = useState<'rkh' | 'eta'>('rkh');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const etaParam = searchParams.get('eta');
   const [etaFilter, setEtaFilter] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -363,12 +368,13 @@ export default function RencanaKirimPage() {
   }, [search, page, filterStatus, filterKodeDepo, filterDate, dateFrom, dateTo, etaFilter]);
 
   useEffect(() => {
-    const eta = new URLSearchParams(window.location.search).get('eta');
-    if (eta === 'today' || eta === 'tomorrow' || eta === 'overdue') {
-      setEtaFilter(eta);
-      setPage(1);
-    }
-  }, []);
+    setEtaFilter(
+      etaParam === 'today' || etaParam === 'tomorrow' || etaParam === 'overdue'
+        ? etaParam
+        : '',
+    );
+    setPage(1);
+  }, [etaParam]);
 
   useEffect(() => { loadItems(true); }, [loadItems]);
 
@@ -919,7 +925,7 @@ export default function RencanaKirimPage() {
                     ? <>Menampilkan <strong className="text-destructive">ETA terlewat & belum check-in</strong></>
                     : <>Menampilkan rencana tiba <strong className="text-info">{etaFilter === 'today' ? 'hari ini' : 'besok'}</strong></>}
                 </span>
-                <button onClick={() => setEtaFilter('')} className="ml-auto text-xs font-bold text-info hover:underline">Hapus filter</button>
+                <button onClick={() => { setEtaFilter(''); router.replace('/rencana-kirim'); }} className="ml-auto text-xs font-bold text-info hover:underline">Hapus filter</button>
               </div>
             )}
             {/* Table Card */}
@@ -1087,9 +1093,11 @@ export default function RencanaKirimPage() {
                       <span className="inline-flex items-center justify-center min-w-[2.5rem] rounded-lg bg-muted px-2.5 py-1 text-sm font-bold text-foreground">{item.total_qty}</span>
                     </td>
                     <td className="px-5 py-3.5 text-center whitespace-nowrap">
-                      {typeof item.total_kubikasi === 'number'
+                      {typeof item.total_kubikasi === 'number' && item.total_kubikasi > 0
                         ? <span className="inline-flex items-center justify-center rounded-lg bg-info/10 px-2.5 py-1 text-sm font-bold text-info">{Number(item.total_kubikasi).toFixed(2)}</span>
-                        : '-'}
+                        : (item.items_tanpa_npn ?? 0) > 0
+                          ? <span className="inline-flex items-center gap-1 rounded-lg border border-warning/30 bg-warning/10 px-2 py-1 text-[10px] font-bold text-warning" title={`${item.items_tanpa_npn} item belum terhubung ke master NPN`}>NPN belum terhubung</span>
+                          : <span className="text-sm text-muted-foreground">0.00</span>}
                     </td>
                     <td className="px-5 py-3.5 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium shadow-sm ${statusConfig[item.status]?.bg || 'bg-card'} ${statusConfig[item.status]?.color || 'text-foreground'} ${statusConfig[item.status]?.border || 'border-border'}`}>
