@@ -659,7 +659,7 @@ export default function RencanaKirimReportPage() {
                       />
                     </th>
                   )}
-                  <th scope="col" className="table-header whitespace-nowrap">Tgl RKH</th>
+                  <th scope="col" className="table-header whitespace-nowrap">Tanggal Rencana Kirim</th>
                   <th scope="col" className="table-header whitespace-nowrap">Rencana Tiba</th>
                   <th scope="col" className="table-header whitespace-nowrap">PO Transporter</th>
                   <th scope="col" className="table-header whitespace-nowrap">Driver</th>
@@ -801,7 +801,7 @@ export default function RencanaKirimReportPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-mono text-sm font-bold text-foreground truncate">{item.po_transporter}</p>
-                      <p className="mt-0.5 text-xs text-gray-400">RK {fmtDate(item.rkh_date)} • Tujuan {item.destination_name}</p>
+                      <p className="mt-0.5 text-xs text-gray-400">Rencana kirim {fmtDate(item.rkh_date)} • Tujuan {item.destination_name}</p>
                     </div>
                     <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${st?.bg || 'bg-card'} ${st?.color || 'text-foreground'} ${st?.border || 'border-border'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-gray-400'}`} aria-hidden="true" />
@@ -917,7 +917,7 @@ export default function RencanaKirimReportPage() {
           <div className="space-y-5">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                ['Tgl RKH', fmtDate(detail.rkh_date)],
+                ['Tanggal Rencana Kirim', fmtDate(detail.rkh_date)],
                 ['Rencana Tiba', fmtDate(detail.eta_date ?? null)],
                 ['Driver', detail.driver_name],
                 ['Nopol', detail.nopol],

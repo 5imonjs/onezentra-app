@@ -249,12 +249,12 @@ const dateRangeFor = (preset: string, from: string, to: string): { from?: string
 
 /** Label grup tanggal kirim di tabel. */
 const kirimGroupLabel = (ymd: string): string => {
-  if (!ymd || ymd === '-') return 'Tanpa tanggal kirim';
+  if (!ymd || ymd === '-') return 'Kirim: tanpa tanggal';
   const today = toYmd(new Date());
   const label = new Date(`${ymd}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-  if (ymd === today) return `Hari ini, ${label}`;
-  if (ymd === addDaysYmd(today, 1)) return `Besok, ${label}`;
-  return label;
+  if (ymd === today) return `Kirim: Hari ini, ${label}`;
+  if (ymd === addDaysYmd(today, 1)) return `Kirim: Besok, ${label}`;
+  return `Kirim: ${label}`;
 };
 
 export default function RencanaKirimPage() {
@@ -1037,7 +1037,7 @@ export default function RencanaKirimPage() {
               <thead className="sticky top-0 z-10">
                 <tr className="bg-popover border-b border-border shadow-sm">
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">No</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Tgl Create</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Dibuat</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">PO Transporter</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap" title="RKH = tanggal barang direncanakan berangkat.">Tgl Rencana Kirim</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-info uppercase tracking-wider whitespace-nowrap" title="Kapan barang diharapkan tiba di depo tujuan.">Rencana Tiba</th>
