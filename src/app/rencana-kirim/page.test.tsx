@@ -73,7 +73,7 @@ async function openItemsModal(): Promise<HTMLInputElement> {
   // auto-fill todayDateStr() hanya aktif saat state masih `undefined`,
   // sedangkan reset awal mengisinya dengan string kosong.
   fireEvent.change(await screen.findByPlaceholderText('cth: PO-2026-0001'), { target: { value: 'PO-TES-001' } });
-  fireEvent.change(screen.getByLabelText(/Tanggal RKH/), { target: { value: '2026-10-23' } });
+  fireEvent.change(screen.getByLabelText(/Tanggal Rencana Kirim/), { target: { value: '2026-10-23' } });
   fireEvent.click(screen.getByRole('button', { name: /Selanjutnya/ }));
 
   // Langkah 2 — Kendaraan.
@@ -212,5 +212,61 @@ describe('Rencana Kirim — pencarian Nama Barang (combobox NPN)', () => {
     expect(screen.queryByText('HASIL LAMA A')).not.toBeInTheDocument();
     expect(screen.getByText('HASIL BARU AB')).toBeInTheDocument();
     expect(notifyGlobal).not.toHaveBeenCalledWith('Gagal memuat produk NPN.', 'error');
+  });
+});
+
+describe('Rencana Kirim — tanggal kirim vs waktu input', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    list.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
+  });
+
+  const ymd = (offset: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  it('filter Besok mengirim date_from/date_to yang sama ke backend', async () => {
+    render(<RencanaKirimPage />);
+    await waitFor(() => expect(list).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText('Filter tanggal kirim'), { target: { value: 'tomorrow' } });
+
+    await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({
+      date_from: ymd(1), date_to: ymd(1),
+    })));
+  });
+
+  it('klik kalender memfilter daftar dan menyediakan tombol buat terpisah', async () => {
+    render(<RencanaKirimPage />);
+    await waitFor(() => expect(list).toHaveBeenCalled());
+
+    const target = ymd(2);
+    const dayCell = screen.getAllByText(String(Number(target.slice(8)))).find((el) => el.closest('button'));
+    expect(dayCell).toBeTruthy();
+    fireEvent.click(dayCell!.closest('button')!);
+
+    await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({
+      date_from: target, date_to: target,
+    })));
+    expect(screen.queryByLabelText(/Tanggal Rencana Kirim/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Buat rencana untuk ${target}` })).toBeInTheDocument();
+  });
+
+  it('menampilkan grup tanggal kirim "Hari ini" dan "Besok" di tabel', async () => {
+    list.mockResolvedValue({ data: { data: [
+      { id: 1, po_transporter: 'PO-HARI-INI', rkh_date: `${ymd(0)}T00:00:00`, status: 'DRAFT', created_at: `${ymd(-2)}T08:00:00` },
+      { id: 2, po_transporter: 'PO-BESOK', rkh_date: `${ymd(1)}T00:00:00`, status: 'DRAFT', created_at: `${ymd(-1)}T08:00:00` },
+    ], last_page: 1 } });
+
+    render(<RencanaKirimPage />);
+
+    expect((await screen.findAllByText(/Hari ini,/)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Besok,/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/ PO$/).length).toBeGreaterThanOrEqual(2);
   });
 });
