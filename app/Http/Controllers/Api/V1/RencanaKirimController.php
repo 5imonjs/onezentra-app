@@ -91,7 +91,7 @@ class RencanaKirimController extends Controller
             'status' => 'nullable|string|in:DRAFT,SCHEDULED,CHECKED_IN,VERIFIED,IN_PROGRESS,COMPLETED,CANCELLED',
             'eta_from' => 'nullable|date',
             'eta_to' => 'nullable|date',
-            'eta_overdue' => 'nullable|boolean',
+            'eta_overdue' => 'nullable|in:1,0,true,false',
         ]);
 
         $query = RencanaKirim::with(['items.npn', 'creator'])->forUserDepot($request->user());

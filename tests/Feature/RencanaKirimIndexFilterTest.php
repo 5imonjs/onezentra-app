@@ -307,6 +307,24 @@ class RencanaKirimIndexFilterTest extends TestCase
         $this->assertSame($npn->id, $item->fresh()->npn_id);
     }
 
+    public function test_index_menerima_eta_overdue_string_true_dari_query(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        RencanaKirim::create([
+            'po_transporter' => 'OVERDUE-TRUE', 'status' => 'DRAFT', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->subDays(4)->toDateString(),
+            'eta_date' => now()->subDays(2)->toDateString(),
+        ]);
+
+        $this->getJson('/api/v1/rencana-kirim?eta_overdue=true')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.po_transporter', 'OVERDUE-TRUE');
+    }
+
     private function viewer(): User
     {
         $role = Role::firstOrCreate(['slug' => 'rk_filter_view'], ['name' => 'RK Filter View']);

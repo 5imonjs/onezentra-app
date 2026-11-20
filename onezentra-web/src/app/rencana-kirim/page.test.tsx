@@ -411,7 +411,7 @@ describe('Rencana Kirim — deep link ETA terlewat', () => {
     searchParamsGet.mockReturnValue('overdue');
     render(<RencanaKirimPage />);
 
-    await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ eta_overdue: true })));
+    await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ eta_overdue: 1 })));
     expect(screen.getByText(/ETA terlewat & belum check-in/)).toBeInTheDocument();
   });
 });

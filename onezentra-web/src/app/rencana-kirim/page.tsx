@@ -342,7 +342,7 @@ export default function RencanaKirimPage() {
       if (range.from) filterParams.date_from = range.from;
       if (range.to) filterParams.date_to = range.to;
       if (etaFilter === 'overdue') {
-        filterParams.eta_overdue = true;
+        filterParams.eta_overdue = 1;
       } else if (etaFilter) {
         const etaDay = etaFilter === 'tomorrow'
           ? addDaysYmd(toYmd(new Date()), 1)
