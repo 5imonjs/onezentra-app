@@ -34,6 +34,27 @@ const MAX_PER_GROUP = 4;
 /** Backend SJ/RK/gate memaksa created_at DESC; ambil jendela lebih besar lalu urutkan di client. */
 const SORT_WINDOW = 20;
 
+/** Batas usia dokumen sebelum ditandai "terlewat" (sama seperti reminder lama). */
+const OVERDUE_MINUTES = 30;
+
+function ageMinutes(item: ActionItem): number | null {
+  if (!item.at) return null;
+  const diff = Date.now() - new Date(item.at).getTime();
+  return Number.isNaN(diff) ? null : Math.max(0, Math.floor(diff / 60000));
+}
+
+function isOverdue(item: ActionItem): boolean {
+  const minutes = ageMinutes(item);
+  return minutes !== null && minutes > OVERDUE_MINUTES;
+}
+
+function ageLabel(minutes: number): string {
+  if (minutes < 60) return `${minutes} mnt`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours} jam` : `${hours}j ${rest}m`;
+}
+
 type ListResponse<T> = { data?: { data?: T[]; total?: number } };
 
 type GroupJob = () => Promise<Group | null>;
@@ -125,6 +146,7 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
   const { hasPermission } = useAuthStore();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
+  const [onlyOverdue, setOnlyOverdue] = useState(false);
   const [error, setError] = useState('');
   /** Jumlah modul yang gagal dimuat — tampilkan indikator parsial, bukan hilang diam-diam. */
   const [failedCount, setFailedCount] = useState(0);
@@ -344,20 +366,53 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
 
   const totalItems = groups.reduce((sum, g) => sum + g.total, 0);
 
+  const displayedGroups = groups
+    .map((group) => {
+      const items = onlyOverdue ? group.items.filter(isOverdue) : group.items;
+      return {
+        ...group,
+        items,
+        total: onlyOverdue ? items.length : group.total,
+        moreCount: onlyOverdue ? 0 : group.moreCount,
+      };
+    })
+    .filter((group) => group.items.length > 0);
+
+  const overdueCount = groups.reduce(
+    (sum, group) => sum + group.items.filter(isOverdue).length,
+    0,
+  );
+
   return (
     <DashboardPanel
       ariaLabel="Item yang memerlukan tindakan Anda"
       title="Perlu Tindakan"
-      subtitle="Item yang menunggu aksi Anda hari ini"
+      subtitle="Semua antrean kerja · penanda terlewat > 30 menit"
       icon={<path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l2.25 2.25L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />}
       badge={
-        <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-bold tabular-nums text-amber-600 ring-1 ring-amber-500/20">
-          <span className="relative flex h-2 w-2" aria-hidden="true">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {overdueCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 px-2.5 py-1 text-[11px] font-bold tabular-nums text-red-600 ring-1 ring-red-500/20" title="Sudah melewati 30 menit">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
+              {overdueCount} terlewat
+            </span>
+          )}
+          <span className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-bold tabular-nums text-amber-600 ring-1 ring-amber-500/20">
+            <span className="relative flex h-2 w-2" aria-hidden="true">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+            </span>
+            {totalItems} item
           </span>
-          {totalItems} item
-        </span>
+          <div role="group" aria-label="Filter usia tugas" className="flex rounded-lg border border-border bg-card p-0.5">
+            <button type="button" onClick={() => setOnlyOverdue(false)} aria-pressed={!onlyOverdue} className="rounded-md px-2 py-1 text-[11px] font-bold transition-colors min-h-8">
+              Semua
+            </button>
+            <button type="button" onClick={() => setOnlyOverdue(true)} aria-pressed={onlyOverdue} className="rounded-md px-2 py-1 text-[11px] font-bold transition-colors min-h-8">
+              Terlewat
+            </button>
+          </div>
+        </div>
       }
     >
       {failedCount > 0 && (
@@ -368,7 +423,7 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
       )}
 
       <div className="divide-y divide-border/60">
-        {groups.map((group) => {
+        {displayedGroups.map((group) => {
           const tone = TONE_STYLES[group.tone];
           return (
             <div key={group.key} className="px-5 py-4">
@@ -399,6 +454,16 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
                         <span className="block truncate text-sm font-medium text-foreground">{item.primary}</span>
                         <span className="block truncate text-[11px] text-muted-foreground">{item.secondary}</span>
                       </span>
+                      {(() => {
+                        const minutes = ageMinutes(item);
+                        if (minutes === null) return null;
+                        const overdue = isOverdue(item);
+                        return (
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums ring-1 ${overdue ? 'bg-red-500/10 text-red-600 ring-red-500/20' : 'bg-popover text-muted-foreground ring-border/70'}`} title={overdue ? 'Sudah melewati batas 30 menit' : 'Usia dokumen'}>
+                            {ageLabel(minutes)}
+                          </span>
+                        );
+                      })()}
                       <svg className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                     </Link>
                   </li>
