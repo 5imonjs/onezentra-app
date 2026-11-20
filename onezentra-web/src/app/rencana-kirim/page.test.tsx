@@ -14,6 +14,16 @@ const { hasPermission, list, create, update, remove, searchProduct, depoList, de
   depotSettingsGet: vi.fn(),
 }));
 
+const { routerReplace, searchParamsGet } = vi.hoisted(() => ({
+  routerReplace: vi.fn(),
+  searchParamsGet: vi.fn<(key: string) => string | null>(() => null),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: routerReplace, push: vi.fn() }),
+  useSearchParams: () => ({ get: searchParamsGet }),
+}));
+
 vi.mock('@/app/dashboard/layout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
@@ -98,6 +108,7 @@ async function openItemsModal(): Promise<HTMLInputElement> {
 describe('Rencana Kirim — pencarian Nama Barang (combobox NPN)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
     list.mockResolvedValue({ data: { data: [], last_page: 1 } });
     create.mockResolvedValue({ data: { data: {} } });
     update.mockResolvedValue({ data: { data: {} } });
@@ -219,6 +230,7 @@ describe('Rencana Kirim — pencarian Nama Barang (combobox NPN)', () => {
 describe('Rencana Kirim — tanggal kirim vs waktu input', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
     list.mockResolvedValue({ data: { data: [], last_page: 1 } });
     depoList.mockResolvedValue({ data: { data: [] } });
     depotSettingsGet.mockResolvedValue({ data: { data: {} } });
@@ -275,6 +287,7 @@ describe('Rencana Kirim — tanggal kirim vs waktu input', () => {
 describe('Rencana Kirim — panel kalender', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
     list.mockResolvedValue({ data: { data: [], last_page: 1 } });
     depoList.mockResolvedValue({ data: { data: [] } });
     depotSettingsGet.mockResolvedValue({ data: { data: {} } });
@@ -301,6 +314,7 @@ describe('Rencana Kirim — panel kalender', () => {
 describe('Rencana Kirim — rencana tiba terpisah dari RKH', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
     list.mockResolvedValue({ data: { data: [], last_page: 1 } });
     depoList.mockResolvedValue({ data: { data: [] } });
     depotSettingsGet.mockResolvedValue({ data: { data: {} } });
@@ -334,6 +348,7 @@ describe('Rencana Kirim — rencana tiba terpisah dari RKH', () => {
 describe('Rencana Kirim — ETA wajib diisi planner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
     list.mockResolvedValue({ data: { data: [], last_page: 1 } });
     depoList.mockResolvedValue({ data: { data: [] } });
     depotSettingsGet.mockResolvedValue({ data: { data: {} } });
@@ -358,16 +373,17 @@ describe('Rencana Kirim — ETA wajib diisi planner', () => {
 describe('Rencana Kirim — deep link ETA dari dashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
     list.mockResolvedValue({ data: { data: [], last_page: 1 } });
     depoList.mockResolvedValue({ data: { data: [] } });
     depotSettingsGet.mockResolvedValue({ data: { data: {} } });
     searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
   });
 
-  afterEach(() => window.history.pushState({}, '', '/'));
+  afterEach(() => searchParamsGet.mockReturnValue(null));
 
   it('?eta=today memfilter daftar berdasarkan rencana tiba', async () => {
-    window.history.pushState({}, '', '/?eta=today');
+    searchParamsGet.mockReturnValue('today');
     render(<RencanaKirimPage />);
 
     await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({
@@ -381,16 +397,17 @@ describe('Rencana Kirim — deep link ETA dari dashboard', () => {
 describe('Rencana Kirim — deep link ETA terlewat', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
     list.mockResolvedValue({ data: { data: [], last_page: 1 } });
     depoList.mockResolvedValue({ data: { data: [] } });
     depotSettingsGet.mockResolvedValue({ data: { data: {} } });
     searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
   });
 
-  afterEach(() => window.history.pushState({}, '', '/'));
+  afterEach(() => searchParamsGet.mockReturnValue(null));
 
   it('?eta=overdue memfilter ETA terlewat yang belum check-in', async () => {
-    window.history.pushState({}, '', '/?eta=overdue');
+    searchParamsGet.mockReturnValue('overdue');
     render(<RencanaKirimPage />);
 
     await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ eta_overdue: true })));
@@ -401,6 +418,7 @@ describe('Rencana Kirim — deep link ETA terlewat', () => {
 describe('Rencana Kirim — kalender RKH vs ETA', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
     list.mockResolvedValue({ data: { data: [], last_page: 1 } });
     depoList.mockResolvedValue({ data: { data: [] } });
     depotSettingsGet.mockResolvedValue({ data: { data: {} } });
@@ -414,5 +432,51 @@ describe('Rencana Kirim — kalender RKH vs ETA', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rencana Tiba' }));
 
     expect(screen.getByRole('button', { name: 'Rencana Tiba' }).className).toContain('bg-info');
+  });
+});
+
+describe('Rencana Kirim — filter ETA mengikuti URL', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
+    list.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
+  });
+
+  it('tombol Hapus filter membersihkan URL', async () => {
+    searchParamsGet.mockReturnValue('today');
+    render(<RencanaKirimPage />);
+
+    const button = await screen.findByRole('button', { name: 'Hapus filter' });
+    fireEvent.click(button);
+
+    expect(routerReplace).toHaveBeenCalledWith('/rencana-kirim');
+  });
+});
+
+describe('Rencana Kirim — kubikasi belum terhubung NPN', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
+    list.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
+  });
+
+  it('menampilkan penanda bila item belum terhubung ke master NPN', async () => {
+    list.mockResolvedValue({ data: { data: [
+      {
+        id: 31, po_transporter: 'PO-NPN-KOSONG', rkh_date: '2026-11-21T00:00:00',
+        eta_date: '2026-11-22T00:00:00', status: 'DRAFT', created_at: '2026-11-20T08:00:00',
+        total_qty: 10, total_kubikasi: 0, items_tanpa_npn: 3,
+      },
+    ], last_page: 1 } });
+
+    render(<RencanaKirimPage />);
+
+    expect(await screen.findByText('NPN belum terhubung')).toBeInTheDocument();
   });
 });

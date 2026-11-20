@@ -159,6 +159,9 @@ class RencanaKirimController extends Controller
             $this->attachStandarUmur($rencanaKirim->items);
             $this->attachKubikasi($rencanaKirim->items);
             $rencanaKirim->total_kubikasi = $this->totalKubikasi($rencanaKirim->items);
+            // Dipakai UI untuk membedakan "belum terhubung NPN" dari "memang 0".
+            $rencanaKirim->items_tanpa_npn = $rencanaKirim->items
+                ->filter(fn ($item) => $item->npn_id === null)->count();
         }
 
         return response()->json($rencana_kirim);

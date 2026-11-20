@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Npn;
 use App\Models\Permission;
 use App\Models\RencanaKirim;
+use App\Models\RencanaKirimItem;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -258,6 +260,51 @@ class RencanaKirimIndexFilterTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.po_transporter', 'OVERDUE-FILTER');
+    }
+
+    public function test_index_menandai_item_yang_belum_terhubung_npn(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'PO-TANPA-NPN', 'status' => 'DRAFT', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->toDateString(),
+        ]);
+        RencanaKirimItem::create([
+            'rencana_kirim_id' => $rk->id, 'item_number' => 1,
+            'kode_barang' => 'BELUM-ADA', 'nama_barang' => 'Barang', 'jumlah' => 1, 'npn_id' => null,
+        ]);
+
+        $res = $this->getJson('/api/v1/rencana-kirim')->assertOk();
+        $row = collect($res->json('data'))->firstWhere('id', $rk->id);
+
+        $this->assertSame(1, $row['items_tanpa_npn']);
+    }
+
+    public function test_backfill_menghubungkan_kode_barang_ke_master_npn(): void
+    {
+        $user = $this->viewer();
+        $npn = Npn::create([
+            'BOSnetszProductId' => 'BOS-BACKFILL', 'SAPszProductId' => 'SAP-BACKFILL',
+            'szNickName' => 'Produk Backfill', 'szStatus' => 'EXISTING',
+            'decVolume' => 100, 'SAPdecUom' => 10,
+        ]);
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'PO-BACKFILL', 'status' => 'DRAFT', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+        ]);
+        $item = RencanaKirimItem::create([
+            'rencana_kirim_id' => $rk->id, 'item_number' => 1,
+            'kode_barang' => 'BOS-BACKFILL', 'nama_barang' => 'Produk Backfill',
+            'jumlah' => 2, 'npn_id' => null,
+        ]);
+
+        $migration = require database_path('migrations/2026_11_20_155738_backfill_rencana_kirim_item_npn.php');
+        $migration->up();
+
+        $this->assertSame($npn->id, $item->fresh()->npn_id);
     }
 
     private function viewer(): User
