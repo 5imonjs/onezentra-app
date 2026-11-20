@@ -215,7 +215,7 @@ class DashboardController extends Controller
         ];
         // Rencana tiba (ETA) yang ditentukan planner — dipakai BLC/user lain
         // untuk mengetahui kedatangan tanpa menunggu gate check-in.
-        $incoming = ['today' => 0, 'tomorrow' => 0];
+        $incoming = ['today' => 0, 'tomorrow' => 0, 'overdue' => 0];
         if ($can('rencana_kirim.view')) {
             try {
                 $incomingQuery = RencanaKirim::query()
@@ -227,6 +227,10 @@ class DashboardController extends Controller
                     ->whereDate('eta_date', now()->toDateString())->count();
                 $incoming['tomorrow'] = (clone $incomingQuery)
                     ->whereDate('eta_date', now()->addDay()->toDateString())->count();
+                $incoming['overdue'] = (clone $incomingQuery)
+                    ->whereDate('eta_date', '<', now()->toDateString())
+                    ->whereNull('checked_in_at')
+                    ->count();
             } catch (\Exception $e) {
                 \Log::warning('Dashboard incoming ETA aggregate failed', [
                     'error' => $e->getMessage(), 'user' => $user->id ?? null, 'depot' => $depot,

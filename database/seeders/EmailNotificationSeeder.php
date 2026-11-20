@@ -97,6 +97,14 @@ class EmailNotificationSeeder extends Seeder
             ['document_type' => 'rencana_kirim', 'trigger' => 'reminder', 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'cheker'],
             ['label' => 'CC cheker depo pengingat rencana kirim', 'is_active' => true]
         );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'rencana_kirim', 'trigger' => 'eta_overdue', 'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
+            ['label' => 'BLC penerima pengingat ETA terlewat', 'is_active' => true]
+        );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'rencana_kirim', 'trigger' => 'eta_overdue', 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'admin_distirbusi'],
+            ['label' => 'CC admin distribusi pengingat ETA terlewat', 'is_active' => true]
+        );
 
         // Selisih qty notifications
         EmailRecipient::updateOrCreate(

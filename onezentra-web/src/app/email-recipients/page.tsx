@@ -129,6 +129,7 @@ const triggerOptions: Record<string, { value: string; label: string; description
     { value: 'created', label: 'Rencana Kirim dibuat', description: 'Terpicu saat jadwal Rencana Kirim baru dibuat (pemroses: modul Rencana Kirim).' },
     { value: 'cancelled', label: 'Rencana Kirim dibatalkan', description: 'Terpicu saat Rencana Kirim dibatalkan dari status apa pun yang valid (pemroses: modul Rencana Kirim).' },
     { value: 'reminder', label: 'Pengingat verifikasi terlambat', description: 'Terpicu otomatis saat rencana kirim CHECKED_IN belum diverifikasi lebih dari 30 menit (pemroses: scheduler pengingat).' },
+    { value: 'eta_overdue', label: 'Rencana tiba terlewat (belum check-in)', description: 'Terpicu otomatis saat tanggal ETA yang ditentukan planner sudah lewat tetapi kendaraan belum check-in di gate.' },
   ],
   gate: [
     { value: 'checked_in', label: 'Check In selesai', description: 'Terpicu saat unit check-in di gate dan rencana berubah menjadi CHECKED_IN (pemroses: modul Check In / Gate).' },

@@ -104,7 +104,7 @@ class EmailRecipientControllerTest extends TestCase
             $res->json('document_type_triggers.standarisasi_tumpukan'),
         );
         $this->assertSame(
-            ['created', 'cancelled', 'reminder'],
+            ['created', 'cancelled', 'reminder', 'eta_overdue'],
             $res->json('document_type_triggers.rencana_kirim'),
         );
         $this->assertContains('reminder', $res->json('document_type_triggers.gate'));

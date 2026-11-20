@@ -15,15 +15,15 @@ vi.mock('@/store/auth', () => ({
   useAuthStore: () => ({ hasPermission }),
 }));
 
-const summary = (today: number, tomorrow: number) => ({
-  incoming: { today, tomorrow },
+const summary = (today: number, tomorrow: number, overdue = 0) => ({
+  incoming: { today, tomorrow, overdue },
 });
 
 describe('DashboardIncoming', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     hasPermission.mockReturnValue(true);
-    useSummary.mockReturnValue({ summary: summary(3, 5), loading: false });
+    useSummary.mockReturnValue({ summary: summary(3, 5, 2), loading: false });
   });
 
   afterEach(cleanup);
@@ -37,6 +37,8 @@ describe('DashboardIncoming', () => {
     expect(screen.getAllByText('5').length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: /Tiba Hari Ini/ })).toHaveAttribute('href', '/rencana-kirim?eta=today');
     expect(screen.getByRole('link', { name: /Tiba Besok/ })).toHaveAttribute('href', '/rencana-kirim?eta=tomorrow');
+    expect(screen.getByText(/Lewat ETA, belum check-in/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Lewat ETA, belum check-in/ })).toHaveAttribute('href', '/rencana-kirim?eta=overdue');
   });
 
   it('tidak tampil bila tidak ada kedatangan terjadwal', () => {

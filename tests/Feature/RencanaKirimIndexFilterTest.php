@@ -236,6 +236,30 @@ class RencanaKirimIndexFilterTest extends TestCase
             ->assertJsonPath('data.0.po_transporter', 'ETA-FILTER-A');
     }
 
+    public function test_index_bisa_difilter_eta_terlewat_belum_checkin(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        RencanaKirim::create([
+            'po_transporter' => 'OVERDUE-FILTER', 'status' => 'DRAFT', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->subDays(4)->toDateString(),
+            'eta_date' => now()->subDays(2)->toDateString(),
+        ]);
+        RencanaKirim::create([
+            'po_transporter' => 'ON-TIME-FILTER', 'status' => 'DRAFT', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->toDateString(),
+            'eta_date' => now()->addDay()->toDateString(),
+        ]);
+
+        $this->getJson('/api/v1/rencana-kirim?eta_overdue=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.po_transporter', 'OVERDUE-FILTER');
+    }
+
     private function viewer(): User
     {
         $role = Role::firstOrCreate(['slug' => 'rk_filter_view'], ['name' => 'RK Filter View']);

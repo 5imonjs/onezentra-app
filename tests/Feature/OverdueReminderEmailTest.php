@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\EtaOverdueNotification;
 use App\Mail\ProcessReminderNotification;
 use App\Models\EmailNotificationLog;
 use App\Models\EmailRecipient;
@@ -9,6 +10,7 @@ use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\SjValidation;
 use App\Models\User;
+use App\Services\Reminder\OverdueProcessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -115,6 +117,61 @@ class OverdueReminderEmailTest extends TestCase
         ]);
 
         $this->artisan('reminders:send-overdue')->assertSuccessful();
+
+        Mail::assertNothingSent();
+    }
+
+    public function test_eta_terlewat_belum_checkin_terdetect_dan_mengirim_email(): void
+    {
+        $rencana = RencanaKirim::create([
+            'po_transporter' => 'PO-ETA-OVERDUE', 'status' => 'DRAFT',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'created_by' => 1,
+            'rkh_date' => now()->subDays(4)->toDateString(),
+            'eta_date' => now()->subDays(2)->toDateString(),
+        ]);
+        EmailRecipient::create([
+            'document_type' => 'rencana_kirim', 'trigger' => 'eta_overdue',
+            'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role',
+            'role_slug' => 'blc', 'label' => 'BLC ETA', 'is_active' => true,
+        ]);
+
+        $service = app(OverdueProcessService::class);
+        $this->assertTrue($service->etaOverdueRencana()->contains('id', $rencana->id));
+
+        $this->artisan('reminders:send-eta-overdue')->assertSuccessful();
+
+        Mail::assertSent(EtaOverdueNotification::class, function (EtaOverdueNotification $mail) {
+            return $mail->hasTo('blc@reminder.test')
+                && str_contains($mail->envelope()->subject, 'Rencana tiba terlewat');
+        });
+        $this->assertDatabaseHas('email_notification_logs', [
+            'document_type' => 'rencana_kirim',
+            'trigger' => 'eta_overdue',
+            'context_id' => $rencana->id,
+            'status' => EmailNotificationLog::STATUS_SENT,
+        ]);
+    }
+
+    public function test_eta_terlewat_tidak_mengirim_ulang_dalam_dua_jam(): void
+    {
+        $rencana = RencanaKirim::create([
+            'po_transporter' => 'PO-ETA-COOLDOWN', 'status' => 'DRAFT',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'created_by' => 1,
+            'rkh_date' => now()->subDays(4)->toDateString(),
+            'eta_date' => now()->subDay()->toDateString(),
+        ]);
+        EmailRecipient::create([
+            'document_type' => 'rencana_kirim', 'trigger' => 'eta_overdue',
+            'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role',
+            'role_slug' => 'blc', 'label' => 'BLC ETA', 'is_active' => true,
+        ]);
+        EmailNotificationLog::create([
+            'document_type' => 'rencana_kirim', 'trigger' => 'eta_overdue',
+            'context_id' => $rencana->id, 'status' => EmailNotificationLog::STATUS_SENT,
+            'created_at' => now()->subMinutes(30),
+        ]);
+
+        $this->artisan('reminders:send-eta-overdue')->assertSuccessful();
 
         Mail::assertNothingSent();
     }

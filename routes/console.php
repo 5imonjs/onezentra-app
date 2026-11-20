@@ -21,3 +21,8 @@ Schedule::command('opname-expired:generate')->weeklyOn(1, '06:00');
 Schedule::command('reminders:send-overdue')
     ->everyFifteenMinutes()
     ->withoutOverlapping();
+
+// ETA yang ditentukan planner sudah lewat tapi kendaraan belum check-in.
+Schedule::command('reminders:send-eta-overdue')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();

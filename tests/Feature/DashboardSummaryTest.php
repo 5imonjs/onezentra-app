@@ -290,4 +290,27 @@ class DashboardSummaryTest extends TestCase
         $this->assertSame(1, $res->json('data.incoming.today'));
         $this->assertSame(1, $res->json('data.incoming.tomorrow'));
     }
+
+    public function test_summary_menghitung_eta_terlewat_belum_checkin(): void
+    {
+        $user = $this->userWith('dash-overdue@example.com', $this->perms());
+        Sanctum::actingAs($user);
+
+        RencanaKirim::create([
+            'po_transporter' => 'OVERDUE-1', 'status' => 'SCHEDULED', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->subDays(4)->toDateString(),
+            'eta_date' => now()->subDays(2)->toDateString(),
+        ]);
+        RencanaKirim::create([
+            'po_transporter' => 'SUDAH-CHECKIN', 'status' => 'CHECKED_IN', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->subDays(4)->toDateString(),
+            'eta_date' => now()->subDays(2)->toDateString(),
+            'checked_in_at' => now()->subDay(),
+        ]);
+
+        $res = $this->getJson('/api/v1/dashboard/summary')->assertOk();
+        $this->assertSame(1, $res->json('data.incoming.overdue'));
+    }
 }

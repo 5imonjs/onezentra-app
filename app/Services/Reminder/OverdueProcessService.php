@@ -90,6 +90,24 @@ class OverdueProcessService
             ->get(['id', 'po_transporter', 'nopol', 'kode_depo', 'nama_depo', 'checked_in_at', 'created_at']);
     }
 
+    /**
+     * Rencana kirim yang sudah lewat ETA tetapi belum check-in di gate.
+     * Ini berbeda dengan reminder gate (yang sudah CHECKED_IN terlalu lama).
+     *
+     * @return Collection<int, RencanaKirim>
+     */
+    public function etaOverdueRencana(int $limit = self::MAX_PER_GROUP): Collection
+    {
+        return RencanaKirim::query()
+            ->whereNotNull('eta_date')
+            ->whereDate('eta_date', '<', now()->toDateString())
+            ->whereNull('checked_in_at')
+            ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+            ->orderBy('eta_date')
+            ->limit($limit)
+            ->get(['id', 'po_transporter', 'nopol', 'kode_depo', 'nama_depo', 'rkh_date', 'eta_date', 'created_at']);
+    }
+
     public function elapsedMinutes(?Carbon $at): int
     {
         return $at ? max(0, (int) $at->diffInMinutes(now())) : 0;

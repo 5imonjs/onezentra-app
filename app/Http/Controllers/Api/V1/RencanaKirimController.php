@@ -91,6 +91,7 @@ class RencanaKirimController extends Controller
             'status' => 'nullable|string|in:DRAFT,SCHEDULED,CHECKED_IN,VERIFIED,IN_PROGRESS,COMPLETED,CANCELLED',
             'eta_from' => 'nullable|date',
             'eta_to' => 'nullable|date',
+            'eta_overdue' => 'nullable|boolean',
         ]);
 
         $query = RencanaKirim::with(['items.npn', 'creator'])->forUserDepot($request->user());
@@ -137,6 +138,11 @@ class RencanaKirimController extends Controller
 
         if ($request->eta_to) {
             $query->whereDate('eta_date', '<=', $request->eta_to);
+        }
+
+        if ($request->boolean('eta_overdue')) {
+            $query->whereDate('eta_date', '<', now()->toDateString())
+                ->whereNull('checked_in_at');
         }
 
         $perPage = $this->perPage($request);

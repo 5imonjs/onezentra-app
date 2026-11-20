@@ -30,7 +30,7 @@ class EmailRecipientController extends Controller
      * @var array<string, list<string>>
      */
     private const DOCUMENT_TRIGGERS = [
-        'rencana_kirim' => ['created', 'cancelled', 'reminder'],
+        'rencana_kirim' => ['created', 'cancelled', 'reminder', 'eta_overdue'],
         'gate' => ['checked_in', 'reminder'],
         'sj_ba' => ['validated', 'extra_item', 'extra_item_decision', 'reminder'],
         'receiving' => ['completed'],
