@@ -13,6 +13,8 @@ interface ReportItem {
   id: number;
   rkh_date: string | null;
   eta_date?: string | null;
+  unload_label?: string;
+  total_label?: string;
   po_transporter: string;
   driver_name: string;
   nopol: string;
@@ -661,6 +663,8 @@ export default function RencanaKirimReportPage() {
                   )}
                   <th scope="col" className="table-header whitespace-nowrap">Tanggal Rencana Kirim</th>
                   <th scope="col" className="table-header whitespace-nowrap">Rencana Tiba</th>
+                  <th scope="col" className="table-header whitespace-nowrap">Durasi Bongkar</th>
+                  <th scope="col" className="table-header whitespace-nowrap">Check-in → Selesai</th>
                   <th scope="col" className="table-header whitespace-nowrap">PO Transporter</th>
                   <th scope="col" className="table-header whitespace-nowrap">Driver</th>
                   <th scope="col" className="table-header whitespace-nowrap">Nopol</th>
@@ -718,6 +722,8 @@ export default function RencanaKirimReportPage() {
                         )}
                         <td className="table-cell text-sm font-mono text-foreground whitespace-nowrap">{fmtDate(item.rkh_date)}</td>
                         <td className="table-cell text-sm font-mono font-semibold text-info whitespace-nowrap">{fmtDate(item.eta_date ?? null)}</td>
+                        <td className="table-cell text-sm font-bold tabular-nums text-foreground whitespace-nowrap">{item.unload_label ?? '-'}</td>
+                        <td className="table-cell text-sm font-bold tabular-nums text-info whitespace-nowrap">{item.total_label ?? '-'}</td>
                         <td className="table-cell text-sm font-mono font-medium text-foreground whitespace-nowrap">{item.po_transporter}</td>
                         <td className="table-cell text-sm text-foreground whitespace-nowrap">
                           <span className="inline-flex items-center gap-2">

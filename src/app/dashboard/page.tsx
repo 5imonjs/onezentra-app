@@ -7,6 +7,7 @@ import DashboardBiayaQueue from '@/components/DashboardBiayaQueue';
 import DashboardLiveActivity from '@/components/DashboardLiveActivity';
 import DashboardOpnameChart from '@/components/DashboardOpnameChart';
 import DashboardRecent from '@/components/DashboardRecent';
+import DashboardDuration from '@/components/DashboardDuration';
 import DashboardIncoming from '@/components/DashboardIncoming';
 import DashboardReminders from '@/components/DashboardReminders';
 import PendingActions from '@/components/PendingActions';
@@ -172,6 +173,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      <DashboardDuration />
       <DashboardIncoming />
       <DashboardReminders kodeDepo={kodeDepo || undefined} />
 

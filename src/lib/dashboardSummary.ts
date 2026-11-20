@@ -30,6 +30,7 @@ export interface SummaryData {
   quality: { npn_no_volume: number; npn_no_umur: number };
   sla: {
     avg_gate_to_receiving_hours: number | null;
+    avg_unload_hours?: number | null;
     sj_open_count: number;
     sj_oldest_days: number | null;
     rk_checked_in_count: number;
