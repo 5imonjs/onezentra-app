@@ -12,7 +12,9 @@ class ReminderRepository {
   final ReminderGet _get;
 
   Future<ReminderSummary> fetch() async {
-    var response = await _get('reminders');
+    // Harus diawali '/': ApiClient menggabungkan baseUrl + endpoint apa adanya.
+    // Tanpa slash, URL-nya jadi .../api/v1reminders dan server balas 404.
+    var response = await _get('/reminders');
     if (response is! Map<String, dynamic>) {
       throw const ApiException('Respons server tidak valid.', 0);
     }
