@@ -305,6 +305,7 @@ export default function RencanaKirimPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const etaParam = searchParams.get('eta');
+  const statusParam = searchParams.get('status');
   const [etaFilter, setEtaFilter] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -373,8 +374,10 @@ export default function RencanaKirimPage() {
         ? etaParam
         : '',
     );
+    const allowed = ['DRAFT', 'SCHEDULED', 'CHECKED_IN', 'VERIFIED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+    if (statusParam && allowed.includes(statusParam)) setFilterStatus(statusParam);
     setPage(1);
-  }, [etaParam]);
+  }, [etaParam, statusParam]);
 
   useEffect(() => { loadItems(true); }, [loadItems]);
 
