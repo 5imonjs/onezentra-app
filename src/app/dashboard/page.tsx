@@ -7,6 +7,7 @@ import DashboardBiayaQueue from '@/components/DashboardBiayaQueue';
 import DashboardLiveActivity from '@/components/DashboardLiveActivity';
 import DashboardOpnameChart from '@/components/DashboardOpnameChart';
 import DashboardRecent from '@/components/DashboardRecent';
+import DashboardReminders from '@/components/DashboardReminders';
 import PendingActions from '@/components/PendingActions';
 import RencanaKirimStatusChart from '@/components/RencanaKirimStatusChart';
 import { visibleDashboardBlocks, type DashboardBlockKey } from './dashboardBlocks';
@@ -169,6 +170,8 @@ export default function DashboardPage() {
           )}
         </div>
       </section>
+
+      <DashboardReminders kodeDepo={kodeDepo || undefined} />
 
       {depotError && (
         <div role="alert" className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
