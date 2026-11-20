@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { dashboard, getErrorMessage } from '@/lib/api';
 import DashboardPanel from '@/components/DashboardPanel';
 
@@ -47,12 +47,18 @@ function formatElapsed(minutes: number): string {
  * Panel reminder keterlambatan proses (validasi SJ, gate, rencana kirim).
  * Satu endpoint dengan mobile — angka keterlambatan dihitung server.
  */
+/** Segarkan angka keterlambatan tiap menit selama dashboard terbuka. */
+const POLL_MS = 60_000;
+
 export default function DashboardReminders({ kodeDepo }: { kodeDepo?: string }) {
   const [data, setData] = useState<ReminderData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const inFlightRef = useRef(false);
 
   const load = useCallback(async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setLoading(true);
     setError('');
     try {
@@ -63,11 +69,16 @@ export default function DashboardReminders({ kodeDepo }: { kodeDepo?: string }) 
     } catch (e) {
       setError(getErrorMessage(e, 'Gagal memuat reminder.'));
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   }, [kodeDepo]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => { void load(); }, POLL_MS);
+    return () => clearInterval(timer);
+  }, [load]);
 
   if (loading || !data) {
     if (error) {

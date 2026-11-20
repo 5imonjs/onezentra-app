@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,8 +9,9 @@ import 'package:onezentra_mobile/features/home/repositories/reminder_repository.
 
 /// Banner reminder pada beranda mobile.
 ///
-/// Tidak memakai push notification: data di-fetch saat halaman dibuka supaya
-/// angka keterlambatan selalu sama dengan dashboard web (satu endpoint API).
+/// Tidak memakai push notification: data di-fetch saat halaman dibuka, saat app
+/// kembali aktif, dan tiap 5 menit supaya angka keterlambatan tidak basi. Satu
+/// endpoint API yang sama dengan dashboard web.
 class ReminderBanner extends StatefulWidget {
   ReminderBanner({super.key, ReminderRepository? repository})
     : repository = repository ?? ReminderRepository();
@@ -19,18 +22,44 @@ class ReminderBanner extends StatefulWidget {
   State<ReminderBanner> createState() => _ReminderBannerState();
 }
 
-class _ReminderBannerState extends State<ReminderBanner> {
+class _ReminderBannerState extends State<ReminderBanner>
+    with WidgetsBindingObserver {
+  /// Interval polling saat beranda tetap terbuka.
+  static const pollInterval = Duration(minutes: 5);
+
   ReminderSummary? _summary;
   String? _error;
-  bool _loading = true;
+  bool _loading = false;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+    _pollTimer = Timer.periodic(pollInterval, (_) => _load());
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _load();
+    }
+  }
+
+  Future<void> _load({bool force = false}) async {
+    // [force] dipakai tombol refresh manual; jangan menolaknya karena ada
+    // permintaan lain yang masih berjalan dari polling/resume.
+    if (!force && _loading) {
+      return;
+    }
     if (!mounted) {
       return;
     }
@@ -109,7 +138,7 @@ class _ReminderBannerState extends State<ReminderBanner> {
               icon: const Icon(Icons.refresh_rounded),
               tooltip: 'Coba lagi',
               color: context.colors.warning,
-              onPressed: _load,
+              onPressed: () => _load(force: true),
             ),
           ],
         ),
@@ -181,7 +210,7 @@ class _ReminderBannerState extends State<ReminderBanner> {
                   icon: const Icon(Icons.refresh_rounded),
                   tooltip: 'Muat ulang reminder',
                   color: colors.warning,
-                  onPressed: _load,
+                  onPressed: () => _load(force: true),
                 ),
               ],
             ),

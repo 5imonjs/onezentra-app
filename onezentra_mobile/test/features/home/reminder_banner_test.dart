@@ -54,7 +54,9 @@ Future<void> _pump(WidgetTester tester, ReminderRepository repository) async {
       home: Scaffold(body: ReminderBanner(repository: repository)),
     ),
   );
-  await tester.pumpAndSettle();
+  // Banner memakai Timer.periodic, jadi pumpAndSettle tidak bisa dipakai.
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 50));
 }
 
 void main() {
@@ -87,5 +89,38 @@ void main() {
 
     expect(find.text('Gagal memuat reminder.'), findsOneWidget);
     expect(find.byTooltip('Coba lagi'), findsOneWidget);
+  });
+
+  testWidgets('polling tiap 5 menit memuat ulang reminder', (tester) async {
+    var calls = 0;
+    var repository = ReminderRepository(
+      get: (endpoint) async {
+        calls++;
+        return {'data': _payload(total: calls, withGroups: false)};
+      },
+    );
+    await _pump(tester, repository);
+    expect(calls, 1);
+
+    await tester.pump(const Duration(minutes: 5));
+    await tester.pump();
+    expect(calls, 2);
+  });
+
+  testWidgets('app kembali aktif memuat ulang reminder', (tester) async {
+    var calls = 0;
+    var repository = ReminderRepository(
+      get: (endpoint) async {
+        calls++;
+        return {'data': _payload(total: calls, withGroups: false)};
+      },
+    );
+    await _pump(tester, repository);
+    expect(calls, 1);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(calls, 2);
   });
 }
