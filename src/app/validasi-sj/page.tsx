@@ -191,6 +191,7 @@ export default function ValidasiSjPage() {
   const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState('');
+  const [scanPanelOpen, setScanPanelOpen] = useState(true);
   const [showScanner, setShowScanner] = useState(false);
   const [lookup, setLookup] = useState<Validation['rencana_kirim'] | null>(null);
   const [active, setActive] = useState<Validation | null>(null);
@@ -891,8 +892,9 @@ export default function ValidasiSjPage() {
         </header>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <div className={`grid grid-cols-1 gap-5 transition-all duration-300 ${scanPanelOpen ? 'xl:grid-cols-3' : 'xl:grid-cols-1'}`}>
           {/* Scan Panel */}
+          {scanPanelOpen && (
           <div className="xl:col-span-1 space-y-5">
             <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
               <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -988,9 +990,10 @@ export default function ValidasiSjPage() {
               </section>
             )}
           </div>
+          )}
 
           {/* Table Section */}
-          <div className="xl:col-span-2">
+          <div className={scanPanelOpen ? 'xl:col-span-2' : 'xl:col-span-1'}>
             <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
               <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -1002,6 +1005,18 @@ export default function ValidasiSjPage() {
                     <p className="mt-0.5 text-xs text-slate-400">{totalRows} entri ditemukan</p>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setScanPanelOpen((open) => !open)}
+                  aria-label={scanPanelOpen ? 'Sembunyikan panel scan' : 'Tampilkan panel scan'}
+                  aria-expanded={scanPanelOpen}
+                  className="btn-secondary shrink-0 text-xs"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d={scanPanelOpen ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} /></svg>
+                    {scanPanelOpen ? 'Tutup Panel Scan' : 'Buka Panel Scan'}
+                  </span>
+                </button>
                 <div className="w-full sm:w-72">
                   <SearchInput value={search} onChange={(v) => setSearch(v)} placeholder="Cari PO transporter..." resultCount={totalRows} resultLabel="validasi" />
                 </div>

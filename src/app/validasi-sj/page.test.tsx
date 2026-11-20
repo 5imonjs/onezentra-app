@@ -475,3 +475,30 @@ describe('ValidasiSjPage — barang di luar rencana', () => {
     expect(screen.queryByRole('button', { name: /Tolak/ })).not.toBeInTheDocument();
   });
 });
+
+describe('Validasi SJ — panel scan & ringkasan status', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hasPermission.mockReturnValue(true);
+    list.mockResolvedValue(listRow());
+    get.mockResolvedValue(detailPayload([]));
+    stats.mockResolvedValue({ data: { data: { today: 0, in_progress: 1, completed: 0, cancelled: 0, total: 1 } } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+    npnSearch.mockResolvedValue({ data: { data: [], total: 0 } });
+  });
+
+  it('panel Quick Scan dan Ringkasan Status bisa ditutup lalu dibuka lagi', async () => {
+    render(<ValidasiSjPage />);
+
+    expect(await screen.findByText('Quick Scan')).toBeInTheDocument();
+    expect(screen.getByText('Ringkasan Status')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sembunyikan panel scan' }));
+    expect(screen.queryByText('Quick Scan')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ringkasan Status')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tampilkan panel scan' }));
+    expect(screen.getByText('Quick Scan')).toBeInTheDocument();
+    expect(screen.getByText('Ringkasan Status')).toBeInTheDocument();
+  });
+});
