@@ -452,6 +452,8 @@ export const standarisasiTumpukan = {
   bulkDelete: (ids: number[]) => apiClient.post('/standarisasi-tumpukan/bulk-delete', { ids }),
   approve: (id: number) => apiClient.post(`/standarisasi-tumpukan/${id}/approve`),
   reject: (id: number) => apiClient.post(`/standarisasi-tumpukan/${id}/reject`),
+  /** Kirim ulang notifikasi email sesuai status dokumen saat ini. */
+  notify: (id: number) => apiClient.post(`/standarisasi-tumpukan/${id}/notify`),
   import: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

@@ -43,6 +43,8 @@ const emptyForm: Partial<StandarisasiItem> = {
   tinggi_tumpukan: 1,
 };
 
+type DecisionStatus = 'approved' | 'rejected';
+
 const STATUS_META: Record<string, { label: string; badge: string; dot: string }> = {
   pending: { label: 'Menunggu', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
   approved: { label: 'Disetujui', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
@@ -54,6 +56,14 @@ function fmtDate(v: string | null | undefined): string {
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return String(v);
   return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Item pending berikutnya dalam daftar termuat (wrap-around), untuk aksi "Lanjut". */
+function nextPendingAfter(item: StandarisasiItem, source: StandarisasiItem[]): StandarisasiItem | null {
+  const pending = source.filter((i) => i.status === 'pending');
+  if (pending.length < 2) return null;
+  const index = pending.findIndex((i) => i.id === item.id);
+  return pending[(index + 1) % pending.length] ?? null;
 }
 
 function InfoItem({ label, children, bare = false }: { label: string; children: React.ReactNode; bare?: boolean }) {
@@ -110,8 +120,8 @@ function NpnProductPicker({
         setResults(res.data.data);
         setShowDropdown(res.data.data.length > 0);
       } catch (e) {
-      setError(getErrorMessage(e, 'Gagal memuat produk NPN.'));
-    } finally {
+        setError(getErrorMessage(e, 'Gagal memuat produk NPN.'));
+      } finally {
         setLoading(false);
       }
     }, 300);
@@ -215,23 +225,28 @@ const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   // Cermin lastPage agar clamp bisa baca nilai terbaru tanpa jadi dep fetch.
   const lastPageRef = useRef(1);
 
-  const loadItems = useCallback(async () => {
+  const loadItems = useCallback(async (overrides?: { status?: string; page?: number }): Promise<StandarisasiItem[]> => {
     // Clamp sebelum request — jangan setPage di dalam fetch (picu double fetch).
-    const requestPage = Math.min(Math.max(1, page), Math.max(1, lastPageRef.current));
+    const requestStatus = overrides?.status ?? statusFilter;
+    const requestPageRaw = overrides?.page ?? page;
+    const requestPage = Math.min(Math.max(1, requestPageRaw), Math.max(1, lastPageRef.current));
     setLoading(true);
     try {
       const [listRes, statsRes] = await Promise.all([
-        standarisasiTumpukan.list({ search, status: statusFilter, page: requestPage, per_page: 20 }),
+        standarisasiTumpukan.list({ search, status: requestStatus, page: requestPage, per_page: 20 }),
         standarisasiTumpukan.stats({ search }),
       ]);
-      setItems(listRes.data.data);
+      const rows = listRes.data.data as StandarisasiItem[];
+      setItems(rows);
       const nextLast = listRes.data.last_page ?? 1;
       setLastPage(nextLast);
       lastPageRef.current = nextLast;
-      setTotal(listRes.data.total ?? listRes.data.data.length);
+      setTotal(listRes.data.total ?? rows.length);
       if (statsRes.data?.data) setStats(statsRes.data.data);
+      return rows;
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal memuat data standarisasi'), 'error');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -381,31 +396,79 @@ const confirmSaveEdit = async () => {
      }
    };
 
-  const [approveTarget, setApproveTarget] = useState<{ item: StandarisasiItem; status: 'approved' | 'rejected' } | null>(null);
+  const [approveTarget, setApproveTarget] = useState<{ item: StandarisasiItem; status: DecisionStatus } | null>(null);
+  const [decisionReason, setDecisionReason] = useState('');
   const [approving, setApproving] = useState(false);
+  const [notifyingId, setNotifyingId] = useState<number | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
 
-const confirmApprove = async () => {
-     if (!approveTarget || approving) return;
-     setApproving(true);
-     try {
-       if (approveTarget.status === 'approved') {
-         await standarisasiTumpukan.approve(approveTarget.item.id);
-         notifyGlobal('Standarisasi disetujui. Notifikasi email dikirim ke BLC & Admin Distribusi.', 'success');
-       } else {
-         await standarisasiTumpukan.reject(approveTarget.item.id);
-         notifyGlobal('Standarisasi ditolak. Notifikasi email dikirim ke BLC & Admin Distribusi.', 'info');
-       }
-       setApproveTarget(null);
-       if (viewItem && viewItem.id === approveTarget.item.id) {
-         setViewItem({ ...viewItem, status: approveTarget.status });
-       }
-       await loadItems();
-     } catch (e) {
-       notifyGlobal(getErrorMessage(e, 'Error'));
-     } finally {
-       setApproving(false);
-     }
-   };
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('[data-row-actions]')) setOpenMenuId(null);
+    };
+    document.addEventListener('mousedown', handleOutside, { passive: true });
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  const openDecision = (item: StandarisasiItem, status: DecisionStatus) => {
+    setDecisionReason('');
+    setApproveTarget({ item, status });
+  };
+
+  const closeDecision = () => {
+    setApproveTarget(null);
+    setDecisionReason('');
+  };
+
+  const confirmApprove = async (continueToNext = false) => {
+    if (!approveTarget || approving) return;
+    // Alasan penolakan wajib diisi di UI (belum dikirim ke backend).
+    if (approveTarget.status === 'rejected' && !decisionReason.trim()) return;
+    const next = continueToNext ? nextPendingAfter(approveTarget.item, items) : null;
+    setApproving(true);
+    try {
+      if (approveTarget.status === 'approved') {
+        await standarisasiTumpukan.approve(approveTarget.item.id);
+        notifyGlobal('Standarisasi disetujui. Notifikasi email dikirim ke BLC & Admin Distribusi.', 'success');
+      } else {
+        await standarisasiTumpukan.reject(approveTarget.item.id);
+        notifyGlobal('Standarisasi ditolak. Notifikasi email dikirim ke BLC & Admin Distribusi.', 'info');
+      }
+      closeDecision();
+      // Tutup detail agar tidak menyimpan status lokal yang sudah usang.
+      setViewItem(null);
+      await loadItems();
+      if (next) {
+        setApproveTarget({ item: next, status: approveTarget.status });
+        setDecisionReason('');
+      }
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Error'), 'error');
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleNotify = async (id: number) => {
+    if (notifyingId !== null) return;
+    setNotifyingId(id);
+    try {
+      await standarisasiTumpukan.notify(id);
+      notifyGlobal('Notifikasi email berhasil dikirim ulang ke BLC & Admin Distribusi.', 'success');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal mengirim notifikasi email'), 'error');
+    } finally {
+      setNotifyingId(null);
+    }
+  };
+
+  const handleReviewPending = async () => {
+    const rows = await loadItems({ status: 'pending', page: 1 });
+    setStatusFilter('pending');
+    setPage(1);
+    if (rows.length > 0) setViewItem(rows[0]);
+    else notifyGlobal('Tidak ada pengajuan yang menunggu keputusan.', 'info');
+  };
 
   const handleImport = async () => {
     if (!importFile) {
@@ -470,6 +533,8 @@ const confirmApprove = async () => {
   };
 
   const fmt = (v: unknown): React.ReactNode => (v ?? '-') as React.ReactNode;
+
+  const nextPendingItem = approveTarget ? nextPendingAfter(approveTarget.item, items) : null;
 
 
 
@@ -588,6 +653,27 @@ const confirmApprove = async () => {
           </div>
         </div>
 
+        {stats.pending > 0 && hasPermission('standarisasi.approve') && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-amber-900">Antrean Approval BLC</p>
+                <p className="text-xs text-amber-700">
+                  <span className="font-bold tabular-nums">{stats.pending}</span> pengajuan tier tumpukan menunggu keputusan Anda.
+                </p>
+              </div>
+            </div>
+            <button onClick={() => void handleReviewPending()} className="btn-primary inline-flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-500">
+              Tinjau Sekarang
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+            </button>
+          </div>
+        )}
+
+
         {/* Table Card */}
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           <div className="p-4 border-b border-border">
@@ -645,8 +731,8 @@ const confirmApprove = async () => {
                   <th scope="col" className="table-header text-center">Tinggi</th>
                   <th scope="col" className="table-header text-center">Total</th>
                   <th scope="col" className="table-header">Status</th>
-                  <th scope="col" className="table-header">Request By</th>
-                  <th scope="col" className="table-header text-right">Aksi</th>
+                  <th scope="col" className="table-header">Pengaju / Depo</th>
+                  <th scope="col" className="table-header sticky right-0 z-20 border-l border-border text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -680,7 +766,9 @@ const confirmApprove = async () => {
                     </td>
                     <td className="table-cell text-sm text-muted-foreground text-center">{(page - 1) * 20 + index + 1}</td>
                     <td className="table-cell">
-                      <span className="font-mono text-sm font-medium text-foreground">{item.npn?.BOSnetszProductId || '-'}</span>
+                      <button onClick={() => setViewItem(item)} className="font-mono text-sm font-medium text-foreground hover:text-accent-text hover:underline" title="Lihat detail standarisasi">
+                        {item.npn?.BOSnetszProductId || '-'}
+                      </button>
                     </td>
                     <td className="table-cell">
                       <span className="text-sm text-foreground">{item.npn?.szShortDescription || item.npn?.szNickName || item.npn?.szNickNameNew || '-'}</span>
@@ -701,39 +789,49 @@ const confirmApprove = async () => {
                       {badge(item.status || 'pending')}
                     </td>
                     <td className="table-cell">
-                      <span className="text-sm text-foreground">{item.requested_by_email || '-'}</span>
+                      <span className="block max-w-[180px] truncate text-sm text-foreground" title={item.requested_by_email || ''}>{item.requested_by_email || '-'}</span>
+                      <span className="block text-[11px] font-mono text-slate-400">{item.kode_depo || '-'}</span>
                     </td>
-<td className="table-cell text-right">
-                       <div className="flex items-center justify-end gap-1">
-                         {item.status === 'pending' && hasPermission('standarisasi.approve') && (
-                           <>
-                             <button onClick={() => setApproveTarget({ item, status: 'approved' })} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200" title="Approve" aria-label="Approve">
-                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                             </button>
-                             <button onClick={() => setApproveTarget({ item, status: 'rejected' })} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200" title="Reject" aria-label="Reject">
-                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                             </button>
-                           </>
-                         )}
-                         {item.status === 'pending' && (
-                           <button className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-all duration-200" title="Notifikasi Email akan dikirim ke BLC & Admin Distribusi berdasarkan role dan depo" aria-label="Email notification">
-                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-3.622 2.707-5.225V6.741c0-1.602-1.336-2.994-2.907-3.227A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 3 5.14 3 6.741v6.018z" /></svg>
-                           </button>
-                         )}
-                         <button onClick={() => setViewItem(item)} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200" title="Lihat Detail" aria-label="Lihat Detail">
-                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                         </button>
-                         {hasPermission('standarisasi.edit') && (
-                           <button onClick={() => handleEdit(item)} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200" title="Edit" aria-label="Edit">
-                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
-                           </button>
-                         )}
-                         {hasPermission('standarisasi.delete') && (
-                           <button onClick={() => handleDelete(item.id)} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200" title="Hapus" aria-label="Hapus">
-                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                           </button>
-                         )}
-                       </div>
+<td className="table-cell sticky right-0 z-10 border-l border-border bg-inherit text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {item.status === 'pending' && hasPermission('standarisasi.approve') && (
+                            <>
+                              <button onClick={() => openDecision(item, 'approved')} className="inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100" title="Setujui pengajuan standarisasi ini">
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                Setujui
+                              </button>
+                              <button onClick={() => openDecision(item, 'rejected')} className="inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-bold text-red-700 transition-colors hover:bg-red-100" title="Tolak pengajuan standarisasi ini">
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                Tolak
+                              </button>
+                            </>
+                          )}
+                          <div className="relative" data-row-actions>
+                            <button
+                              onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                              className="min-h-11 min-w-11 rounded-lg p-1.5 text-gray-400 transition-all duration-200 hover:bg-popover hover:text-foreground"
+                              title="Aksi lainnya"
+                              aria-label="Aksi lainnya"
+                              aria-expanded={openMenuId === item.id}
+                            >
+                              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm7.5 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm7.5 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>
+                            </button>
+                            {openMenuId === item.id && (
+                              <div className="absolute right-0 top-full z-40 mt-1 w-48 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+                                <button onClick={() => { setViewItem(item); setOpenMenuId(null); }} className="flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-popover">Lihat Detail</button>
+                                {item.status === 'pending' && (
+                                  <button onClick={() => { void handleNotify(item.id); setOpenMenuId(null); }} className="flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-popover">Kirim ulang notifikasi</button>
+                                )}
+                                {hasPermission('standarisasi.edit') && (
+                                  <button onClick={() => { handleEdit(item); setOpenMenuId(null); }} className="flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-popover">Edit</button>
+                                )}
+                                {hasPermission('standarisasi.delete') && (
+                                  <button onClick={() => { handleDelete(item.id); setOpenMenuId(null); }} className="flex w-full items-center px-3 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50">Hapus</button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                      </td>
                   </tr>
                 ))}
@@ -791,14 +889,14 @@ const confirmApprove = async () => {
             {viewItem?.status === 'pending' && hasPermission('standarisasi.approve') && (
               <>
                 <button
-                  onClick={() => { if (viewItem) { setApproveTarget({ item: viewItem, status: 'rejected' }); } }}
-                  className="btn-secondary !text-red-600 hover:!bg-red-50"
+                  onClick={() => { if (viewItem) openDecision(viewItem, 'rejected'); }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700 transition-colors hover:bg-red-100"
                 >
                   Tolak
                 </button>
                 <button
-                  onClick={() => { if (viewItem) { setApproveTarget({ item: viewItem, status: 'approved' }); } }}
-                  className="btn-primary"
+                  onClick={() => { if (viewItem) openDecision(viewItem, 'approved'); }}
+                  className="btn-primary inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700"
                 >
                   Setujui
                 </button>
@@ -1023,16 +1121,110 @@ const confirmApprove = async () => {
         variant="warning"
         loading={saving}
       />
-      <ConfirmDialog
+      {/* Modal Keputusan Approval BLC */}
+      <Modal
         open={!!approveTarget}
-        onClose={() => setApproveTarget(null)}
-        onConfirm={confirmApprove}
+        onClose={() => { if (!approving) closeDecision(); }}
         title={approveTarget?.status === 'approved' ? 'Setujui Standarisasi' : 'Tolak Standarisasi'}
-        message={approveTarget?.status === 'approved' ? 'Yakin ingin menyetujui standarisasi ini?' : 'Yakin ingin menolak standarisasi ini?'}
-        confirmLabel={approveTarget?.status === 'approved' ? 'Setujui' : 'Tolak'}
-        variant={approveTarget?.status === 'approved' ? 'info' : 'danger'}
-        loading={approving}
-      />
+        subtitle="Konfirmasi keputusan BLC atas pengajuan tier tumpukan dari lapangan"
+        size="md"
+        footer={
+          <>
+            <button onClick={closeDecision} disabled={approving} className="btn-secondary">Batal</button>
+            {approveTarget?.status === 'approved' ? (
+              <>
+                <button onClick={() => void confirmApprove()} disabled={approving} className="btn-primary min-h-11 inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                  {approving ? 'Memproses...' : 'Setujui'}
+                </button>
+                {nextPendingItem && (
+                  <button onClick={() => void confirmApprove(true)} disabled={approving} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50">
+                    Setujui & Lanjut
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <button onClick={() => void confirmApprove()} disabled={approving || !decisionReason.trim()} className="btn-primary min-h-11 inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50" title={!decisionReason.trim() ? 'Alasan penolakan wajib diisi' : undefined}>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  {approving ? 'Memproses...' : 'Tolak'}
+                </button>
+                {nextPendingItem && (
+                  <button onClick={() => void confirmApprove(true)} disabled={approving || !decisionReason.trim()} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50">
+                    Tolak & Lanjut
+                  </button>
+                )}
+              </>
+            )}
+          </>
+        }
+      >
+        {approveTarget && (
+          <div className="space-y-4">
+            <div className="overflow-hidden rounded-xl border border-border">
+              <div className="flex items-center gap-2.5 bg-ink-900 px-4 py-3 text-white">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-primary-300">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L2.25 12l4.179 2.25m0 0l5.571 3 5.571-3m-11.142 0L2.25 17.25 12 22.5l9.75-5.25-4.179-2.25" /></svg>
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-300/80">Standarisasi Tumpukan</p>
+                  <p className="truncate text-sm font-bold">{fmt(approveTarget.item.npn?.szShortDescription || approveTarget.item.npn?.szNickName || approveTarget.item.npn?.szNickNameNew)}</p>
+                </div>
+                <span className="ml-auto shrink-0">{badge(approveTarget.item.status)}</span>
+              </div>
+              <div className="divide-y divide-slate-100 bg-card text-sm">
+                <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <span className="text-muted-foreground">BOS ID</span>
+                  <span className="font-mono font-semibold text-foreground">{fmt(approveTarget.item.npn?.BOSnetszProductId)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <span className="text-muted-foreground">Depo</span>
+                  <span className="text-right font-semibold text-foreground">{fmt(approveTarget.item.nama_depo)} <span className="font-mono text-xs text-slate-400">({fmt(approveTarget.item.kode_depo)})</span></span>
+                </div>
+                <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <span className="text-muted-foreground">Diajukan Oleh</span>
+                  <span className="text-right font-semibold text-foreground">{fmt(approveTarget.item.requested_by_email)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <span className="text-muted-foreground">Perhitungan Tier</span>
+                  <span className="font-semibold tabular-nums text-foreground">
+                    {approveTarget.item.tier} × {approveTarget.item.tinggi_tumpukan} = <span className="text-accent-text">{approveTarget.item.total_tier_tinggi ?? (approveTarget.item.tier ?? 0) * (approveTarget.item.tinggi_tumpukan ?? 0)}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {nextPendingItem && (
+              <p className="text-xs text-slate-400">Masih ada pengajuan lain yang menunggu. Gunakan tombol Lanjut untuk memproses berurutan.</p>
+            )}
+
+            {approveTarget.status === 'rejected' ? (
+              <div>
+                <label htmlFor="standarisasi-reject-reason" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Alasan penolakan <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="standarisasi-reject-reason"
+                  value={decisionReason}
+                  onChange={(e) => setDecisionReason(e.target.value)}
+                  rows={4}
+                  disabled={approving}
+                  placeholder="Jelaskan mengapa pengajuan ditolak agar pengaju lapangan dapat memperbaikinya"
+                  className="w-full resize-none rounded-xl border border-border px-3 py-2.5 text-sm text-foreground placeholder:text-slate-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500/60"
+                />
+                <p className="mt-1.5 text-xs text-slate-400">Wajib diisi untuk melengkapi keputusan penolakan.</p>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3" role="status">
+                <svg className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                <p className="text-xs text-emerald-800">
+                  Setelah disetujui, standarisasi ini langsung dapat dipakai pada <strong>Validasi SJ</strong>. Notifikasi email akan dikirim ke BLC & Admin Distribusi.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
       {/* Import Modal */}
       <Modal
