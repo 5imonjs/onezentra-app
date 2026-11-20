@@ -63,6 +63,17 @@ Map<String, dynamic> _sessionBody({
 };
 
 void main() {
+  test('ValidationDocument memparse rencana tiba (ETA)', () {
+    var doc = ValidationDocument.fromJson({
+      'id': 11,
+      'po_transporter': 'PO-ETA',
+      'nopol': 'B 1 ETA',
+      'eta_date': '2026-11-23T00:00:00Z',
+      'status': 'SCHEDULED',
+    });
+
+    expect(doc.etaDate, '2026-11-23T00:00:00Z');
+  });
   group('ValidationRepository', () {
     test('startByCode membuka sesi dari barcode PO', () async {
       String? hitEndpoint;

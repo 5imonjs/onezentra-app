@@ -11,6 +11,19 @@ import 'package:onezentra_mobile/features/gate/providers/gate_provider.dart';
 import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
+/// Tampilkan ETA dari API (bisa ISO 8601 atau Y-m-d) sebagai dd/MM/yyyy.
+String _formatEtaDate(String? raw) {
+  if (raw == null || raw.isEmpty) {
+    return '-';
+  }
+  var parsed = DateTime.tryParse(raw);
+  if (parsed == null) {
+    return raw;
+  }
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${two(parsed.day)}/${two(parsed.month)}/${parsed.year}';
+}
+
 /// Check In Point (Gate) — lookup a rencana kirim by PO / Nopol, record
 /// Gate IN, and verify the document.
 ///
@@ -506,6 +519,15 @@ class _GatePageState extends State<GatePage> {
             'Driver • Item',
             '${rk.driverName ?? '-'} • ${rk.itemCount ?? 0} item',
           ),
+          if (rk.etaDate != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppTheme.space3),
+              child: _darkField(
+                'Rencana Tiba',
+                _formatEtaDate(rk.etaDate),
+                highlight: true,
+              ),
+            ),
           const SizedBox(height: AppTheme.space4),
           if (action == GateStatusAction.none)
             _guideBox(GateStatus.guide(rk.status))

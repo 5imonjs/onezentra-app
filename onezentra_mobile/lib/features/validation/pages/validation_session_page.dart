@@ -17,6 +17,19 @@ import 'package:onezentra_mobile/features/validation/widgets/npn_product_picker.
 import 'package:onezentra_mobile/features/validation/widgets/standarisasi_sheet.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
+/// Tampilkan ETA dari API (bisa ISO 8601 atau Y-m-d) sebagai dd/MM/yyyy.
+String _formatEtaDate(String? raw) {
+  if (raw == null || raw.isEmpty) {
+    return '-';
+  }
+  var parsed = DateTime.tryParse(raw);
+  if (parsed == null) {
+    return raw;
+  }
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${two(parsed.day)}/${two(parsed.month)}/${parsed.year}';
+}
+
 /// Halaman pemrosesan sesi validasi yang dibuka SESUDAH operator mengetik /
 /// memindai PO dan menekan "Mulai" di [ValidationPage].
 ///
@@ -265,6 +278,15 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           ),
           const SizedBox(height: AppTheme.space3),
           _darkField('Driver', doc?.driverName ?? '-'),
+          if (doc?.etaDate != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppTheme.space3),
+              child: _darkField(
+                'Rencana Tiba',
+                _formatEtaDate(doc?.etaDate),
+                highlight: true,
+              ),
+            ),
           const SizedBox(height: AppTheme.space4),
           ClipRRect(
             borderRadius: AppTheme.radiusFull,

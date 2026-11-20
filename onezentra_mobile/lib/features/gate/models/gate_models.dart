@@ -85,6 +85,8 @@ class RencanaKirim {
     this.kodeDepo,
     this.namaDepo,
     this.itemCount,
+    this.etaDate,
+    this.rkhDate,
   });
 
   factory RencanaKirim.fromJson(Map<String, dynamic> json) => RencanaKirim(
@@ -98,6 +100,8 @@ class RencanaKirim {
     itemCount: json['items'] is List
         ? (json['items'] as List).length
         : _readInt(json['item_count']),
+    etaDate: _readString(json['eta_date']),
+    rkhDate: _readString(json['rkh_date']),
   );
   final int? id;
   final String? poTransporter;
@@ -107,6 +111,8 @@ class RencanaKirim {
   final String? kodeDepo;
   final String? namaDepo;
   final int? itemCount;
+  final String? etaDate;
+  final String? rkhDate;
 }
 
 /// One gate scan record (INBOUND) of a rencana kirim.

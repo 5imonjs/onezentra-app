@@ -896,9 +896,6 @@ export default function RencanaKirimPage() {
                 Rencana Tiba
               </button>
             </div>
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              Titik kalender mengikuti {calendarBasis === 'eta' ? 'Rencana Tiba (ETA)' : 'Rencana Kirim (RKH)'}. Klik tanggal untuk memfilter.
-            </p>
             {selectedDate && hasPermission('rencana_kirim.create') && (
               <button
                 onClick={() => openCreate(selectedDate >= todayDateStr() ? selectedDate : todayDateStr())}

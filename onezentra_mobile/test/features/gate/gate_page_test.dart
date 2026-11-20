@@ -225,6 +225,7 @@ RencanaKirim _lookupDocument({String status = 'SCHEDULED'}) => RencanaKirim(
   driverName: 'Andi',
   status: status,
   itemCount: 3,
+  etaDate: '2026-11-22T00:00:00Z',
 );
 
 void main() {
@@ -645,5 +646,21 @@ void main() {
           (widget.decoration! as BoxDecoration).color == AppTheme.dangerWell,
     );
     expect(banner, findsOneWidget);
+  });
+
+  testWidgets('kartu dokumen menampilkan rencana tiba dari ETA', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository(lookupResult: _lookupDocument());
+    var auth = await _loginAuth();
+
+    await _pumpGatePage(tester, auth, repository);
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Cari'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DOKUMEN DITEMUKAN'), findsOneWidget);
+    expect(find.text('Rencana Tiba'), findsOneWidget);
+    expect(find.text('22/11/2026'), findsOneWidget);
   });
 }

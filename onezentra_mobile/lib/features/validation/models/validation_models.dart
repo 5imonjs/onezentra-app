@@ -307,6 +307,7 @@ class ValidationDocument {
     this.poTransporter,
     this.nopol,
     this.driverName,
+    this.etaDate,
     this.status = '',
     this.items = const [],
   });
@@ -318,6 +319,7 @@ class ValidationDocument {
       poTransporter: _readString(json['po_transporter']),
       nopol: _readString(json['nopol']),
       driverName: _readString(json['driver_name']),
+      etaDate: _readString(json['eta_date']),
       status: _readString(json['status']) ?? '',
       items: rawItems is List
           ? rawItems
@@ -335,6 +337,7 @@ class ValidationDocument {
   final String? poTransporter;
   final String? nopol;
   final String? driverName;
+  final String? etaDate;
   final String status;
   final List<ValidationDocItem> items;
 }
