@@ -112,16 +112,14 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Hero: satu panel gelap dengan aksen brand, memuat sapaan, tanggal/jam,
           dan filter depo. Panjang gelap tetap (ink) agar logo & teks putih
           terbaca di kedua tema. */}
       <section
         aria-label="Ringkasan dashboard"
-        className="relative overflow-hidden rounded-3xl bg-linear-to-br from-ink-900 via-ink-900 to-ink-800 p-5 text-white shadow-xl sm:p-7"
+        className="relative overflow-hidden rounded-2xl bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 p-6 text-white shadow-sm sm:p-7"
       >
-        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary-500/25 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 left-1/4 h-56 w-56 rounded-full bg-cyan-500/15 blur-3xl" />
 
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-4">

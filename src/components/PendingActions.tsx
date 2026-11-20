@@ -404,14 +404,16 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
             </span>
             {totalItems} item
           </span>
-          <div role="group" aria-label="Filter usia tugas" className="flex rounded-lg border border-border bg-card p-0.5">
-            <button type="button" onClick={() => setOnlyOverdue(false)} aria-pressed={!onlyOverdue} className="rounded-md px-2 py-1 text-[11px] font-bold transition-colors min-h-8">
-              Semua
-            </button>
-            <button type="button" onClick={() => setOnlyOverdue(true)} aria-pressed={onlyOverdue} className="rounded-md px-2 py-1 text-[11px] font-bold transition-colors min-h-8">
-              Terlewat
-            </button>
-          </div>
+        </div>
+      }
+      actions={
+        <div role="group" aria-label="Filter usia tugas" className="flex rounded-lg border border-border bg-card p-0.5">
+          <button type="button" onClick={() => setOnlyOverdue(false)} aria-pressed={!onlyOverdue} className={`rounded-md px-2 py-1 text-[11px] font-bold transition-colors min-h-8 ${!onlyOverdue ? 'bg-ink-900 text-white' : 'text-muted-foreground hover:text-foreground'}`}>
+            Semua
+          </button>
+          <button type="button" onClick={() => setOnlyOverdue(true)} aria-pressed={onlyOverdue} className={`rounded-md px-2 py-1 text-[11px] font-bold transition-colors min-h-8 ${onlyOverdue ? 'bg-red-600 text-white' : 'text-muted-foreground hover:text-foreground'}`}>
+            Terlewat
+          </button>
         </div>
       }
     >
