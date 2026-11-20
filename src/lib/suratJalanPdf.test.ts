@@ -5,6 +5,7 @@ import {
   getPdfPageCount,
   normalizeRkhDate,
   sanitizeCode39Value,
+  suratJalanMeta,
   type RencanaKirimData,
   type RencanaKirimItem,
 } from './suratJalanPdf';
@@ -118,5 +119,16 @@ describe('generateSuratJalanPDF', () => {
     );
     const doc = generateSuratJalanPDF(makeData({ items, total_qty: items.length }));
     expect(getPdfPageCount(doc)).toBeGreaterThan(1);
+  });
+});
+
+describe('suratJalanMeta', () => {
+  it('mencantumkan Rencana Tiba saat ETA diisi planner', () => {
+    expect(suratJalanMeta(makeData()).some(([label]) => label === 'Rencana Tiba')).toBe(false);
+
+    const meta = suratJalanMeta(makeData({ eta_date: '2026-09-23' }));
+    expect(meta).toContainEqual(['Rencana Tiba', '23-09-2026']);
+    // RKH tetap ada sebagai tanggal dokumen/rencana kirim.
+    expect(meta).toContainEqual(['Tanggal RKH', '21-09-2026']);
   });
 });
