@@ -16,7 +16,17 @@ const TYPE_TONES: Record<string, string> = {
 export default function DashboardRecent({ kodeDepo }: { kodeDepo?: string }) {
   const { summary, loading, failed, reload } = useDashboardSummary(kodeDepo);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <DashboardPanel ariaLabel="Aktivitas terbaru" title="Aktivitas Terbaru" icon={HISTORY_ICON}>
+        <div role="status" aria-busy="true" className="space-y-2 px-5 py-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-9 rounded-xl bg-popover animate-pulse" />
+          ))}
+        </div>
+      </DashboardPanel>
+    );
+  }
 
   // Gagal memuat harus terlihat, bukan lenyap diam-diam (lihat DashboardAlerts).
   if (failed) {

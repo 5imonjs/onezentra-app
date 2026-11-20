@@ -10,7 +10,7 @@ type Tone = 'amber' | 'blue' | 'sky' | 'violet';
 
 type ToneStyle = { dot: string; chip: string; label: string; tile: string; ring: string };
 
-type ActionItem = { id: string; primary: string; secondary: string; href: string };
+type ActionItem = { id: string; primary: string; secondary: string; href: string; at?: string };
 
 type Group = {
   key: string;
@@ -31,6 +31,8 @@ const TONE_STYLES: Record<Tone, ToneStyle> = {
 };
 
 const MAX_PER_GROUP = 4;
+/** Backend SJ/RK/gate memaksa created_at DESC; ambil jendela lebih besar lalu urutkan di client. */
+const SORT_WINDOW = 20;
 
 type ListResponse<T> = { data?: { data?: T[]; total?: number } };
 
@@ -60,14 +62,23 @@ function buildGroup<T>(options: {
   const { items, total } = pickPage<T>(options.response);
   if (total === 0) return null;
 
+  // Urutkan tertua lebih dulu. Endpoint THL/retribusi/standarisasi sudah
+  // menerima sort=created_at&dir=asc, tetapi SJ/RK/gate mengabaikannya dan
+  // memaksa DESC — jadi penyortiran final tetap dilakukan di sini.
+  const mapped = items.map(options.map).sort((a, b) => {
+    const timeA = a.at ? new Date(a.at).getTime() : Number.POSITIVE_INFINITY;
+    const timeB = b.at ? new Date(b.at).getTime() : Number.POSITIVE_INFINITY;
+    return timeA - timeB;
+  });
+
   return {
     key: options.key,
     label: options.label,
     href: options.href,
     tone: options.tone,
     total,
-    moreCount: Math.max(0, total - items.length),
-    items: items.slice(0, MAX_PER_GROUP).map(options.map),
+    moreCount: Math.max(0, total - MAX_PER_GROUP),
+    items: mapped.slice(0, MAX_PER_GROUP),
   };
 }
 
@@ -77,24 +88,27 @@ function depotFilter(kodeDepo?: string): Record<string, string> {
 }
 
 /** Bentuk baris yang relevan dari tiap endpoint list (untuk pemetaan grup). */
-type ThlItem = { id: number; no_kendaraan?: string; nama_depo?: string; kode_depo?: string };
-type RetribusiItem = { id: number; nama_depo?: string; kode_depo?: string };
+type ThlItem = { id: number; no_kendaraan?: string; nama_depo?: string; kode_depo?: string; created_at?: string };
+type RetribusiItem = { id: number; nama_depo?: string; kode_depo?: string; created_at?: string };
 type SjValidationItem = {
   id: number;
   scan_code?: string | null;
   rencana_kirim?: { po_transporter?: string; nama_depo?: string; kode_depo?: string } | null;
+  created_at?: string;
 };
-type RkItem = { id: number; nopol?: string; nama_depo?: string; kode_depo?: string };
-type GateItem = { id: number; po_transporter?: string; nopol?: string };
+type RkItem = { id: number; nopol?: string; nama_depo?: string; kode_depo?: string; created_at?: string };
+type GateItem = { id: number; po_transporter?: string; nopol?: string; created_at?: string };
 type SjExtraSession = {
   id: number;
   scan_code?: string | null;
   rencana_kirim?: { po_transporter?: string; nama_depo?: string; kode_depo?: string } | null;
   pending_extra_items_count?: number;
+  created_at?: string;
 };
 type StandarisasiRow = {
   id: number;
   npn?: { szShortDescription?: string; szNickName?: string; szNickNameNew?: string } | null;
+  created_at?: string;
 };
 
 /**
@@ -139,6 +153,7 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
           primary: item.no_kendaraan || 'Pengajuan THL',
           secondary: item.nama_depo || item.kode_depo || '-',
           href: '/biaya-thl',
+          at: item.created_at,
         }),
       }));
     }
@@ -158,6 +173,7 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
           primary: item.nama_depo || item.kode_depo || 'Pengajuan retribusi',
           secondary: 'Menunggu verifikasi BAC',
           href: '/biaya-retribusi',
+          at: item.created_at,
         }),
       }));
     }
@@ -171,13 +187,14 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
         href: '/validasi-sj',
         tone: 'sky',
         response: await sjValidations.list({
-          status: 'IN_PROGRESS', per_page: MAX_PER_GROUP, ...depotFilter(kodeDepo),
+          status: 'IN_PROGRESS', per_page: SORT_WINDOW, ...depotFilter(kodeDepo),
         }),
         map: (item) => ({
           id: `sj-${item.id}`,
           primary: item.rencana_kirim?.po_transporter || item.scan_code || `Validasi #${item.id}`,
           secondary: item.rencana_kirim?.nama_depo || item.rencana_kirim?.kode_depo || '-',
           href: '/validasi-sj',
+          at: item.created_at,
         }),
       }));
     }
@@ -190,13 +207,14 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
         href: '/rencana-kirim',
         tone: 'blue',
         response: await rencanaKirim.list({
-          status: 'CHECKED_IN', per_page: MAX_PER_GROUP, ...depotFilter(kodeDepo),
+          status: 'CHECKED_IN', per_page: SORT_WINDOW, ...depotFilter(kodeDepo),
         }),
         map: (item) => ({
           id: `rk-${item.id}`,
           primary: item.nopol || `Rencana kirim #${item.id}`,
           secondary: item.nama_depo || item.kode_depo || '-',
           href: '/rencana-kirim',
+          at: item.created_at,
         }),
       }));
     }
@@ -208,13 +226,14 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
         href: '/gate',
         tone: 'blue',
         response: await gateTransactions.list({
-          status: 'CHECKED_IN', per_page: MAX_PER_GROUP, ...depotFilter(kodeDepo),
+          status: 'CHECKED_IN', per_page: SORT_WINDOW, ...depotFilter(kodeDepo),
         }),
         map: (item) => ({
           id: `gate-${item.id}`,
           primary: item.po_transporter || item.nopol || `Transaksi #${item.id}`,
           secondary: item.nopol || '-',
           href: '/gate',
+          at: item.created_at,
         }),
       }));
     }
@@ -238,6 +257,7 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
           primary: item.rencana_kirim?.po_transporter || item.scan_code || `Validasi #${item.id}`,
           secondary: `${item.pending_extra_items_count ?? 0} barang menunggu`,
           href: '/validasi-sj',
+          at: item.created_at,
         }),
       }));
     }
@@ -259,6 +279,7 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
           primary: item.npn?.szShortDescription || item.npn?.szNickName || item.npn?.szNickNameNew || `Standarisasi #${item.id}`,
           secondary: 'Menunggu keputusan BLC',
           href: '/standarisasi',
+          at: item.created_at,
         }),
       }));
     }

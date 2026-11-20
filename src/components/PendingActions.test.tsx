@@ -70,6 +70,25 @@ describe('PendingActions', () => {
     expect(sjList).toHaveBeenCalledWith(expect.objectContaining({ status: 'IN_PROGRESS' }));
   });
 
+  it('menampilkan item tertua lebih dulu meski backend mengurutkan terbaru', async () => {
+    hasPermission.mockImplementation((perm) => perm !== 'sj_validation.approve');
+    sjList.mockResolvedValue({
+      data: {
+        data: [
+          { id: 1, scan_code: 'SJ-BARU', created_at: '2026-11-20T08:00:00Z' },
+          { id: 2, scan_code: 'SJ-LAMA', created_at: '2026-11-01T08:00:00Z' },
+        ],
+        total: 2,
+      },
+    });
+
+    render(<PendingActions kodeDepo="DPO" />);
+
+    const lama = await screen.findByText('SJ-LAMA');
+    const baru = screen.getByText('SJ-BARU');
+    expect(lama.compareDocumentPosition(baru) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('badge jumlah memakai total server, bukan isi halaman (regresi moreCount selalu 0)', async () => {
     const items = Array.from({ length: 4 }, (_, i) => ({
       id: i + 1, no_kendaraan: `B ${i + 1}`, nama_depo: 'Depo Test', kode_depo: 'DPO',

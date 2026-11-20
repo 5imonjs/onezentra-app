@@ -80,6 +80,14 @@ describe('DashboardPage — tata letak chart', () => {
     expect(screen.queryByText('Perlu Perhatian')).not.toBeInTheDocument();
   });
 
+  it('menggabungkan blok opname dan aktivitas terbaru dalam grid dua kolom di layar lebar', () => {
+    render(<DashboardPage />);
+
+    const pair = screen.getByTestId('supporting-blocks');
+    expect(pair.className).toContain('grid-cols-1');
+    expect(pair.className).toContain('xl:grid-cols-2');
+  });
+
   it('hero menampilkan sapaan dengan nama depan user', () => {
     render(<DashboardPage />);
 

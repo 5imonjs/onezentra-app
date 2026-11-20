@@ -93,6 +93,33 @@ export default function DashboardPage() {
     }
   };
 
+  // Pasangkan blok pendukung (progres opname + aktivitas terbaru) dalam satu
+  // baris dua kolom di layar lebar. Di mobile tetap bertumpuk dan urutan blok
+  // per peran tidak diubah.
+  const renderBlocks = () => {
+    const nodes: React.ReactNode[] = [];
+    for (let i = 0; i < blocks.length; i++) {
+      const key = blocks[i];
+      const next = blocks[i + 1];
+      const isSupportingPair =
+        (key === 'opname' && next === 'recent') ||
+        (key === 'recent' && next === 'opname');
+
+      if (isSupportingPair) {
+        nodes.push(
+          <div key={`support-${key}-${next}`} data-testid="supporting-blocks" className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div>{renderBlock(key)}</div>
+            <div>{renderBlock(next)}</div>
+          </div>
+        );
+        i += 1;
+      } else {
+        nodes.push(<div key={key}>{renderBlock(key)}</div>);
+      }
+    }
+    return nodes;
+  };
+
   return (
     <div className="space-y-6">
       {/* Hero: satu panel gelap dengan aksen brand, memuat sapaan, tanggal/jam,
@@ -153,7 +180,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {blocks.map(renderBlock)}
+      {renderBlocks()}
     </div>
   );
 }

@@ -40,6 +40,14 @@ describe('DashboardRecent', () => {
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
+  it('menampilkan skeleton saat data masih dimuat, bukan layout kosong', () => {
+    useSummary.mockReturnValue({ summary: summaryKosong, loading: true, failed: false, reload: vi.fn() });
+
+    render(<DashboardRecent />);
+
+    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+  });
+
   it('tidak merender section bila daftar aktivitas kosong', () => {
     useSummary.mockReturnValue({ summary: summaryKosong, loading: false, failed: false, reload: vi.fn() });
 
