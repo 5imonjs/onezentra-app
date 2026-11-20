@@ -4,10 +4,12 @@ namespace App\Exports;
 
 use App\Models\RencanaKirim;
 use App\Models\User;
+use App\Services\ReceivingDurationService;
 use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -78,7 +80,7 @@ class RencanaKirimReportExport implements FromQuery, ShouldAutoSize, WithHeading
 
     public function query(): Builder|EloquentBuilder|Relation
     {
-        $query = RencanaKirim::query()->with(['items.npn']);
+        $query = RencanaKirim::query()->with(['items.npn', 'receivings', 'gateTransactions']);
 
         return static::applyFilters(
             $query,
@@ -106,6 +108,10 @@ class RencanaKirimReportExport implements FromQuery, ShouldAutoSize, WithHeading
             'Total Qty',
             'Kubikasi (m³)',
             'Status',
+            'Check-in',
+            'Selesai',
+            'Durasi Bongkar',
+            'Check-in → Selesai',
             'Dibuat',
         ];
     }
@@ -114,6 +120,7 @@ class RencanaKirimReportExport implements FromQuery, ShouldAutoSize, WithHeading
     {
         // Kubikasi = rumus yang sama dengan ReportController::rencanaKirimRow
         // (jumlah x decVolume x SAPdecUom / 1.000.000 per item).
+        $durasi = app(ReceivingDurationService::class)->metrics($rk);
         $kubikasi = $rk->items->sum(fn ($item) => $item->npn?->decVolume !== null && $item->npn?->SAPdecUom !== null
             ? round(((float) $item->jumlah) * ((float) $item->npn->decVolume) * ((float) $item->npn->SAPdecUom) / 1_000_000, 4)
             : 0);
@@ -131,6 +138,10 @@ class RencanaKirimReportExport implements FromQuery, ShouldAutoSize, WithHeading
             (float) $rk->total_qty,
             round($kubikasi, 2),
             $rk->status,
+            $durasi['checkin_at'] ? Carbon::parse($durasi['checkin_at'])->format('d-m-Y H:i') : '-',
+            $durasi['finish_at'] ? Carbon::parse($durasi['finish_at'])->format('d-m-Y H:i') : '-',
+            $durasi['unload_label'],
+            $durasi['total_label'],
             $rk->created_at?->format('d-m-Y'),
         ];
     }

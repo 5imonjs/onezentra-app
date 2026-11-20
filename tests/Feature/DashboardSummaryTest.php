@@ -188,19 +188,22 @@ class DashboardSummaryTest extends TestCase
 
         $rk = RencanaKirim::create([
             'po_transporter' => 'SJ-SLA', 'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test',
-            'status' => 'scheduled', 'created_by' => $user->id,
+            'status' => 'CHECKED_IN', 'created_by' => $user->id,
+            'checked_in_at' => now()->subHours(3),
         ]);
         $gate = GateTransaction::create([
             'rencana_kirim_id' => $rk->id, 'po_transporter' => 'SJ-SLA',
-            'status' => 'checked_in', 'scan_time' => now()->subHours(3),
+            'status' => 'CHECKED_IN', 'scan_time' => now()->subHours(3),
         ]);
         Receiving::create([
-            'rencana_kirim_id' => $rk->id, 'gate_transaction_id' => $gate->id, 'status' => 'pending',
+            'rencana_kirim_id' => $rk->id, 'gate_transaction_id' => $gate->id, 'status' => 'COMPLETED',
+            'actual_start_time' => now()->subHours(3), 'actual_end_time' => now(),
         ]);
 
         $res = $this->getJson('/api/v1/dashboard/summary')->assertOk();
 
         $this->assertEqualsWithDelta(3.0, (float) $res->json('data.sla.avg_gate_to_receiving_hours'), 0.2);
+        $this->assertEqualsWithDelta(3.0, (float) $res->json('data.sla.avg_unload_hours'), 0.2);
     }
 
     public function test_summary_inbound_selisih_by_sign_and_rk_checkin_aging(): void

@@ -312,6 +312,9 @@ class ReceivingController extends Controller
                 'total_received_qty' => $rencanaKirim->items->sum('jumlah'),
                 'status' => 'PENDING',
                 'checked_by' => $request->user()->id,
+                // Mobile/Web belum punya aksi "mulai bongkar"; doc dibuat =
+                // awal proses penerimaan agar durasi tetap terukur.
+                'actual_start_time' => now(),
             ]);
 
             // Ambil data dari validasi SJ terakhir yang sudah COMPLETED

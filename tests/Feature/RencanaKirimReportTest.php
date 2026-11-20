@@ -6,6 +6,7 @@ use App\Exports\RencanaKirimDetailExport;
 use App\Exports\RencanaKirimReportExport;
 use App\Models\Npn;
 use App\Models\Permission;
+use App\Models\Receiving;
 use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
 use App\Models\Role;
@@ -408,6 +409,31 @@ class RencanaKirimReportTest extends TestCase
         $this->assertContains('Qty Diterima', $headings);
         $this->assertSame(7.0, $row[array_search('Qty Diterima', $headings)]);
         $this->assertEqualsWithDelta(0.6, $row[array_search('Kubikasi (m³)', $headings)], 0.001);
+    }
+
+    public function test_laporan_menghitung_durasi_checkin_ke_selesai_dan_bongkar(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'DURASI-PO', 'status' => 'COMPLETED', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->subDay()->toDateString(),
+            'checked_in_at' => now()->subHours(5),
+            'completed_at' => now(),
+        ]);
+        Receiving::create([
+            'rencana_kirim_id' => $rk->id, 'status' => 'COMPLETED',
+            'actual_start_time' => now()->subHours(2), 'actual_end_time' => now(),
+        ]);
+
+        $res = $this->getJson('/api/v1/reports/rencana-kirim')->assertOk();
+        $row = collect($res->json('data'))->firstWhere('po_transporter', 'DURASI-PO');
+
+        $this->assertSame(300, $row['total_minutes']);
+        $this->assertSame(120, $row['unload_minutes']);
+        $this->assertSame('5j', $row['total_label']);
+        $this->assertSame('2j', $row['unload_label']);
     }
 
     public function test_export_laporan_mencantumkan_tanggal_rencana_kirim_dan_rencana_tiba(): void

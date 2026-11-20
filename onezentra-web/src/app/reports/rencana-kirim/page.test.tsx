@@ -218,3 +218,9 @@ it('memakai label Tanggal Rencana Kirim di laporan', async () => {
   render(<RencanaKirimReportPage />);
   expect(await screen.findByRole('columnheader', { name: 'Tanggal Rencana Kirim' })).toBeInTheDocument();
 });
+
+it('menampilkan kolom durasi bongkar dan check-in sampai selesai', async () => {
+  render(<RencanaKirimReportPage />);
+  expect(await screen.findByRole('columnheader', { name: 'Durasi Bongkar' })).toBeInTheDocument();
+  expect(screen.getByRole('columnheader', { name: 'Check-in → Selesai' })).toBeInTheDocument();
+});

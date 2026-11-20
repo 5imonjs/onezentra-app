@@ -20,6 +20,7 @@ use App\Models\RencanaKirim;
 use App\Services\ExpiredStockReportService;
 use App\Services\ExportGuard;
 use App\Services\PenerimaanExpiredReportService;
+use App\Services\ReceivingDurationService;
 use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -138,7 +139,7 @@ class ReportController extends Controller
         return Excel::download($export, $filename);
     }
 
-    public function rencanaKirim(Request $request): JsonResponse
+    public function rencanaKirim(Request $request, ReceivingDurationService $duration): JsonResponse
     {
         $this->validateRencanaKirimRequest($request);
 
@@ -158,7 +159,7 @@ class ReportController extends Controller
 
         $perPage = min(max((int) $request->input('per_page', 25), 1), 100);
         $paginated = $query->paginate($perPage);
-        $data = $paginated->getCollection()->map(fn (RencanaKirim $rk) => $this->rencanaKirimRow($rk));
+        $data = $paginated->getCollection()->map(fn (RencanaKirim $rk) => $this->rencanaKirimRow($rk, $duration));
 
         $statusLabels = [
             'DRAFT' => 'Draft',
@@ -226,9 +227,9 @@ class ReportController extends Controller
      * endpoint operasional yang memakai permission berbeda), sehingga user
      * laporan tetap terikat pada deponya.
      */
-    public function rencanaKirimDetail(Request $request, RencanaKirim $rencanaKirim): JsonResponse
+    public function rencanaKirimDetail(Request $request, RencanaKirim $rencanaKirim, ReceivingDurationService $duration): JsonResponse
     {
-        $query = RencanaKirim::with('items.npn')->whereKey($rencanaKirim->id);
+        $query = RencanaKirim::with(['items.npn', 'receivings', 'gateTransactions'])->whereKey($rencanaKirim->id);
 
         RencanaKirimReportExport::applyFilters(
             $query,
@@ -241,7 +242,7 @@ class ReportController extends Controller
         );
 
         $rencana = $query->firstOrFail();
-        $row = $this->rencanaKirimRow($rencana);
+        $row = $this->rencanaKirimRow($rencana, $duration);
         $row['items'] = $rencana->items->map(fn ($item): array => [
             'id' => $item->id,
             'item_number' => $item->item_number,
@@ -298,7 +299,7 @@ class ReportController extends Controller
 
     private function rencanaKirimQuery(Request $request)
     {
-        $query = RencanaKirim::query()->with(['items.npn']);
+        $query = RencanaKirim::query()->with(['items.npn', 'receivings', 'gateTransactions']);
 
         $query = RencanaKirimReportExport::applyFilters($query, $request->date_from, $request->date_to, $request->status, $request->kode_depo, $request->search, $request->user());
 
@@ -312,7 +313,7 @@ class ReportController extends Controller
         return $query->orderByDesc('rkh_date')->orderByDesc('id');
     }
 
-    private function rencanaKirimRow(RencanaKirim $rk): array
+    private function rencanaKirimRow(RencanaKirim $rk, ReceivingDurationService $duration): array
     {
         $this->attachKubikasiToItems($rk);
 
@@ -331,6 +332,7 @@ class ReportController extends Controller
             'total_qty' => (float) $rk->total_qty,
             'total_kubikasi' => round($rk->items->sum(fn ($item) => (float) ($item->kubikasi ?? 0)), 2),
             'item_count' => $rk->items->count(),
+            ...$duration->metrics($rk),
             // Ditampilkan di baris agar pencarian barang tidak mengharuskan
             // membuka detail satu per satu.
             'item_names' => $rk->items
@@ -358,7 +360,7 @@ class ReportController extends Controller
         }
     }
 
-    public function penerimaan(Request $request): JsonResponse
+    public function penerimaan(Request $request, ReceivingDurationService $duration): JsonResponse
     {
         $this->validatePenerimaanRequest($request);
 
@@ -375,7 +377,7 @@ class ReportController extends Controller
 
         $perPage = min(max((int) $request->input('per_page', 25), 1), 100);
         $paginated = $query->paginate($perPage);
-        $data = $paginated->getCollection()->map(fn (ReceivingItem $item) => $this->penerimaanRow($item));
+        $data = $paginated->getCollection()->map(fn (ReceivingItem $item) => $this->penerimaanRow($item, $duration));
 
         $summary = [
             'total_item' => (int) $agg->c,
@@ -736,7 +738,7 @@ class ReportController extends Controller
     private function penerimaanQuery(Request $request)
     {
         $query = ReceivingItem::query()
-            ->with(['receiving.rencanaKirim'])
+            ->with(['receiving.rencanaKirim.receivings', 'receiving.rencanaKirim.gateTransactions'])
             ->whereNotNull('kode_barang');
 
         if ($request->user()->isDepotScoped()) {
@@ -781,7 +783,7 @@ class ReportController extends Controller
         return $query;
     }
 
-    private function penerimaanRow(ReceivingItem $item): array
+    private function penerimaanRow(ReceivingItem $item, ReceivingDurationService $duration): array
     {
         $rk = $item->receiving?->rencanaKirim;
 
@@ -804,6 +806,9 @@ class ReportController extends Controller
             'selisih_reason' => $item->selisih_reason ?? '-',
             'notes' => $item->notes ?? '-',
             'sumber' => $item->source,
+            ...($item->receiving?->rencanaKirim
+                ? $duration->metrics($item->receiving->rencanaKirim)
+                : []),
         ];
     }
 

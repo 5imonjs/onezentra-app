@@ -336,6 +336,7 @@ class DashboardController extends Controller
 
         $sla = [
             'avg_gate_to_receiving_hours' => null,
+            'avg_unload_hours' => null,
             'sj_open_count' => 0,
             'sj_oldest_days' => null,
             'rk_checked_in_count' => 0,
@@ -343,18 +344,25 @@ class DashboardController extends Controller
         ];
         if ($can('receiving.view')) {
             $pairs = Receiving::query()
-                ->whereNotNull('gate_transaction_id')
                 ->where('receivings.created_at', '>=', now()->subDays(30))
                 ->when($depot, fn ($q) => $q->whereHas('rencanaKirim', fn ($rk) => $rk->where('kode_depo', $depot)))
-                ->with(['gateTransaction:id,scan_time'])
+                ->with('rencanaKirim')
                 ->limit(500)
-                ->get(['id', 'gate_transaction_id', 'created_at']);
+                ->get(['id', 'rencana_kirim_id', 'actual_start_time', 'actual_end_time', 'created_at']);
+            // Acuan benar: check-in (checked_in_at / scan_time gate) → selesai bongkar
+            // (actual_end_time). Bukan gate_transaction_id yang sering kosong.
             $minutes = $pairs
-                ->map(fn (Receiving $r) => $r->gateTransaction?->scan_time
-                    ? (int) round(abs($r->created_at->diffInMinutes($r->gateTransaction->scan_time)))
+                ->map(fn (Receiving $r) => $r->actual_end_time && $r->rencanaKirim?->checked_in_at
+                    ? abs((int) $r->actual_end_time->diffInMinutes($r->rencanaKirim->checked_in_at))
+                    : null)
+                ->filter(fn ($m) => $m !== null);
+            $unload = $pairs
+                ->map(fn (Receiving $r) => $r->actual_end_time && $r->actual_start_time
+                    ? abs((int) $r->actual_end_time->diffInMinutes($r->actual_start_time))
                     : null)
                 ->filter(fn ($m) => $m !== null);
             $sla['avg_gate_to_receiving_hours'] = $minutes->isNotEmpty() ? round($minutes->avg() / 60, 1) : null;
+            $sla['avg_unload_hours'] = $unload->isNotEmpty() ? round($unload->avg() / 60, 1) : null;
         }
         if ($can('sj_validation.view')) {
             $openSj = SjValidation::query()

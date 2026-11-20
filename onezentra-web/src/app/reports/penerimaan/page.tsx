@@ -10,6 +10,10 @@ import { useReportRowDelete } from '@/lib/useReportRowDelete';
 import { ReportDeleteBar, ReportSelectCheckbox } from '@/components/ReportDeleteControls';
 
 interface PenerimaanRow {
+  unload_label?: string;
+  total_label?: string;
+  checkin_at?: string | null;
+  finish_at?: string | null;
   id: number;
   tanggal_penerimaan: string;
   kode_depo: string;
@@ -387,6 +391,25 @@ export default function PenerimaanReportPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Durasi per PO */}
+        {items.length > 0 && items.some((it) => it.total_label) && (
+          <section aria-label="Durasi per PO" className="bg-card rounded-2xl shadow-sm border border-border p-4">
+            <h2 className="text-sm font-bold text-foreground mb-1">Durasi per PO</h2>
+            <p className="text-[11px] text-muted-foreground mb-3">Acuan: gate check-in → selesai bongkar; durasi bongkar dari mulai receiving.</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from(new Map(items.filter((it) => it.total_label).map((it) => [it.po_transporter, it])).values()).slice(0, 9).map((it) => (
+                <div key={it.po_transporter} className="rounded-xl border border-border bg-popover/60 px-3 py-2.5">
+                  <p className="truncate font-mono text-xs font-bold text-foreground">{it.po_transporter}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Bongkar <span className="font-bold text-foreground">{it.unload_label ?? '-'}</span>
+                    {' · '}Check-in → Selesai <span className="font-bold text-info">{it.total_label ?? '-'}</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Table */}

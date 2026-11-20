@@ -89,3 +89,29 @@ describe('PenerimaanReportPage — header tabel', () => {
     expect(table.parentElement).toHaveClass('overflow-auto', 'max-h-[65vh]');
   });
 });
+
+it('menampilkan kartu durasi per PO', async () => {
+  vi.clearAllMocks();
+  hasPermission.mockReturnValue(true);
+  depoList.mockResolvedValue({ data: { data: [] } });
+  list.mockResolvedValue({
+    data: {
+      current_page: 1, last_page: 1, per_page: 25, total: 1,
+      data: [{
+        id: 1, tanggal_penerimaan: '2026-11-18', kode_depo: '0126', nama_depo: 'Singkawang',
+        sumber_material: 'PT Sumber', po_transporter: 'PO-DURASI', driver_name: 'Andi',
+        kode_barang: 'BRG-A', nama_barang: 'Produk A', qty_crt: 10, qty_pcs: 240,
+        satuan: 'CRT', expired_date: '2026-12-01', condition: 'GOOD', selisih_qty: 0,
+        selisih_reason: '', notes: '', sumber: 'VALIDASI_SJ',
+        total_label: '1j 20m', unload_label: '1j 10m',
+      }],
+      summary: {
+        total_item: 1, total_qty_crt: 10, total_qty_pcs: 240,
+        item_sj: 1, item_manual: 0, total_selisih: 0,
+      },
+    },
+  });
+  render(<PenerimaanReportPage />);
+  expect(await screen.findByText('Durasi per PO')).toBeInTheDocument();
+  expect(screen.getAllByText('PO-DURASI').length).toBeGreaterThan(0);
+});
