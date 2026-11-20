@@ -94,7 +94,8 @@ class RencanaKirimReportExport implements FromQuery, ShouldAutoSize, WithHeading
     public function headings(): array
     {
         return [
-            'Tanggal RKH',
+            'Tanggal Rencana Kirim',
+            'Rencana Tiba',
             'PO Transporter',
             'Driver',
             'Nopol',
@@ -119,6 +120,7 @@ class RencanaKirimReportExport implements FromQuery, ShouldAutoSize, WithHeading
 
         return [
             $rk->rkh_date?->format('d-m-Y') ?? '-',
+            $rk->eta_date?->format('d-m-Y') ?? '-',
             $rk->po_transporter ?? '-',
             $rk->driver_name ?? '-',
             $rk->nopol ?? '-',

@@ -410,6 +410,25 @@ class RencanaKirimReportTest extends TestCase
         $this->assertEqualsWithDelta(0.6, $row[array_search('Kubikasi (m³)', $headings)], 0.001);
     }
 
+    public function test_export_laporan_mencantumkan_tanggal_rencana_kirim_dan_rencana_tiba(): void
+    {
+        $user = $this->viewer();
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'EXPORT-TANGGAL', 'status' => 'DRAFT', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => '2026-11-21', 'eta_date' => '2026-11-23',
+        ]);
+
+        $export = new RencanaKirimReportExport;
+        $headings = $export->headings();
+        $row = $export->map($rk->load('items.npn'));
+
+        $this->assertContains('Tanggal Rencana Kirim', $headings);
+        $this->assertContains('Rencana Tiba', $headings);
+        $this->assertSame('21-11-2026', $row[array_search('Tanggal Rencana Kirim', $headings)]);
+        $this->assertSame('23-11-2026', $row[array_search('Rencana Tiba', $headings)]);
+    }
+
     public function test_laporan_menyediakan_kolom_dan_filter_eta(): void
     {
         $user = $this->viewer();

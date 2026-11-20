@@ -213,3 +213,8 @@ it('menampilkan kolom Rencana Tiba dan filter berbasis ETA', async () => {
 
   await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ eta_from: '2026-11-19' })));
 });
+
+it('memakai label Tanggal Rencana Kirim di laporan', async () => {
+  render(<RencanaKirimReportPage />);
+  expect(await screen.findByRole('columnheader', { name: 'Tanggal Rencana Kirim' })).toBeInTheDocument();
+});

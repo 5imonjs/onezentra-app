@@ -278,8 +278,9 @@ describe('Rencana Kirim — tanggal kirim vs waktu input', () => {
 
     render(<RencanaKirimPage />);
 
-    expect((await screen.findAllByText(/Hari ini,/)).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Besok,/).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/Kirim: Hari ini,/)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Kirim: Besok,/).length).toBeGreaterThan(0);
+    expect(screen.getByRole('columnheader', { name: 'Dibuat' })).toBeInTheDocument();
     expect(screen.getAllByText(/ PO$/).length).toBeGreaterThanOrEqual(2);
   });
 });
