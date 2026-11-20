@@ -89,6 +89,8 @@ class RencanaKirimController extends Controller
     {
         $request->validate([
             'status' => 'nullable|string|in:DRAFT,SCHEDULED,CHECKED_IN,VERIFIED,IN_PROGRESS,COMPLETED,CANCELLED',
+            'eta_from' => 'nullable|date',
+            'eta_to' => 'nullable|date',
         ]);
 
         $query = RencanaKirim::with(['items.npn', 'creator'])->forUserDepot($request->user());
@@ -127,6 +129,14 @@ class RencanaKirimController extends Controller
 
         if ($request->date_to) {
             $query->where('rkh_date', '<=', $request->date_to);
+        }
+
+        if ($request->eta_from) {
+            $query->whereDate('eta_date', '>=', $request->eta_from);
+        }
+
+        if ($request->eta_to) {
+            $query->whereDate('eta_date', '<=', $request->eta_to);
         }
 
         $perPage = $this->perPage($request);

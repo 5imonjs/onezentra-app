@@ -354,3 +354,26 @@ describe('Rencana Kirim — ETA wajib diisi planner', () => {
     );
   });
 });
+
+describe('Rencana Kirim — deep link ETA dari dashboard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    list.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
+  });
+
+  afterEach(() => window.history.pushState({}, '', '/'));
+
+  it('?eta=today memfilter daftar berdasarkan rencana tiba', async () => {
+    window.history.pushState({}, '', '/?eta=today');
+    render(<RencanaKirimPage />);
+
+    await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({
+      eta_from: expect.any(String),
+      eta_to: expect.any(String),
+    })));
+    expect(screen.getByText(/Menampilkan rencana tiba/)).toBeInTheDocument();
+  });
+});

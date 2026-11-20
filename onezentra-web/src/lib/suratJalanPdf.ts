@@ -14,6 +14,7 @@ export interface RencanaKirimItem {
 
 export interface RencanaKirimData {
   rkh_date: string;
+  eta_date?: string | null;
   po_transporter: string;
   driver_name: string;
   nopol: string;
@@ -298,6 +299,21 @@ function stampPageChrome(doc: jsPDF, data: RencanaKirimData): void {
   doc.setPage(1);
 }
 
+export function suratJalanMeta(data: RencanaKirimData): [string, string][] {
+  const meta: [string, string][] = [
+    ['Tanggal RKH', normalizeRkhDate(data.rkh_date)],
+    ...(data.eta_date
+      ? ([['Rencana Tiba', normalizeRkhDate(data.eta_date)]] as [string, string][])
+      : []),
+    ['Nama Driver', normalizePdfText(data.driver_name)],
+    ['No. PO Transporter', normalizePdfText(data.po_transporter)],
+  ];
+  if (data.jenis_kendaraan) {
+    meta.push(['Jenis Kendaraan', normalizePdfText(data.jenis_kendaraan)]);
+  }
+  return meta;
+}
+
 export function generateSuratJalanPDF(data: RencanaKirimData) {
   const doc = new jsPDF('p', 'mm', 'a4');
 
@@ -315,12 +331,7 @@ export function generateSuratJalanPDF(data: RencanaKirimData) {
   doc.setTextColor(30, 41, 59);
   doc.text(`DEPO ${normalizePdfText(data.nama_depo)}`, M, 25);
 
-  const meta: [string, string][] = [
-    ['Tanggal RKH', normalizeRkhDate(data.rkh_date)],
-    ['Nama Driver', normalizePdfText(data.driver_name)],
-    ['No. PO Transporter', normalizePdfText(data.po_transporter)],
-  ];
-  if (data.jenis_kendaraan) meta.push(['Jenis Kendaraan', normalizePdfText(data.jenis_kendaraan)]);
+  const meta = suratJalanMeta(data);
 
   let my = 11;
   for (const [label, val] of meta) {

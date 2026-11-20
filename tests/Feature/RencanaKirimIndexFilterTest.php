@@ -211,6 +211,31 @@ class RencanaKirimIndexFilterTest extends TestCase
             ->assertJsonPath('data.status', 'SCHEDULED');
     }
 
+    public function test_index_bisa_difilter_berdasarkan_eta(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        RencanaKirim::create([
+            'po_transporter' => 'ETA-FILTER-A', 'status' => 'DRAFT', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->subDay()->toDateString(),
+            'eta_date' => now()->toDateString(),
+        ]);
+        RencanaKirim::create([
+            'po_transporter' => 'ETA-FILTER-B', 'status' => 'DRAFT', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->subDay()->toDateString(),
+            'eta_date' => now()->addDays(4)->toDateString(),
+        ]);
+
+        $today = now()->toDateString();
+        $this->getJson("/api/v1/rencana-kirim?eta_from={$today}&eta_to={$today}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.po_transporter', 'ETA-FILTER-A');
+    }
+
     private function viewer(): User
     {
         $role = Role::firstOrCreate(['slug' => 'rk_filter_view'], ['name' => 'RK Filter View']);

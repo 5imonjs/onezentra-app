@@ -213,6 +213,27 @@ class DashboardController extends Controller
             'standar_umur' => 'standar_umur.view',
             'standarisasi' => 'standarisasi.view',
         ];
+        // Rencana tiba (ETA) yang ditentukan planner — dipakai BLC/user lain
+        // untuk mengetahui kedatangan tanpa menunggu gate check-in.
+        $incoming = ['today' => 0, 'tomorrow' => 0];
+        if ($can('rencana_kirim.view')) {
+            try {
+                $incomingQuery = RencanaKirim::query()
+                    ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+                    ->when($depot, fn ($q) => $q->where('kode_depo', $depot))
+                    ->when(! $depot && $user->isDepotScoped(), fn ($q) => $user->applyDepotFilter($q, 'kode_depo'));
+
+                $incoming['today'] = (clone $incomingQuery)
+                    ->whereDate('eta_date', now()->toDateString())->count();
+                $incoming['tomorrow'] = (clone $incomingQuery)
+                    ->whereDate('eta_date', now()->addDay()->toDateString())->count();
+            } catch (\Exception $e) {
+                \Log::warning('Dashboard incoming ETA aggregate failed', [
+                    'error' => $e->getMessage(), 'user' => $user->id ?? null, 'depot' => $depot,
+                ]);
+            }
+        }
+
         foreach ($modules as $key => $perm) {
             if (! $can($perm)) {
                 continue;
@@ -404,6 +425,7 @@ class DashboardController extends Controller
                 'depot' => $depot,
                 'totals' => $totals,
                 'new_7d' => $new7d,
+                'incoming' => $incoming,
                 'alerts' => $alerts,
                 'opname_at_risk' => $opnameAtRisk,
                 'quality' => $quality,

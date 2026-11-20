@@ -298,6 +298,7 @@ export default function RencanaKirimPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   // Filter tanggal KIRIM (rkh_date) — backend sudah menerima date_from/date_to.
   const [calendarOpen, setCalendarOpen] = useState(true);
+  const [etaFilter, setEtaFilter] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -333,6 +334,13 @@ export default function RencanaKirimPage() {
       const range = dateRangeFor(filterDate, dateFrom, dateTo);
       if (range.from) filterParams.date_from = range.from;
       if (range.to) filterParams.date_to = range.to;
+      if (etaFilter) {
+        const etaDay = etaFilter === 'tomorrow'
+          ? addDaysYmd(toYmd(new Date()), 1)
+          : toYmd(new Date());
+        filterParams.eta_from = etaDay;
+        filterParams.eta_to = etaDay;
+      }
       const res = await rencanaKirim.list(filterParams);
       if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
@@ -348,7 +356,15 @@ export default function RencanaKirimPage() {
     } finally {
       if (reqIdRef.current === reqId) setLoading(false);
     }
-  }, [search, page, filterStatus, filterKodeDepo, filterDate, dateFrom, dateTo]);
+  }, [search, page, filterStatus, filterKodeDepo, filterDate, dateFrom, dateTo, etaFilter]);
+
+  useEffect(() => {
+    const eta = new URLSearchParams(window.location.search).get('eta');
+    if (eta === 'today' || eta === 'tomorrow') {
+      setEtaFilter(eta);
+      setPage(1);
+    }
+  }, []);
 
   useEffect(() => { loadItems(true); }, [loadItems]);
 
@@ -878,6 +894,12 @@ export default function RencanaKirimPage() {
 
           {/* Table */}
           <div className={calendarOpen ? 'lg:col-span-2' : 'lg:col-span-1'}>
+            {etaFilter && (
+              <div className="mb-3 flex items-center gap-2 rounded-xl border border-info/30 bg-info/5 px-4 py-2.5 text-sm text-foreground">
+                <span>Menampilkan rencana tiba <strong className="text-info">{etaFilter === 'today' ? 'hari ini' : 'besok'}</strong></span>
+                <button onClick={() => setEtaFilter('')} className="ml-auto text-xs font-bold text-info hover:underline">Hapus filter</button>
+              </div>
+            )}
             {/* Table Card */}
             <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
               <div className="px-5 py-4 border-b border-border">
@@ -1452,7 +1474,7 @@ export default function RencanaKirimPage() {
               <div>
                 <label htmlFor="f-eta-date" className="block text-xs font-medium text-muted-foreground mb-1">Rencana Tiba di Depo <span className="text-destructive">*</span></label>
                 <input id="f-eta-date" type="date" value={createForm.eta_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, eta_date: e.target.value }))} className="input-field text-sm py-2" />
-                <p className="mt-1 text-[11px] text-info">Rencana tiba = kapan barang diharapkan sampai di depo tujuan. Berbeda dengan RKH (rencana berangkat).</p>
+                <p className="mt-1 text-[11px] text-info">Ditentukan planner saat membuat rencana. Rencana tiba = kapan barang diharapkan sampai di depo tujuan (berbeda dengan RKH = rencana berangkat).</p>
               </div>
             </div>
           </div>

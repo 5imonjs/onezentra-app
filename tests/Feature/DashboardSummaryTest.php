@@ -261,4 +261,33 @@ class DashboardSummaryTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.activity_trend.current_7d', 2);
     }
+
+    public function test_summary_menghitung_kedatangan_dari_eta_bukan_gate_checkin(): void
+    {
+        $user = $this->userWith('dash-eta@example.com', $this->perms());
+        Sanctum::actingAs($user);
+
+        RencanaKirim::create([
+            'po_transporter' => 'ETA-TODAY', 'status' => 'DRAFT', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->subDay()->toDateString(),
+            'eta_date' => now()->toDateString(),
+        ]);
+        RencanaKirim::create([
+            'po_transporter' => 'ETA-TOMORROW', 'status' => 'SCHEDULED', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->toDateString(),
+            'eta_date' => now()->addDay()->toDateString(),
+        ]);
+        RencanaKirim::create([
+            'po_transporter' => 'ETA-COMPLETED', 'status' => 'COMPLETED', 'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'eta_date' => now()->toDateString(),
+        ]);
+
+        $res = $this->getJson('/api/v1/dashboard/summary')->assertOk();
+
+        $this->assertSame(1, $res->json('data.incoming.today'));
+        $this->assertSame(1, $res->json('data.incoming.tomorrow'));
+    }
 }
