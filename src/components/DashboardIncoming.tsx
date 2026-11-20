@@ -17,7 +17,8 @@ export default function DashboardIncoming() {
 
   const today = summary.incoming?.today ?? 0;
   const tomorrow = summary.incoming?.tomorrow ?? 0;
-  if (today === 0 && tomorrow === 0) return null;
+  const overdue = summary.incoming?.overdue ?? 0;
+  if (today === 0 && tomorrow === 0 && overdue === 0) return null;
 
   return (
     <section aria-label="Kedatangan terjadwal" className="rounded-2xl border border-border bg-card/95 p-5 shadow-sm">
@@ -33,7 +34,7 @@ export default function DashboardIncoming() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Link
           href="/rencana-kirim?eta=today"
           className="group flex items-center justify-between gap-3 rounded-xl border border-info/30 bg-info/5 px-4 py-3 transition-colors hover:bg-info/10"
@@ -62,6 +63,22 @@ export default function DashboardIncoming() {
             <svg className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
           </div>
         </Link>
+        {overdue > 0 && (
+          <Link
+            href="/rencana-kirim?eta=overdue"
+            className="group flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 transition-colors hover:bg-destructive/10"
+          >
+            <div>
+              <p className="text-xs font-semibold text-destructive">Lewat ETA, belum check-in</p>
+              <p className="text-[11px] text-muted-foreground">Perlu ditindaklanjuti</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-black tabular-nums text-destructive">{overdue}</span>
+              <span className="text-[11px] text-destructive">PO</span>
+              <svg className="h-4 w-4 text-destructive transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+            </div>
+          </Link>
+        )}
       </div>
     </section>
   );

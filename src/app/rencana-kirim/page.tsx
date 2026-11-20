@@ -334,7 +334,9 @@ export default function RencanaKirimPage() {
       const range = dateRangeFor(filterDate, dateFrom, dateTo);
       if (range.from) filterParams.date_from = range.from;
       if (range.to) filterParams.date_to = range.to;
-      if (etaFilter) {
+      if (etaFilter === 'overdue') {
+        filterParams.eta_overdue = true;
+      } else if (etaFilter) {
         const etaDay = etaFilter === 'tomorrow'
           ? addDaysYmd(toYmd(new Date()), 1)
           : toYmd(new Date());
@@ -360,7 +362,7 @@ export default function RencanaKirimPage() {
 
   useEffect(() => {
     const eta = new URLSearchParams(window.location.search).get('eta');
-    if (eta === 'today' || eta === 'tomorrow') {
+    if (eta === 'today' || eta === 'tomorrow' || eta === 'overdue') {
       setEtaFilter(eta);
       setPage(1);
     }
@@ -896,7 +898,11 @@ export default function RencanaKirimPage() {
           <div className={calendarOpen ? 'lg:col-span-2' : 'lg:col-span-1'}>
             {etaFilter && (
               <div className="mb-3 flex items-center gap-2 rounded-xl border border-info/30 bg-info/5 px-4 py-2.5 text-sm text-foreground">
-                <span>Menampilkan rencana tiba <strong className="text-info">{etaFilter === 'today' ? 'hari ini' : 'besok'}</strong></span>
+                <span>
+                  {etaFilter === 'overdue'
+                    ? <>Menampilkan <strong className="text-destructive">ETA terlewat & belum check-in</strong></>
+                    : <>Menampilkan rencana tiba <strong className="text-info">{etaFilter === 'today' ? 'hari ini' : 'besok'}</strong></>}
+                </span>
                 <button onClick={() => setEtaFilter('')} className="ml-auto text-xs font-bold text-info hover:underline">Hapus filter</button>
               </div>
             )}

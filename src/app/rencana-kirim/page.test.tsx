@@ -377,3 +377,23 @@ describe('Rencana Kirim — deep link ETA dari dashboard', () => {
     expect(screen.getByText(/Menampilkan rencana tiba/)).toBeInTheDocument();
   });
 });
+
+describe('Rencana Kirim — deep link ETA terlewat', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    list.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
+  });
+
+  afterEach(() => window.history.pushState({}, '', '/'));
+
+  it('?eta=overdue memfilter ETA terlewat yang belum check-in', async () => {
+    window.history.pushState({}, '', '/?eta=overdue');
+    render(<RencanaKirimPage />);
+
+    await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ eta_overdue: true })));
+    expect(screen.getByText(/ETA terlewat & belum check-in/)).toBeInTheDocument();
+  });
+});
