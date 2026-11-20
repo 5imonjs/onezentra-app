@@ -46,6 +46,7 @@ function row(overrides: Record<string, unknown> = {}) {
   return {
     id: 7,
     rkh_date: '2026-11-18',
+    eta_date: '2026-11-19',
     po_transporter: 'PO-DETAIL-01',
     driver_name: 'Andi',
     nopol: 'B 1234 ABC',
@@ -199,4 +200,16 @@ describe('RencanaKirimReportPage — detail dokumen', () => {
     expect(detailTable.querySelector('thead')).toHaveClass('sticky', 'top-0');
     expect(detailTable.parentElement).toHaveClass('overflow-auto', 'max-h-[420px]');
   });
+});
+
+it('menampilkan kolom Rencana Tiba dan filter berbasis ETA', async () => {
+  render(<RencanaKirimReportPage />);
+
+  expect(await screen.findByRole('columnheader', { name: 'Rencana Tiba' })).toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText('Basis Tanggal'), { target: { value: 'eta' } });
+  fireEvent.change(screen.getByLabelText('Dari Tanggal'), { target: { value: '2026-11-19' } });
+  fireEvent.click(await screen.findByRole('button', { name: /Terapkan Filter/ }));
+
+  await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ eta_from: '2026-11-19' })));
 });

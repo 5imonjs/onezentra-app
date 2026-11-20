@@ -326,7 +326,7 @@ describe('Rencana Kirim — rencana tiba terpisah dari RKH', () => {
 
     render(<RencanaKirimPage />);
 
-    expect(await screen.findByText('Rencana Tiba')).toBeInTheDocument();
+    expect(await screen.findByRole('columnheader', { name: 'Rencana Tiba' })).toBeInTheDocument();
     expect(screen.getAllByText('2026-11-23').length).toBeGreaterThan(0);
   });
 });
@@ -395,5 +395,24 @@ describe('Rencana Kirim — deep link ETA terlewat', () => {
 
     await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ eta_overdue: true })));
     expect(screen.getByText(/ETA terlewat & belum check-in/)).toBeInTheDocument();
+  });
+});
+
+describe('Rencana Kirim — kalender RKH vs ETA', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    list.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
+  });
+
+  it('bisa mengganti titik kalender ke basis Rencana Tiba', async () => {
+    render(<RencanaKirimPage />);
+    await waitFor(() => expect(list).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rencana Tiba' }));
+
+    expect(screen.getByText(/Titik kalender mengikuti Rencana Tiba/)).toBeInTheDocument();
   });
 });
