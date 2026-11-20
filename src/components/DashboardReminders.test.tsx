@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardReminders from './DashboardReminders';
 
@@ -57,6 +57,23 @@ describe('DashboardReminders', () => {
     await waitFor(() => expect(remindersList).toHaveBeenCalled());
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('memuat ulang reminder tiap menit selama halaman terbuka', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<DashboardReminders />);
+      await act(async () => { await Promise.resolve(); });
+      expect(remindersList).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        vi.advanceTimersByTime(60_000);
+        await Promise.resolve();
+      });
+      expect(remindersList).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('menampilkan error dan tombol coba lagi', async () => {
