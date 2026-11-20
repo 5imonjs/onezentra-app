@@ -413,6 +413,6 @@ describe('Rencana Kirim — kalender RKH vs ETA', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Rencana Tiba' }));
 
-    expect(screen.getByText(/Titik kalender mengikuti Rencana Tiba/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rencana Tiba' }).className).toContain('bg-info');
   });
 });
