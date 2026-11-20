@@ -72,6 +72,7 @@ function fmtDateTime(v: string | null | undefined): string {
 export default function GatePage() {
   const { hasPermission } = useAuthStore();
   const [items, setItems] = useState<GateTransaction[]>([]);
+  const [quickScanOpen, setQuickScanOpen] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -239,8 +240,9 @@ export default function GatePage() {
   return (
     <DashboardLayout>
       <div className="space-y-5">
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+        <div className={`grid grid-cols-1 gap-5 transition-all duration-300 ${quickScanOpen ? 'lg:grid-cols-5' : 'lg:grid-cols-1'}`}>
           {/* Quick Scan — panel pencarian + aksi gate */}
+          {quickScanOpen && (
           <div className="lg:col-span-2">
             <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
               <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -317,7 +319,8 @@ export default function GatePage() {
               </div>
             </section>
           </div>
-          <div className="lg:col-span-3">
+          )}
+          <div className={quickScanOpen ? 'lg:col-span-3' : 'lg:col-span-1'}>
             <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
               <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -329,6 +332,17 @@ export default function GatePage() {
                     <p className="mt-0.5 text-xs text-slate-400">{totalRows} transaksi tercatat</p>
                   </div>
                 </div>
+                <button
+                  onClick={() => setQuickScanOpen((open) => !open)}
+                  aria-label={quickScanOpen ? 'Sembunyikan quick scan' : 'Tampilkan quick scan'}
+                  aria-expanded={quickScanOpen}
+                  className="btn-secondary shrink-0 text-xs"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d={quickScanOpen ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} /></svg>
+                    {quickScanOpen ? 'Tutup Quick Scan' : 'Buka Quick Scan'}
+                  </span>
+                </button>
                 <div className="w-full sm:w-72">
                   <SearchInput
                     value={search}

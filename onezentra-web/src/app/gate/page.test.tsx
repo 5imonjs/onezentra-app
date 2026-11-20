@@ -88,3 +88,24 @@ describe('GatePage — peringatan izin hanya saat aksi benar-benar tidak tersedi
     expect(screen.getByText(permissionAlert)).toBeInTheDocument();
   });
 });
+
+describe('GatePage — panel Quick Scan', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hasPermission.mockReturnValue(true);
+    list.mockResolvedValue({ data: { data: [], last_page: 1, total: 0 } });
+    stats.mockResolvedValue({ data: { data: { total: 0, hari_ini: 0, terjadwal: 0, selesai: 0 } } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+  });
+
+  it('bisa ditutup agar tabel melebar lalu dibuka lagi', async () => {
+    render(<GatePage />);
+    expect(await screen.findByText('Quick Scan')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sembunyikan quick scan' }));
+    expect(screen.queryByText('Quick Scan')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tampilkan quick scan' }));
+    expect(screen.getByText('Quick Scan')).toBeInTheDocument();
+  });
+});
