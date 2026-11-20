@@ -7,6 +7,7 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/core/theme/theme_provider.dart';
 import 'package:onezentra_mobile/features/auth/models/auth_models.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
+import 'package:onezentra_mobile/features/home/widgets/reminder_banner.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Home Page - the only landing after login.
@@ -210,7 +211,9 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildHeroHeader(theme, user),
-                      const SizedBox(height: AppTheme.space6),
+                      const SizedBox(height: AppTheme.space4),
+                      ReminderBanner(),
+                      const SizedBox(height: AppTheme.space4),
                       if (auth.refreshFailed && hasMenu) ...[
                         _buildRefreshBanner(theme, auth),
                         const SizedBox(height: AppTheme.space4),

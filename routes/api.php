@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\ReceivingController;
 use App\Http\Controllers\Api\V1\ReceivingItemController;
 use App\Http\Controllers\Api\V1\RegionController;
 use App\Http\Controllers\Api\V1\RegionDepoValidationController;
+use App\Http\Controllers\Api\V1\ReminderController;
 use App\Http\Controllers\Api\V1\RencanaKirimController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RetribusiRateController;
@@ -108,6 +109,11 @@ Route::prefix('v1')->group(function () {
 
     Route::get('dashboard/summary', [DashboardController::class, 'summary'])
         ->middleware(['auth:sanctum', 'permission:dashboard.view', 'throttle:600,1,api']);
+
+    // Reminder keterlambatan proses (web + mobile memakai kontrak yang sama).
+    // Group difilter per permission di controller, jadi tidak ada gate tambahan.
+    Route::get('reminders', [ReminderController::class, 'index'])
+        ->middleware(['auth:sanctum', 'throttle:600,1,api']);
 
     Route::prefix('roles')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
         Route::get('/', [RoleController::class, 'index'])->middleware('permission:roles.view');
