@@ -441,11 +441,6 @@ export default function GatePage() {
                 </table>
               </div>
 
-                {/* Penjelasan untuk menghindari ambiguitas */}
-                <p className="text-xs text-muted-foreground mt-2">
-                  <strong>Catatan:</strong> Semua transaksi gate adalah check-in kedatangan (INBOUND). <span className="font-medium ml-2">Status</span> = Status Rencana Kirim (COMPLETED = semua item sudah diverifikasi & diterima di depo).
-                </p>
-
               {/* Mobile cards */}
               <div className="divide-y divide-gray-100 lg:hidden max-h-[560px] overflow-y-auto">
                 {loading ? (
