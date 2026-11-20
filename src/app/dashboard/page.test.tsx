@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardPage from './page';
 
@@ -110,5 +110,27 @@ describe('DashboardPage — tata letak chart', () => {
     render(<DashboardPage />);
 
     expect(screen.queryByLabelText('Filter depo dashboard')).not.toBeInTheDocument();
+  });
+});
+
+describe('DashboardPage — mode ringkas', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hasPermission.mockImplementation(() => true);
+    depoList.mockResolvedValue({ data: { data: [] } });
+  });
+
+  it('tombol Mode Ringkas menyembunyikan panel diagnostik', () => {
+    render(<DashboardPage />);
+    expect(screen.getByTestId('activity-chart')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mode Ringkas' }));
+
+    expect(screen.queryByTestId('activity-chart')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('live-activity')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tampilan Lengkap' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tampilan Lengkap' }));
+    expect(screen.getByTestId('activity-chart')).toBeInTheDocument();
   });
 });

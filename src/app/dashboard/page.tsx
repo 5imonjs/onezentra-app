@@ -7,8 +7,7 @@ import DashboardBiayaQueue from '@/components/DashboardBiayaQueue';
 import DashboardLiveActivity from '@/components/DashboardLiveActivity';
 import DashboardOpnameChart from '@/components/DashboardOpnameChart';
 import DashboardRecent from '@/components/DashboardRecent';
-import DashboardDuration from '@/components/DashboardDuration';
-import DashboardIncoming from '@/components/DashboardIncoming';
+import DashboardOverview from '@/components/DashboardOverview';
 import DashboardReminders from '@/components/DashboardReminders';
 import PendingActions from '@/components/PendingActions';
 import RencanaKirimStatusChart from '@/components/RencanaKirimStatusChart';
@@ -35,6 +34,7 @@ export default function DashboardPage() {
   const [depos, setDepos] = useState<DepoOption[]>([]);
   const [kodeDepo, setKodeDepo] = useState('');
   const [depotError, setDepotError] = useState('');
+  const [compact, setCompact] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30_000);
@@ -59,10 +59,14 @@ export default function DashboardPage() {
 
   useEffect(() => { loadDepos(); }, [loadDepos]);
 
-  const blocks = useMemo(
+  const allBlocks = useMemo(
     () => visibleDashboardBlocks(user?.level, hasPermission),
     [user?.level, hasPermission],
   );
+  // Mode ringkas: hanya blok yang butuh keputusan/tindakan langsung.
+  const blocks = compact
+    ? allBlocks.filter((key) => key === 'pending' || key === 'biayaQueue')
+    : allBlocks;
 
   const canSeeActivityChart = hasPermission('users.view');
   const bothCharts = canSeeActivityChart && canSeeRencanaKirimChart;
@@ -153,6 +157,15 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+            <button
+              onClick={() => setCompact((v) => !v)}
+              aria-pressed={compact}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3 text-xs font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d={compact ? 'M4 6h16M4 12h16M4 18h16' : 'M4 6h16M4 12h10M4 18h16'} /></svg>
+              {compact ? 'Tampilan Lengkap' : 'Mode Ringkas'}
+            </button>
           {canFilterDepot && (
             <label className="flex items-center gap-2 self-start rounded-xl border border-white/15 bg-white/10 px-3 py-2 backdrop-blur-sm transition-colors hover:bg-white/15 lg:self-auto">
               <svg className="h-4 w-4 shrink-0 text-ink-fg-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
@@ -170,11 +183,11 @@ export default function DashboardPage() {
               </select>
             </label>
           )}
+          </div>
         </div>
       </section>
 
-      <DashboardDuration />
-      <DashboardIncoming />
+      <DashboardOverview />
       <DashboardReminders kodeDepo={kodeDepo || undefined} />
 
       {depotError && (
