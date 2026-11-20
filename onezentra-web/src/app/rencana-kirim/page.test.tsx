@@ -74,6 +74,7 @@ async function openItemsModal(): Promise<HTMLInputElement> {
   // sedangkan reset awal mengisinya dengan string kosong.
   fireEvent.change(await screen.findByPlaceholderText('cth: PO-2026-0001'), { target: { value: 'PO-TES-001' } });
   fireEvent.change(screen.getByLabelText(/Tanggal Rencana Kirim/), { target: { value: '2026-10-23' } });
+  fireEvent.change(screen.getByLabelText(/Rencana Tiba di Depo/), { target: { value: '2026-10-25' } });
   fireEvent.click(screen.getByRole('button', { name: /Selanjutnya/ }));
 
   // Langkah 2 — Kendaraan.
@@ -327,5 +328,29 @@ describe('Rencana Kirim — rencana tiba terpisah dari RKH', () => {
 
     expect(await screen.findByText('Rencana Tiba')).toBeInTheDocument();
     expect(screen.getAllByText('2026-11-23').length).toBeGreaterThan(0);
+  });
+});
+
+describe('Rencana Kirim — ETA wajib diisi planner', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    list.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
+  });
+
+  it('tombol lanjut ditolak bila Rencana Tiba belum diisi', async () => {
+    render(<RencanaKirimPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Buat rencana kirim baru' }));
+
+    fireEvent.change(await screen.findByPlaceholderText('cth: PO-2026-0001'), { target: { value: 'PO-WAJIB-ETA' } });
+    fireEvent.change(screen.getByLabelText(/Tanggal Rencana Kirim/), { target: { value: '2026-11-21' } });
+    fireEvent.click(screen.getByRole('button', { name: /Selanjutnya/ }));
+
+    expect(notifyGlobal).toHaveBeenCalledWith(
+      expect.stringContaining('Rencana Tiba di Depo'),
+      'error',
+    );
   });
 });

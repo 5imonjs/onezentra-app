@@ -175,10 +175,46 @@ class RencanaKirimIndexFilterTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors(['eta_date']);
     }
 
+    public function test_tidak_bisa_dijadwalkan_tanpa_rencana_tiba(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'PO-ETA-SCHED', 'status' => 'DRAFT',
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->addDay()->toDateString(),
+        ]);
+
+        // Simulasikan data lama yang benar-benar belum punya ETA.
+        RencanaKirim::whereKey($rk->id)->update(['eta_date' => null]);
+
+        $this->postJson("/api/v1/rencana-kirim/{$rk->id}/schedule")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['eta_date']);
+    }
+
+    public function test_bisa_dijadwalkan_setelah_rencana_tiba_diisi(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'PO-ETA-OK', 'status' => 'DRAFT',
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $user->id,
+            'rkh_date' => now()->addDay()->toDateString(),
+            'eta_date' => now()->addDays(2)->toDateString(),
+        ]);
+
+        $this->postJson("/api/v1/rencana-kirim/{$rk->id}/schedule")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'SCHEDULED');
+    }
+
     private function viewer(): User
     {
         $role = Role::firstOrCreate(['slug' => 'rk_filter_view'], ['name' => 'RK Filter View']);
-        foreach (['rencana_kirim.view', 'rencana_kirim.create', 'depot.view_all'] as $slug) {
+        foreach (['rencana_kirim.view', 'rencana_kirim.create', 'rencana_kirim.edit', 'depot.view_all'] as $slug) {
             $perm = Permission::firstOrCreate(
                 ['slug' => $slug],
                 ['name' => $slug, 'menu_group' => 'Rencana Kirim']

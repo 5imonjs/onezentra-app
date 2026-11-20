@@ -38,6 +38,17 @@ class RencanaKirim extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        // Setiap rencana kirim harus punya "rencana tiba". Klien lama/import
+        // yang tidak mengirim ETA mendapat default dari RKH (atau hari ini).
+        static::creating(function (self $rencana): void {
+            if (blank($rencana->eta_date)) {
+                $rencana->eta_date = $rencana->rkh_date ?? now()->toDateString();
+            }
+        });
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(RencanaKirimItem::class);

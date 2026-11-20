@@ -449,6 +449,14 @@ class RencanaKirimController extends Controller
     {
         $this->authorizeDepot($rencanaKirim);
 
+        // ETA wajib sebelum rencana dinyatakan siap: user lain memakai tanggal
+        // ini untuk mengetahui kapan barang akan diterima di depo.
+        if (blank($rencanaKirim->eta_date)) {
+            throw ValidationException::withMessages([
+                'eta_date' => ['Isi Rencana Tiba di Depo sebelum menjadwalkan rencana kirim.'],
+            ]);
+        }
+
         $rencanaKirim = DB::transaction(function () use ($rencanaKirim): RencanaKirim {
             $locked = RencanaKirim::whereKey($rencanaKirim->id)->lockForUpdate()->firstOrFail();
             $this->assertTransition($locked, 'SCHEDULED');

@@ -790,7 +790,7 @@ export default function RencanaKirimPage() {
     return byIndex;
   }, [createItems]);
   const sectionComplete = {
-    dokumen: !!(createForm.po_transporter?.trim() && createForm.rkh_date),
+    dokumen: !!(createForm.po_transporter?.trim() && createForm.rkh_date && createForm.eta_date),
     kendaraan: !!(createForm.driver_name?.trim() && createForm.nopol?.trim() && createForm.expedisi?.trim() && createForm.jenis_kendaraan),
     pengirim: !!(createForm.shipper_name?.trim() && createForm.nama_depo?.trim() && createForm.kode_depo?.trim()),
     // Duplikat tidak boleh dianggap "selesai" — kalau tidak, satu produk bisa
@@ -1450,7 +1450,7 @@ export default function RencanaKirimPage() {
                 <p className="text-[10px] text-muted-foreground mt-0.5">Tanggal pengiriman rencana</p>
               </div>
               <div>
-                <label htmlFor="f-eta-date" className="block text-xs font-medium text-muted-foreground mb-1">Rencana Tiba di Depo</label>
+                <label htmlFor="f-eta-date" className="block text-xs font-medium text-muted-foreground mb-1">Rencana Tiba di Depo <span className="text-destructive">*</span></label>
                 <input id="f-eta-date" type="date" value={createForm.eta_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, eta_date: e.target.value }))} className="input-field text-sm py-2" />
                 <p className="mt-1 text-[11px] text-info">Rencana tiba = kapan barang diharapkan sampai di depo tujuan. Berbeda dengan RKH (rencana berangkat).</p>
               </div>
@@ -1637,7 +1637,7 @@ export default function RencanaKirimPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (currentStep === 1 && !sectionComplete.dokumen) { notifyGlobal('Lengkapi PO Transporter & Tanggal Rencana Kirim dulu', 'error'); return; }
+                  if (currentStep === 1 && !sectionComplete.dokumen) { notifyGlobal('Lengkapi PO Transporter, Tanggal Rencana Kirim & Rencana Tiba di Depo dulu', 'error'); return; }
                   if (currentStep === 2 && !sectionComplete.kendaraan) { notifyGlobal('Lengkapi Nama Driver, Nopol, Expedisi & Jenis Kendaraan dulu', 'error'); return; }
                   if (currentStep === 3 && !sectionComplete.pengirim) { notifyGlobal('Lengkapi Asal Pengirim & Nama Depo dulu', 'error'); return; }
                   setCurrentStep(s => Math.min(5, s + 1));
