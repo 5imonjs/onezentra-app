@@ -7,7 +7,6 @@ const { notifyGlobal, api } = vi.hoisted(() => ({
   api: {
     verifyItem: vi.fn(() => Promise.resolve({ data: {} })),
     start: vi.fn(() => Promise.resolve({ data: {} })),
-    submit: vi.fn(() => Promise.resolve({ data: {} })),
     approve: vi.fn(() => Promise.resolve({ data: {} })),
     revise: vi.fn(() => Promise.resolve({ data: {} })),
     cancel: vi.fn(() => Promise.resolve({ data: {} })),
@@ -171,62 +170,62 @@ describe('SessionDetailModal — UI sesi opname sesuai praktik WMS', () => {
     expect(fd.has('disposition')).toBe(false);
   });
 
-  it('penghitung mengirim sesi (bukan menyelesaikan sendiri): tombol Kirim Sesi terkunci sampai semua baris terhitung', async () => {
-    renderModal([
-      item(1, { verified_at: '2026-10-09T02:00:00Z', qty_fisik_crt: 50, expected_crt: '50', disposition: 'LANJUT' }),
-      item(2),
-    ]);
-
-    // Progress bar: 1 dari 2 terhitung.
-    expect(screen.getByText(/1\/2 terhitung · sisa 1/)).toBeInTheDocument();
-    const submit = screen.getByRole('button', { name: /Kirim Sesi \(sisa 1\)/ });
-    expect(submit).toBeDisabled();
-
-    // Approve tidak boleh tersedia bagi penghitung saat berjalan.
-    expect(screen.queryByRole('button', { name: 'Setujui' })).not.toBeInTheDocument();
-  });
-
-  it('submit: konfirmasi kirim memanggil endpoint /submit (koreksi baris monitoring menunggu approve)', async () => {
-    renderModal([
-      item(1, { verified_at: '2026-10-09T02:00:00Z', qty_fisik_crt: 50, expected_crt: '50', disposition: 'LANJUT' }),
-      item(2, { verified_at: '2026-10-09T02:05:00Z', qty_fisik_crt: 12, expected_crt: '12', disposition: 'DISPOSAL' }),
-    ]);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Kirim Sesi' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Ya, kirim' }));
-
-    await vi.waitFor(() => expect(api.submit).toHaveBeenCalledWith(1));
-    expect(api.approve).not.toHaveBeenCalled();
-  });
-
-  it('PENDING_APPROVAL: approver melihat Setujui/Minta Revisi, penghitung tanpa aksi hitung; alasan revisi wajib', async () => {
+  it('tidak ada tombol kirim: validasi menunggu sampai semua baris terhitung', () => {
     renderModal(
-      [item(1, { verified_at: '2026-10-09T02:00:00Z', qty_fisik_crt: 50, expected_crt: '50', disposition: 'LANJUT' })],
-      { status: 'PENDING_APPROVAL', canApprove: true }
+      [
+        item(1, { verified_at: '2026-10-09T02:00:00Z', qty_fisik_crt: 50, expected_crt: '50', disposition: 'LANJUT' }),
+        item(2),
+      ],
+      { canApprove: true }
     );
 
-    // Form hitung terkunci setelah dikirim.
-    expect(screen.queryByRole('button', { name: 'Scan label' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Setujui' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Minta Revisi' })).toBeInTheDocument();
+    expect(screen.getByText(/1\/2 terhitung · sisa 1/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Kirim Sesi/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Validasi (sisa 1)' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Minta Revisi' })).toBeDisabled();
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Setujui' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Ya, setujui' }));
+  it('validasi langsung memanggil endpoint /approve tanpa tahap kirim', async () => {
+    renderModal(
+      [
+        item(1, { verified_at: '2026-10-09T02:00:00Z', qty_fisik_crt: 50, expected_crt: '50', disposition: 'LANJUT' }),
+        item(2, { verified_at: '2026-10-09T02:05:00Z', qty_fisik_crt: 12, expected_crt: '12', disposition: 'DISPOSAL' }),
+      ],
+      { canApprove: true }
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Validasi Hasil' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ya, validasi' }));
 
     await vi.waitFor(() => expect(api.approve).toHaveBeenCalledWith(1));
   });
 
-  it('approver tanpa aksi approve di status selain PENDING_APPROVAL', () => {
-    renderModal([item(1)], { status: 'IN_PROGRESS', canApprove: true });
+  it('IN_PROGRESS lengkap: approver melihat Validasi/Minta Revisi', async () => {
+    renderModal(
+      [item(1, { verified_at: '2026-10-09T02:00:00Z', qty_fisik_crt: 50, expected_crt: '50', disposition: 'LANJUT' })],
+      { canApprove: true }
+    );
 
-    expect(screen.queryByRole('button', { name: 'Setujui' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Validasi Hasil' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Minta Revisi' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Validasi Hasil' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ya, validasi' }));
+
+    await vi.waitFor(() => expect(api.approve).toHaveBeenCalledWith(1));
+  });
+
+  it('approver tanpa aksi validasi pada sesi sudah disetujui', () => {
+    renderModal([item(1)], { status: 'APPROVED', canApprove: true });
+
+    expect(screen.queryByRole('button', { name: 'Validasi Hasil' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Minta Revisi' })).not.toBeInTheDocument();
   });
 
   it('revise: modal minta alasan, tombol aktif minimal 5 karakter', async () => {
     renderModal(
       [item(1, { verified_at: '2026-10-09T02:00:00Z', qty_fisik_crt: 50, expected_crt: '50', disposition: 'LANJUT' })],
-      { status: 'PENDING_APPROVAL', canApprove: true }
+      { canApprove: true }
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Minta Revisi' }));
@@ -301,6 +300,6 @@ describe('SessionDetailModal — UI sesi opname sesuai praktik WMS', () => {
     expect(screen.queryByLabelText('Fisik CRT *')).not.toBeInTheDocument();
     // Panduan status + stepper alur (langkah berjalan = Mulai).
     expect(screen.getByText(/klik "Mulai Sesi" dulu/)).toBeInTheDocument();
-    expect(screen.getByText('Hitung fisik & disposisi')).toBeInTheDocument();
+    expect(screen.getByText('Hitung fisik')).toBeInTheDocument();
   });
 });

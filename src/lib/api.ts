@@ -562,7 +562,6 @@ export const opnameSessions = {
   },
   // Base praktik: kirim sesi (penghitung) lalu approve/revise (approver).
   // Koreksi wave baru berlaku saat /approve.
-  submit: (id: number) => apiClient.post(`/opname-sessions/${id}/submit`),
   approve: (id: number) => apiClient.post(`/opname-sessions/${id}/approve`),
   revise: (id: number, reason: string) => apiClient.post(`/opname-sessions/${id}/revise`, { reason }),
   cancel: (id: number, notes?: string) => apiClient.post(`/opname-sessions/${id}/cancel`, notes ? { notes } : {}),

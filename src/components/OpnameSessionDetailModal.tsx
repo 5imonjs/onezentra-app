@@ -88,25 +88,24 @@ interface SessionHistoryEntry {
   actor?: { full_name: string } | null;
 }
 
-// Alur baku sesi dalam 5 langkah (dihilangkan untuk CANCELLED):
-// Buat & tugaskan → Mulai → Hitung fisik + disposisi → Kirim → Setujui.
-// (disposisi inni step 4 juga tombol kecil L / R / D per row).
+// Alur baku sesi (dihilangkan untuk CANCELLED):
+// Buat & tugaskan → Mulai → Hitung fisik → Validasi (web). Petugas hanya
+// menginput; tidak ada langkah "minta persetujuan" dari sisi lapangan.
 const FLOW_STEPS = [
   { key: 'create', label: 'Buat & tugaskan' },
   { key: 'start', label: 'Mulai' },
-  { key: 'count', label: 'Hitung fisik & disposisi' },
-  { key: 'submit', label: 'Kirim' },
-  { key: 'approve', label: 'Setujui' },
+  { key: 'count', label: 'Hitung fisik' },
+  { key: 'approve', label: 'Validasi (web)' },
 ] as const;
 
 function FlowStepper({ status }: { status: string }) {
   const stepFor: Record<string, number> = {
     OPEN: 2,
     IN_PROGRESS: 3,
-    PENDING_APPROVAL: 5,
+    PENDING_APPROVAL: 4,
     REVISI: 3,
-    APPROVED: 6,
-    COMPLETED: 6,
+    APPROVED: 5,
+    COMPLETED: 5,
   };
   const current = stepFor[status] ?? 2;
   return (
@@ -139,10 +138,10 @@ function FlowStepper({ status }: { status: string }) {
 // Panduan langkah berikutnya per status — menghilangkan tebakan user.
 const STATUS_HINTS: Record<string, string> = {
   OPEN: 'Belum dimulai — klik "Mulai Sesi" dulu; setelah itu petugas bisa scan label & hitung tiap baris.',
-  IN_PROGRESS: 'Daftar batch + qty acuan tampil di bawah — untuk tiap baris: klik "Isi Hitungan" (atau scan) lalu isi qty fisik, atau "Tandai Habis" bila batch kosong di lapangan. Baris yang sudah terhitung bisa diedit ulang. Sesi dikirim setelah semua baris tuntas.',
-  PENDING_APPROVAL: 'Menunggu persetujuan approver independen — koreksi baris monitoring baru berlaku setelah disetujui. Penghitung tidak boleh menyetujui hitungannya sendiri.',
+  IN_PROGRESS: 'Daftar batch + qty acuan tampil di bawah — untuk tiap baris: klik "Isi Hitungan" (atau scan) lalu isi qty fisik, atau "Tandai Habis" bila batch kosong di lapangan. Baris yang sudah terhitung bisa diedit ulang. Setelah semua baris tuntas, validasi dilakukan dari web.',
+  PENDING_APPROVAL: 'Sesi lama yang menunggu divalidasi. Koreksi baris monitoring baru berlaku setelah disetujui.',
   APPROVED: 'Disetujui: koreksi tiap baris monitoring tercatat & tervalidasi, label lot terbit, selisih siap ditindak (retur/disposal).',
-  REVISI: 'Approver meminta perbaikan — lihat catatan, perbaiki baris yang salah, lalu kirim ulang sesi.',
+  REVISI: 'Approver meminta perbaikan — lihat catatan, perbaiki baris yang salah, lalu minta validasi ulang dari web.',
   CANCELLED: 'Sesi dibatalkan — tidak ada hasil yang ditulis ke baris monitoring. Setelah qty dikoreksi lewat Inbound/Monitoring Kedaluwarsa, buat sesi baru untuk baris monitoring yang sama agar dihitung ulang dengan snapshot terbaru.',
 };
 
@@ -158,7 +157,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
   onChanged: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
-  const [confirm, setConfirm] = useState<null | 'submit' | 'approve' | 'cancel' | 'revise' | 'habis'>(null);
+  const [confirm, setConfirm] = useState<null | 'approve' | 'cancel' | 'revise' | 'habis'>(null);
   const [reviseReason, setReviseReason] = useState('');
   const [showAddWaves, setShowAddWaves] = useState(false);
   // Cari batch: ketik kode / scan kamera. Daftar tersaring ke yang cocok.
@@ -377,22 +376,19 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                 <button onClick={() => act(() => opnameSessions.start(sessionId), 'Sesi dimulai.')} disabled={busy} className="btn-primary text-sm disabled:opacity-50">Mulai Sesi</button>
               )}
               {canEdit && (detail.status === 'IN_PROGRESS' || detail.status === 'REVISI') && (
+                <button onClick={() => setConfirm('cancel')} disabled={busy} className="btn-secondary text-sm disabled:opacity-50">Batalkan</button>
+              )}
+              {canApprove && (detail.status === 'IN_PROGRESS' || detail.status === 'REVISI' || detail.status === 'PENDING_APPROVAL') && (
                 <>
                   <button
-                    onClick={() => setConfirm('submit')}
+                    onClick={() => setConfirm('approve')}
                     disabled={busy || remaining > 0}
-                    title={remaining > 0 ? `Masih ada ${remaining} baris belum terhitung.` : 'Kirim hasil hitung untuk persetujuan'}
+                    title={remaining > 0 ? `Masih ada ${remaining} baris belum terhitung.` : 'Validasi hasil hitung'}
                     className="btn-primary text-sm disabled:opacity-50"
                   >
-                    {remaining > 0 ? `Kirim Sesi (sisa ${remaining})` : 'Kirim Sesi'}
+                    {remaining > 0 ? `Validasi (sisa ${remaining})` : 'Validasi Hasil'}
                   </button>
-                  <button onClick={() => setConfirm('cancel')} disabled={busy} className="btn-secondary text-sm disabled:opacity-50">Batalkan</button>
-                </>
-              )}
-              {canApprove && detail.status === 'PENDING_APPROVAL' && (
-                <>
-                  <button onClick={() => setConfirm('approve')} disabled={busy} className="btn-primary text-sm disabled:opacity-50">Setujui</button>
-                  <button onClick={() => setConfirm('revise')} disabled={busy} className="btn-secondary text-sm disabled:opacity-50">Minta Revisi</button>
+                  <button onClick={() => setConfirm('revise')} disabled={busy || remaining > 0} className="btn-secondary text-sm disabled:opacity-50">Minta Revisi</button>
                 </>
               )}
               {canAdd && open && (
@@ -725,7 +721,6 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
         onConfirm={() => {
           const c = confirm;
           setConfirm(null);
-          if (c === 'submit') act(() => opnameSessions.submit(sessionId), 'Sesi dikirim untuk persetujuan.');
           if (c === 'approve') act(() => opnameSessions.approve(sessionId), 'Sesi disetujui — koreksi berlaku.');
           if (c === 'cancel') act(() => opnameSessions.cancel(sessionId), 'Sesi dibatalkan.');
           if (c === 'revise') setConfirm('revise');
@@ -735,17 +730,15 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
             if (target) markHabis(target);
           }
         }}
-        title={confirm === 'submit' ? 'Kirim Sesi untuk Persetujuan' : confirm === 'approve' ? 'Setujui Stock Opname' : confirm === 'revise' ? 'Minta Revisi' : confirm === 'habis' ? 'Tandai Habis (kosong)' : 'Batalkan Sesi'}
-        message={confirm === 'submit'
-          ? `Semua ${progress.total} baris harus terhitung (kini ${progress.done}). Hasil dikirim ke approver; koreksi baris monitoring berlaku setelah disetujui. Lanjutkan?`
-          : confirm === 'approve'
+        title={confirm === 'approve' ? 'Validasi Stock Opname' : confirm === 'revise' ? 'Minta Revisi' : confirm === 'habis' ? 'Tandai Habis (kosong)' : 'Batalkan Sesi'}
+        message={confirm === 'approve'
             ? 'Koreksi selisih akan diterapkan ke baris monitoring dan baris monitoring menjadi tervalidasi. Penghitung tidak boleh menyetujui hitungannya sendiri. Lanjutkan?'
             : confirm === 'revise'
               ? 'Tuliskan alasan revisi untuk petugas.'
               : confirm === 'habis'
-                ? `Lot ${habisItem?.batch?.batch_number ?? '-'} dicatat FISIK 0 di sesi ini — tidak ada data yang dihapus dari database; koreksi pengurangan berlaku setelah BLC menyetujui sesi. Gunakan hanya bila barang benar-benar tidak ada di depo; barang yang pindah rak tetap dihitung di baris lot ini. Lanjutkan?`
+                ? `Lot ${habisItem?.batch?.batch_number ?? '-'} dicatat FISIK 0 di sesi ini — tidak ada data yang dihapus dari database; koreksi pengurangan berlaku setelah sesi divalidasi. Gunakan hanya bila barang benar-benar tidak ada di depo; barang yang pindah rak tetap dihitung di baris lot ini. Lanjutkan?`
                 : 'Sesi dibatalkan tanpa menulis hasil. Lanjutkan?'}
-        confirmLabel={confirm === 'submit' ? 'Ya, kirim' : confirm === 'approve' ? 'Ya, setujui' : confirm === 'cancel' ? 'Ya, batalkan' : confirm === 'habis' ? 'Ya, tandai habis' : 'Lanjut'}
+        confirmLabel={confirm === 'approve' ? 'Ya, validasi' : confirm === 'cancel' ? 'Ya, batalkan' : confirm === 'habis' ? 'Ya, tandai habis' : 'Lanjut'}
         variant={confirm === 'cancel' || confirm === 'habis' ? 'danger' : 'info'}
       />
 
