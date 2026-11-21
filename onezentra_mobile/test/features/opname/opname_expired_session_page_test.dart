@@ -659,11 +659,14 @@ void main() {
       await tester.tap(find.text('Sesi minggu 02/11/2026'));
       await tester.pumpAndSettle();
 
-      // Keputusan dilakukan di sistem web — mobile hanya informasi.
+      // Keputusan/validasi hanya di web — mobile tidak punya aksi approval.
       expect(
-        find.text('Hasil sudah dikirim — akan dicek di sistem web.'),
+        find.text(
+          'Sesi lama menunggu validasi dari web — koreksi berlaku setelah disetujui.',
+        ),
         findsOneWidget,
       );
+      expect(find.text('Kirim Hasil Opname'), findsNothing);
       expect(find.text('Setujui Sesi'), findsNothing);
       expect(find.text('Revisi Sesi'), findsNothing);
       expect(find.text('Batalkan Sesi'), findsNothing);
@@ -1038,5 +1041,47 @@ void main() {
     expect(find.text('Durasi opname'), findsNothing);
     expect(find.text('0/1 dihitung'), findsOneWidget);
     expect(find.text('Hitung Fisik'), findsOneWidget);
+  });
+
+  testWidgets('input selesai hanya menginformasikan validasi dari web', (
+    tester,
+  ) async {
+    const selesai = OpnameExpiredSessionItem(
+      id: 91,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-777',
+      namaBarang: 'Vitamin Sirup 60ml',
+      batchNumber: 'BATCH-91',
+      expectedCrt: 10,
+      qtyFisikCrt: 10,
+      verifiedAt: '2026-11-21T02:30:00Z',
+    );
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-16',
+          weekEnd: '2026-11-22',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: [selesai],
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 16/11/2026'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1/1 dihitung'), findsOneWidget);
+    expect(
+      find.text('Input selesai — validasi dilakukan dari web.'),
+      findsOneWidget,
+    );
+    expect(find.text('Kirim Hasil Opname'), findsNothing);
+    expect(find.text('Setujui'), findsNothing);
   });
 }

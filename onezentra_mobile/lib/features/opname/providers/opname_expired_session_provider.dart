@@ -189,10 +189,8 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> submit(int id) => _execute(() => _repository.submit(id));
-
-  // approve/revise sengaja tidak ada di mobile: pengecekan hasil dilakukan
-  // di sistem web (pemisahan tugas) agar proses lapangan tidak tertahan.
+  // Kirim/approve/revise sengaja tidak ada di mobile: petugas hanya menginput,
+  // validasi dilakukan di sistem web (pemisahan tugas).
 
   Future<void> cancel(int id, {String? notes}) =>
       _execute(() => _repository.cancel(id, notes: notes));

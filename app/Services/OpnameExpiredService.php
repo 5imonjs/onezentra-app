@@ -1195,7 +1195,9 @@ class OpnameExpiredService
                 $wave->increment('qty_koreksi_pcs', $deltaPcs);
             }
             $wave->update([
-                'koreksi_by' => $lockedSession->submitted_by,
+                // Identitas petugas diambil dari petugas yang ditugaskan —
+                // tahap "kirim" sudah dihapus, jadi submitted_by tidak diisi.
+                'koreksi_by' => $lockedSession->assigned_to,
                 'koreksi_at' => $lockedSession->submitted_at ?? now(),
                 'validated_by' => $approver->id,
                 'validated_at' => now(),

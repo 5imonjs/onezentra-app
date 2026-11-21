@@ -121,10 +121,9 @@ class OpnameExpiredSessionTest extends TestCase
     }
 
     /**
-     * Sesi sudah dimulai, kedua item dihitung, dan sesi dikirim —
-     * kandidat siap approve.
+     * Sesi sudah dimulai dan kedua item dihitung — kandidat siap divalidasi.
      */
-    private function countedAndSubmittedSession(): OpnameExpiredSession
+    private function countedSession(): OpnameExpiredSession
     {
         $session = $this->makeSession();
 
@@ -140,8 +139,6 @@ class OpnameExpiredSessionTest extends TestCase
                 'disposition' => 'RETUR',
             ])->assertOk();
         }
-
-        $this->postJson("/api/v1/opname-sessions/{$session->id}/submit")->assertOk();
 
         return $session->fresh()->load('items.wave');
     }
@@ -241,14 +238,16 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertSame('ACTIVE', $batch->status);
     }
 
-    public function test_full_flow_count_submit_approve_applies_wave_corrections(): void
+    public function test_full_flow_count_and_direct_approve_applies_wave_corrections(): void
     {
         $session = $this->makeSession();
 
-        // Sesi belum bisa dikirim: 2 baris belum dihitung.
+        // Validasi ditolak selama masih ada baris belum dihitung.
         Sanctum::actingAs($this->field);
         $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
-        $this->postJson("/api/v1/opname-sessions/{$session->id}/submit")->assertStatus(422);
+        Sanctum::actingAs($this->approver);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertStatus(422);
+        Sanctum::actingAs($this->field);
 
         $item = $session->items()->first();
         $item2 = $session->items()->whereKeyNot($item->id)->first();
@@ -266,10 +265,9 @@ class OpnameExpiredSessionTest extends TestCase
             'disposition' => 'LANJUT',
         ])->assertOk();
 
-        $this->postJson("/api/v1/opname-sessions/{$session->id}/submit")->assertOk();
-        $this->assertSame('PENDING_APPROVAL', $session->fresh()->status);
+        $this->assertSame('IN_PROGRESS', $session->fresh()->status);
 
-        // Selama menunggu persetujuan wave masih terkunci.
+        // Selama sesi aktif wave masih terkunci.
         Sanctum::actingAs($this->supervisor);
         $waveIds = $session->items->pluck('wave_id')->all();
         $this->postJson('/api/v1/opname-sessions', [
@@ -292,7 +290,7 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertNotNull($wave->validated_at);
         $this->assertSame('APPROVED', $session->fresh()->status);
 
-        // Sesi keputusan final: penghitungan & kirim ulang ditolak.
+        // Sesi keputusan final: penghitungan ulang ditolak.
         Sanctum::actingAs($this->field);
         $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
             'qty_fisik_crt' => 1,
@@ -302,20 +300,20 @@ class OpnameExpiredSessionTest extends TestCase
 
         $history = ApprovalHistory::where('subject_type', OpnameExpiredSession::class)->where('subject_id', $session->id)
             ->orderBy('id')->pluck('action')->all();
-        $this->assertSame(['submit', 'approve'], $history);
+        $this->assertSame(['approve'], $history);
     }
 
     public function test_counter_cannot_approve_own_counting(): void
     {
-        $session = $this->countedAndSubmittedSession();
+        $session = $this->countedSession();
 
         Sanctum::actingAs($this->field);
         $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertForbidden();
-        $this->assertSame('PENDING_APPROVAL', $session->fresh()->status);
+        $this->assertSame('IN_PROGRESS', $session->fresh()->status);
         $this->assertNull($session->items->first()->wave->fresh()->validated_by);
     }
 
-    public function test_approve_only_from_pending_status(): void
+    public function test_approve_rejects_unfinished_session(): void
     {
         $session = $this->makeSession();
 
@@ -325,7 +323,7 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertSame('OPEN', $session->fresh()->status);
     }
 
-    public function test_reject_returns_session_to_officer_then_resubmit_and_approve(): void
+    public function test_revise_returns_session_to_officer_then_direct_approve(): void
     {
         $session = $this->makeSession();
 
@@ -339,7 +337,6 @@ class OpnameExpiredSessionTest extends TestCase
                 'disposition' => 'LANJUT',
             ])->assertOk();
         }
-        $this->postJson("/api/v1/opname-sessions/{$session->id}/submit")->assertOk();
 
         // Approver menolak: alasan wajib.
         Sanctum::actingAs($this->approver);
@@ -354,7 +351,7 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertNull($session->items->first()->wave->fresh()->validated_by);
 
         // Petugas memperbaiki: item pertama yang dihitung ulang mengembalikan
-        // sesi ke IN_PROGRESS, kemudian kirim ulang dan disetujui.
+        // sesi ke IN_PROGRESS, lalu divalidasi langsung oleh approver.
         Sanctum::actingAs($this->field);
         $item = $session->items()->first();
         $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
@@ -365,7 +362,6 @@ class OpnameExpiredSessionTest extends TestCase
             'disposition' => 'RETUR',
         ])->assertOk();
         $this->assertSame('IN_PROGRESS', $session->fresh()->status);
-        $this->postJson("/api/v1/opname-sessions/{$session->id}/submit")->assertOk();
 
         Sanctum::actingAs($this->approver);
         $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertOk();
@@ -373,7 +369,7 @@ class OpnameExpiredSessionTest extends TestCase
 
         $actions = ApprovalHistory::where('subject_type', OpnameExpiredSession::class)->where('subject_id', $session->id)
             ->orderBy('id')->pluck('action')->all();
-        $this->assertSame(['submit', 'revise', 'submit', 'approve'], $actions);
+        $this->assertSame(['revise', 'approve'], $actions);
     }
 
     public function test_verify_does_not_reissue_batch_for_labelled_row(): void
@@ -498,7 +494,6 @@ class OpnameExpiredSessionTest extends TestCase
                 'disposition' => 'LANJUT',
             ])->assertOk();
         }
-        $this->postJson("/api/v1/opname-sessions/{$session->id}/submit")->assertOk();
 
         Sanctum::actingAs($this->approver);
         $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertOk();
@@ -507,20 +502,11 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertEquals(3, (float) $wave->fresh()->qty_koreksi_crt);
     }
 
-    public function test_submit_session_sends_pending_approval_email_and_approve_sends_approved(): void
+    public function test_approve_sends_approved_email(): void
     {
         Mail::fake();
 
-        // Penerima email wajib ada SEBELUM sesi dikirim, karena resolusi
-        // penerima (EmailRecipient) dibaca pada momen submit, bukan approve.
-        EmailRecipient::create([
-            'document_type' => 'opname_expired',
-            'trigger' => 'submitted',
-            'recipient_type' => 'email',
-            'field' => 'TO',
-            'email' => 'pengiriman@example.com',
-            'is_active' => true,
-        ]);
+        // Penerima email dibaca saat keputusan diambil.
         EmailRecipient::create([
             'document_type' => 'opname_expired',
             'trigger' => 'approved',
@@ -530,14 +516,11 @@ class OpnameExpiredSessionTest extends TestCase
             'is_active' => true,
         ]);
 
-        $session = $this->countedAndSubmittedSession();
+        $session = $this->countedSession();
 
         Sanctum::actingAs($this->approver);
         $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertOk();
 
-        Mail::assertSent(OpnameExpiredNotification::class, function ($mail) {
-            return $mail->hasTo('pengiriman@example.com') && $mail->kind === 'submitted';
-        });
         Mail::assertSent(OpnameExpiredNotification::class, function ($mail) {
             return $mail->hasTo('disetujui@example.com') && $mail->kind === 'approved';
         });
@@ -571,7 +554,6 @@ class OpnameExpiredSessionTest extends TestCase
                 'disposition' => 'LANJUT',
             ])->assertOk();
         }
-        $this->postJson("/api/v1/opname-sessions/{$session->id}/submit")->assertOk();
         Sanctum::actingAs($this->approver);
         $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertOk();
 
@@ -697,8 +679,6 @@ class OpnameExpiredSessionTest extends TestCase
             'disposition' => 'LANJUT',
         ])->assertOk();
 
-        $this->postJson("/api/v1/opname-sessions/{$session->id}/submit")->assertOk();
-
         // Habis dengan disposisi justru ditolak: tidak ada barang untuk ditindak.
         $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
             'qty_fisik_crt' => 0,
@@ -743,12 +723,12 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertNotNull($item->fresh()->verified_at);
     }
 
-    public function test_only_assigned_officer_counts_and_submits(): void
+    public function test_only_assigned_officer_counts(): void
     {
         $session = $this->makeSession();
 
         // Supervisor (memiliki semua permission) bukan petugas yang
-        // ditugaskan — penghitungan & pengiriman sesi ditolak.
+        // ditugaskan — penghitungan sesi ditolak.
         Sanctum::actingAs($this->supervisor);
         $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertForbidden();
         $this->assertSame('OPEN', $session->fresh()->status);
@@ -948,12 +928,13 @@ class OpnameExpiredSessionTest extends TestCase
 
     public function test_session_history_and_search_are_available_to_auditors(): void
     {
-        $session = $this->countedAndSubmittedSession();
+        $session = $this->countedSession();
 
         Sanctum::actingAs($this->approver);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertOk();
         $history = $this->getJson("/api/v1/opname-sessions/{$session->id}/history")->assertOk();
         $this->assertNotEmpty($history->json('data'));
-        $this->assertSame('submit', $history->json('data.0.action'));
+        $this->assertSame('approve', $history->json('data.0.action'));
 
         // Pencarian daftar mencakup nama petugas yang ditugaskan.
         Sanctum::actingAs($this->supervisor);
@@ -996,7 +977,7 @@ class OpnameExpiredSessionTest extends TestCase
 
     public function test_approved_corrections_create_ledger_and_next_session_uses_adjusted_quantity(): void
     {
-        $session = $this->countedAndSubmittedSession();
+        $session = $this->countedSession();
         $waveIds = $session->items->pluck('wave_id')->all();
 
         Sanctum::actingAs($this->approver);
@@ -1035,7 +1016,7 @@ class OpnameExpiredSessionTest extends TestCase
 
     public function test_approved_retur_disposition_quarantines_batch(): void
     {
-        $session = $this->countedAndSubmittedSession();
+        $session = $this->countedSession();
         $session->load('items.batch');
 
         Sanctum::actingAs($this->approver);
@@ -1072,7 +1053,7 @@ class OpnameExpiredSessionTest extends TestCase
 
     public function test_approval_is_idempotent_for_adjustment_ledger(): void
     {
-        $session = $this->countedAndSubmittedSession();
+        $session = $this->countedSession();
 
         Sanctum::actingAs($this->approver);
         $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertOk();

@@ -451,23 +451,6 @@ class OpnameExpiredSessionController extends Controller
         ]);
     }
 
-    /**
-     * Petugas mengirim sesi untuk persetujuan (semua baris wajib terhitung).
-     * Koreksi wave berlaku di endpoint /approve — bukan di sini.
-     */
-    public function submit(Request $request, OpnameExpiredSession $session): JsonResponse
-    {
-        $this->authorizeSession($request, $session);
-        $this->authorizeSessionWorker($session, $request->user(), ['Mengirim sesi']);
-
-        app(OpnameSessionLifecycleService::class)->submit($session, $request->user());
-
-        return response()->json([
-            'message' => 'Sesi dikirim untuk persetujuan. Koreksi berlaku setelah disetujui.',
-            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
-        ]);
-    }
-
     public function approve(Request $request, OpnameExpiredSession $session): JsonResponse
     {
         $this->authorizeSession($request, $session);

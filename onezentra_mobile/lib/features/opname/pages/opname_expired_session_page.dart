@@ -135,10 +135,10 @@ String _productKey(OpnameExpiredSessionItem item) {
 String _statusHint(String status) => switch (status) {
   'OPEN' => 'Tekan "Mulai Sesi" untuk memulai, lalu hitung tiap baris.',
   'IN_PROGRESS' =>
-    'Hitung semua baris sampai 0 sisa, lalu kirim untuk persetujuan BLC.',
+    'Hitung semua baris sampai 0 sisa. Validasi dilakukan dari web.',
   'PENDING_APPROVAL' =>
-    'Menunggu keputusan BLC. Koreksi wave baru berlaku setelah disetujui.',
-  'REVISI' => 'Perbaiki baris yang ditandai, lalu kirim ulang untuk review.',
+    'Sesi lama menunggu validasi dari web — koreksi berlaku setelah disetujui.',
+  'REVISI' => 'Perbaiki baris yang ditandai, lalu validasi ulang dari web.',
   'CANCELLED' =>
     'Sesi dibatalkan. Setelah qty dikoreksi, buat sesi baru untuk wave yang sama.',
   'APPROVED' => 'Sesi disetujui — koreksi wave telah berlaku.',
@@ -792,13 +792,25 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
           if (session.acceptsCounting &&
               total > 0 &&
               countedTotal == total) ...[
-            const SizedBox(height: AppTheme.space3),
-            AppPrimaryButton(
-              text: 'Kirim Hasil Opname',
-              leadingIcon: Icons.send_rounded,
-              onPressed: () => provider.submit(session.id),
-              isLoading: provider.isLoading,
-              height: 40,
+            const SizedBox(height: AppTheme.space2),
+            Row(
+              children: [
+                Icon(
+                  Icons.check_circle_outline_rounded,
+                  size: 14,
+                  color: colors.success,
+                ),
+                const SizedBox(width: AppTheme.space2),
+                Expanded(
+                  child: Text(
+                    'Input selesai — validasi dilakukan dari web.',
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      color: colors.success,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
           ..._buildSessionActions(session, provider, context),
@@ -840,33 +852,8 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
       ];
     }
 
-    if (session.isPendingApproval) {
-      return [
-        const SizedBox(height: AppTheme.space2),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.cloud_done_outlined,
-              size: 14,
-              color: context.colors.success,
-            ),
-            const SizedBox(width: AppTheme.space2),
-            Expanded(
-              child: Text(
-                'Hasil sudah dikirim — akan dicek di sistem web.',
-                style: GoogleFonts.roboto(
-                  fontSize: 11,
-                  height: 1.4,
-                  color: context.colors.textMuted,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ];
-    }
-
+    // Tidak ada aksi approval di mobile: petugas hanya menginput,
+    // keputusan/validasi sepenuhnya di web.
     return const <Widget>[];
   }
 

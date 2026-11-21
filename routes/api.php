@@ -370,7 +370,6 @@ Route::prefix('v1')->group(function () {
         Route::post('/{session}/items/{item}', [OpnameExpiredSessionController::class, 'verifyItem'])->middleware('permission:opname.session.edit');
         // Kirim sesi (penghitung) vs putuskan (approver) = pemisahan tugas:
         // koreksi wave baru berlaku di /approve, bukan saat penghitungan.
-        Route::post('/{session}/submit', [OpnameExpiredSessionController::class, 'submit'])->middleware('permission:opname.session.edit');
         Route::post('/{session}/approve', [OpnameExpiredSessionController::class, 'approve'])->middleware('permission:opname.session.approve');
         Route::post('/{session}/revise', [OpnameExpiredSessionController::class, 'revise'])->middleware('permission:opname.session.approve');
         Route::put('/{session}/assign', [OpnameExpiredSessionController::class, 'assign'])->middleware('permission:opname.session.create');

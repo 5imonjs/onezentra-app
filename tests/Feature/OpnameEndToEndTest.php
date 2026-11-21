@@ -143,7 +143,7 @@ class OpnameEndToEndTest extends TestCase
         $this->assertNotNull($wave);
         $this->assertContains($sjBatch->batch_number, $wave->batch_numbers ?? []);
 
-        // 6. Sesi: buat -> mulai -> hitung fisik -> kirim -> approve.
+        // 6. Sesi: buat -> mulai -> hitung fisik -> validasi langsung.
         Sanctum::actingAs($this->planner);
         $sessionId = $this->postJson('/api/v1/opname-sessions', [
             'week_start' => '2026-09-07',
@@ -168,8 +168,7 @@ class OpnameEndToEndTest extends TestCase
         ])->assertOk();
         // Batch SJ sudah ada: tidak ada label ganda.
         $this->assertSame(0, $verify->json('data.batches_issued'));
-        // Penghitungan sendiri tidak boleh menyetujui hasil sendiri.
-        $this->postJson("/api/v1/opname-sessions/{$sessionId}/submit")->assertOk();
+        // Penghitung tidak boleh memvalidasi hasil hitungannya sendiri.
         $this->postJson("/api/v1/opname-sessions/{$sessionId}/approve")->assertForbidden();
 
         // 7. Approver independen menyetujui: koreksi diterapkan ke wave.

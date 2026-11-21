@@ -18,7 +18,7 @@ typedef OpnameExpiredSessionPostMultipart =
 /// Data access for Opname Expired sessions (aturan A2).
 ///
 /// Membawa siklus hidup sesi: list, show, start, tambah wave, verifikasi
-/// item, submit, cancel — approve/revise/assign dilakukan di sistem web.
+/// item, cancel — kirim/approve/revise/assign dilakukan di sistem web.
 class OpnameExpiredSessionRepository {
   OpnameExpiredSessionRepository({
     OpnameExpiredSessionGet? get,
@@ -145,13 +145,8 @@ class OpnameExpiredSessionRepository {
     return _expectObject(await _post(endpoint, data));
   }
 
-  Future<OpnameExpiredSession> submit(int id) async {
-    var body = _expectObject(await _post('/opname-sessions/$id/submit', {}));
-    return _sessionFromBody(body);
-  }
-
-  // approve/revise tidak dibutuhkan mobile — pengecekan hasil dilakukan
-  // di sistem web (pemisahan tugas BLC).
+  // Kirim/approve/revise tidak dibutuhkan mobile — petugas hanya menginput,
+  // validasi dilakukan di sistem web (pemisahan tugas).
 
   Future<OpnameExpiredSession> cancel(int id, {String? notes}) async {
     var body = _expectObject(
