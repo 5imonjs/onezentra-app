@@ -182,11 +182,11 @@ export default function OpnameSessionsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-4 sm:p-6 space-y-4 max-w-6xl mx-auto">
+      <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold leading-tight">Stock Opname</h1>
-            <p className="text-ink-fg-muted mt-0.5 text-sm">Penugasan hitung fisik per minggu + depo — label lot terbit saat baris diverifikasi</p>
+          <div className="rounded-2xl border border-border bg-card px-5 py-4 shadow-sm">
+            <h1 className="text-xl font-bold leading-tight text-foreground">Stock Opname</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">Penugasan hitung fisik per minggu + depo — label lot terbit saat baris diverifikasi</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {hasPermission('opname.view') && (
@@ -200,9 +200,9 @@ export default function OpnameSessionsPage() {
           </div>
         </div>
 
-        <div className="bg-card rounded-2xl border border-border p-4 flex flex-wrap items-end gap-3">
+        <div className="bg-card rounded-2xl border border-border shadow-sm px-5 py-3 flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[220px]">
-            <label htmlFor="ss-search" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Cari</label>
+            <label htmlFor="ss-search" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Cari</label>
             <input
               id="ss-search"
               value={searchInput}
@@ -220,7 +220,7 @@ export default function OpnameSessionsPage() {
             Cari
           </button>
           <div>
-            <label htmlFor="ss-week" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Minggu</label>
+            <label htmlFor="ss-week" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Minggu</label>
             <input
               id="ss-week"
               type="date"
@@ -234,7 +234,7 @@ export default function OpnameSessionsPage() {
             />
           </div>
           <div>
-            <label htmlFor="ss-status" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status</label>
+            <label htmlFor="ss-status" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Status</label>
             <select id="ss-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="select-field-sm">
               <option value="">Semua</option>
               <option value="OPEN">Terbuka</option>
@@ -247,7 +247,7 @@ export default function OpnameSessionsPage() {
           </div>
           {canFilterDepo && depots.length > 1 && (
             <div>
-              <label htmlFor="ss-depo" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Depo</label>
+              <label htmlFor="ss-depo" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Depo</label>
               <select
                 id="ss-depo"
                 value={kodeDepo}
@@ -263,7 +263,7 @@ export default function OpnameSessionsPage() {
               </select>
             </div>
           )}
-          <label className="inline-flex items-center gap-2 text-sm text-foreground pb-2.5 cursor-pointer">
+          <label className="inline-flex items-center gap-2 text-sm text-foreground cursor-pointer">
             <input type="checkbox" checked={mine} onChange={(e) => { setMine(e.target.checked); setPage(1); }} className="w-4 h-4 accent-primary-600" />
             Tugas saya
           </label>
@@ -273,16 +273,28 @@ export default function OpnameSessionsPage() {
         </div>
 
         {loadError ? (
-          <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
-            <span>{loadError}</span>
-            <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
+          <div className="flex items-center gap-3 rounded-2xl bg-red-50 border border-red-100 px-5 py-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-red-500">
+              <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.86a9 9 0 11-5.1 16.4z" /></svg>
+            </div>
+            <div className="flex-1 text-sm text-red-700">
+              {loadError}
+              <button type="button" onClick={load} className="btn-secondary text-xs mt-2">Coba lagi</button>
+            </div>
           </div>
         ) : loading && sessions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Memuat...</p>
+          <div className="space-y-3 px-5 py-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-10 bg-slate-100 rounded-xl animate-pulse" />
+            ))}
+          </div>
         ) : sessions.length === 0 ? (
-          <div className="border border-dashed border-border rounded-2xl py-12 text-center">
-            <p className="text-sm text-muted-foreground font-medium">Belum ada sesi Stock Opname.</p>
-            <p className="text-xs text-gray-400 mt-1">Buat sesi dari baris monitoring kedaluwarsa, tugaskan ke petugas lapangan.</p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-5 py-12 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+              <svg aria-hidden="true" className="h-7 w-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <p className="text-sm font-medium text-foreground">Belum ada sesi Stock Opname.</p>
+            <p className="text-xs text-slate-400 mt-1">Buat sesi dari baris monitoring kedaluwarsa, tugaskan ke petugas lapangan.</p>
             {hasPermission('opname.view') && (
               <Link href="/opname-expired" className="btn-secondary text-xs mt-4 inline-flex">
                 Buka Monitoring Kedaluwarsa
@@ -296,12 +308,12 @@ export default function OpnameSessionsPage() {
                 <caption className="sr-only">Daftar sesi Stock Opname</caption>
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-border bg-popover">
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minggu</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Depo</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Petugas</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Progres</th>
-                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aksi</th>
+                    <th scope="col" className="px-5 py-3 whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Minggu</th>
+                    <th scope="col" className="px-5 py-3 whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Depo</th>
+                    <th scope="col" className="px-5 py-3 whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Petugas</th>
+                    <th scope="col" className="px-5 py-3 whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
+                    <th scope="col" className="px-5 py-3 whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Progres</th>
+                    <th scope="col" className="px-5 py-3 whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -309,17 +321,17 @@ export default function OpnameSessionsPage() {
                     const done = s.items?.filter((i) => i.verified_at).length ?? 0;
                     const total = s.items?.length ?? 0;
                     return (
-                      <tr key={s.id} className="hover:bg-overlay-50 transition-colors">
-                        <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{fmtDate(s.week_start)}</td>
-                        <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{s.nama_depo || s.kode_depo}</td>
-                        <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{s.assignee?.full_name || `#${s.assigned_to}`}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold ${STATUS_META[s.status] || STATUS_META.OPEN}`}>{s.status}</span>
+                      <tr key={s.id} className="hover:bg-overlay-70 transition-colors">
+                        <td className="px-5 py-3 text-sm text-foreground whitespace-nowrap">{fmtDate(s.week_start)}</td>
+                        <td className="px-5 py-3 text-sm text-foreground whitespace-nowrap">{s.nama_depo || s.kode_depo}</td>
+                        <td className="px-5 py-3 text-sm text-foreground whitespace-nowrap">{s.assignee?.full_name || `#${s.assigned_to}`}</td>
+                        <td className="px-5 py-3 whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${STATUS_META[s.status] || STATUS_META.OPEN}`}>{s.status}</span>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="px-5 py-3 whitespace-nowrap">
                           {total > 0 ? (
                             <div className="flex items-center gap-2">
-                              <div className="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden" aria-hidden="true">
+                              <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden min-w-10 max-w-[80px]" aria-hidden="true">
                                 <div
                                   className={`h-full rounded-full ${done === total ? 'bg-emerald-500' : 'bg-primary-600'}`}
                                   style={{ width: `${Math.round((done / total) * 100)}%` }}
@@ -334,7 +346,7 @@ export default function OpnameSessionsPage() {
                             <span className="mt-1 block text-[10px] font-semibold text-emerald-600">Input selesai</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <td className="px-5 py-3 text-right whitespace-nowrap">
                           <button onClick={() => loadDetail(s.id)} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-foreground hover:bg-slate-200 transition-colors">Buka</button>
                         </td>
                       </tr>
@@ -344,7 +356,7 @@ export default function OpnameSessionsPage() {
               </table>
             </div>
             {pagination && pagination.last_page > 1 && (
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
+              <div className="flex flex-col-reverse items-center justify-between gap-3 border-t border-border bg-overlay-50 px-5 py-4 sm:flex-row">
                 <p className="text-xs text-muted-foreground tabular-nums">
                   Menampilkan {pagination.from ?? 0}–{pagination.to ?? 0} dari {pagination.total} sesi
                 </p>
