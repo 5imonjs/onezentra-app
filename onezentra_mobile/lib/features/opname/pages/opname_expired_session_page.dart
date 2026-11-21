@@ -152,6 +152,18 @@ String _productKey(OpnameExpiredSessionItem item) {
   return 'wave-${item.waveId}';
 }
 
+/// Kunci kelompokan principal di halaman detail sesi. Sumber utama
+/// `clusterLabel` (principal_1, dari backend — sama seperti
+/// monitoring kadaluarsa di web); fallback = kode produk, agar tetap
+/// tertata bila data wave lama tidak punya principal.
+String _principalKey(OpnameExpiredSessionItem item) {
+  var principal = item.clusterLabel?.trim().toUpperCase();
+  if (principal != null && principal.isNotEmpty) {
+    return principal;
+  }
+  return _productKey(item);
+}
+
 /// Panduan langkah sesuai status — petugas tidak perlu menebak yang mana
 /// berikutnya (pemisahan tugas: counter tidak bisa menyetujui dirinya).
 String _statusHint(String status) => switch (status) {
@@ -413,6 +425,14 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     for (var item in items) {
       products.putIfAbsent(_productKey(item), () => []).add(item);
     }
+    // Crossref: produk disatukan di bawah header principal — mirip
+    // monitoring kadaluarsa di web (`clusterLabel`), agar setiap principal
+    // (mis. P3-BLC) memiliki satu kelompok yang rapi.
+    var principalGroups = <String, List<String>>{};
+    for (var key in products.keys) {
+      var principal = _principalKey(products[key]!.first);
+      principalGroups.putIfAbsent(principal, () => []).add(key);
+    }
     // Progres kartu dihitung dari seluruh batch produk (tanpa filter), supaya
     // filter tidak membuat kartu tampak "0/2 padahal 3 batch masih menunggu".
     var allProducts = <String, List<OpnameExpiredSessionItem>>{};
@@ -451,16 +471,28 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
       listContent = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (var entry in products.entries) ...[
-            _OpnameProductCard(
-              items: entry.value,
-              allItems: allProducts[entry.key] ?? entry.value,
-              drafts: _drafts,
-              onCount: session.acceptsCounting
-                  ? (item) => _showVerifySheet(context, session, item)
-                  : null,
+          for (var group in principalGroups.entries) ...[
+            _PrincipalHeader(
+              label: group.key,
+              productCount: group.value.length,
+              batchCount: group.value.fold(
+                0,
+                (sum, key) => sum + (products[key]?.length ?? 0),
+              ),
             ),
-            const SizedBox(height: AppTheme.space4),
+            const SizedBox(height: AppTheme.space3),
+            for (var productKey in group.value) ...[
+              _OpnameProductCard(
+                items: products[productKey]!,
+                allItems: allProducts[productKey] ?? products[productKey]!,
+                drafts: _drafts,
+                onCount: session.acceptsCounting
+                    ? (item) => _showVerifySheet(context, session, item)
+                    : null,
+              ),
+              const SizedBox(height: AppTheme.space3),
+            ],
+            const SizedBox(height: AppTheme.space3),
           ],
         ],
       );
@@ -714,8 +746,8 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
           Row(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -817,7 +849,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppTheme.space2,
-                vertical: 6,
+                vertical: 5,
               ),
               decoration: BoxDecoration(
                 color: colors.infoWell,
@@ -1760,6 +1792,55 @@ class _OpnameSessionTile extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Kartu produk — satu produk, semua batch-nya
 // ---------------------------------------------------------------------------
+
+/// Header kelompokan principal: mirik monitoring kadaluarsa di web
+/// (3px rail berwarna, nama principal, jumlah produk & batch di dalamnya).
+class _PrincipalHeader extends StatelessWidget {
+  const _PrincipalHeader({
+    required this.label,
+    required this.productCount,
+    required this.batchCount,
+  });
+
+  final String label;
+  final int productCount;
+  final int batchCount;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 3,
+        height: 16,
+        decoration: BoxDecoration(
+          color: context.colors.primaryWell,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      const SizedBox(width: AppTheme.space2),
+      Expanded(
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.roboto(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: context.colors.foreground,
+          ),
+        ),
+      ),
+      const SizedBox(width: AppTheme.space2),
+      Text(
+        '$productCount produk · $batchCount batch',
+        style: GoogleFonts.roboto(
+          fontSize: 10.5,
+          color: context.colors.textMuted,
+        ),
+      ),
+    ],
+  );
+}
 
 /// Satu produk = satu kartu. Header memuat identitas + progres, baris batch
 /// di bawahnya dipisah divider. Petugas tidak perlu mencocokkan header cluster

@@ -519,6 +519,8 @@ void main() {
     await tester.pumpAndSettle();
     // Fitur pindai label di-offkan — sheet berbasiskan isi manual.
     expect(find.text('Pindai Label Batch'), findsNothing);
+    await tester.ensureVisible(find.text('Hitung Fisik'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Hitung Fisik'));
     await tester.pumpAndSettle();
   }
@@ -1166,9 +1168,13 @@ void main() {
     await tester.pumpAndSettle();
 
     // Simpan draf tanpa menyentuh API.
+    await tester.ensureVisible(find.text('Hitung Fisik'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Hitung Fisik'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('verify_qty_crt')), '7');
+    await tester.ensureVisible(find.text('Simpan Draf di Perangkat'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Simpan Draf di Perangkat'));
     await tester.pumpAndSettle();
 
@@ -1177,6 +1183,8 @@ void main() {
     expect(find.textContaining('Draf CRT 7'), findsOneWidget);
 
     // Submit mengirim draf ke server lalu menandai input selesai.
+    await tester.ensureVisible(find.text('Submit Hasil Opname'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Submit Hasil Opname'));
     await tester.pumpAndSettle();
 
