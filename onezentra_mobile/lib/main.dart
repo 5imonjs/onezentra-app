@@ -246,6 +246,10 @@ GoRouter buildRouter(
       name: 'bongkar',
       builder: (context, state) => UnloadPage(repository: unloadRepository),
     ),
+    // Route monitoring Opname Expired tetap terdaftar tetapi TIDAK lagi
+    // ditampilkan di menu home (lihat home_page.dart). Halaman ini read-only;
+    // petugas mobile cukup membuka Sesi Opname untuk menginput hitungan.
+    // Aktifkan menu kembali bila monitoring perlu dibuka dari mobile.
     GoRoute(
       path: '/opname-expired',
       name: 'opname_expired',

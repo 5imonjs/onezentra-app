@@ -1082,7 +1082,7 @@ void main() {
     expect(find.text('Hitung Fisik'), findsOneWidget);
   });
 
-  testWidgets('tandai selesai input adalah penanda, bukan approval', (
+  testWidgets('submit hasil opname adalah penanda, bukan approval', (
     tester,
   ) async {
     const selesai = OpnameExpiredSessionItem(
@@ -1117,15 +1117,72 @@ void main() {
 
     expect(find.text('1/1 dihitung'), findsOneWidget);
     // Pemicu ringan tersedia, bukan tombol kirim/approval.
-    expect(find.text('Tandai Selesai Input'), findsOneWidget);
+    expect(find.text('Submit Hasil Opname'), findsOneWidget);
     expect(find.text('Kirim Hasil Opname'), findsNothing);
     expect(find.text('Setujui'), findsNothing);
 
-    await tester.tap(find.text('Tandai Selesai Input'));
+    await tester.tap(find.text('Submit Hasil Opname'));
     await tester.pumpAndSettle();
 
     expect(repository.markCompleteCalls, [1]);
-    expect(find.text('Tandai Selesai Input'), findsNothing);
+    expect(find.text('Submit Hasil Opname'), findsNothing);
+    expect(
+      find.text('Input selesai — validasi dilakukan dari web.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('draf lokal tersimpan dan ikut terkirim saat submit', (
+    tester,
+  ) async {
+    const itemSatu = OpnameExpiredSessionItem(
+      id: 101,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-900',
+      namaBarang: 'Sirup Herbal 200ml',
+      batchNumber: 'BATCH-101',
+      qtyWaveCrt: 10,
+      statusIni: 'AMAN',
+      expectedCrt: 10,
+    );
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-16',
+          weekEnd: '2026-11-22',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: [itemSatu],
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 16/11/2026'));
+    await tester.pumpAndSettle();
+
+    // Simpan draf tanpa menyentuh API.
+    await tester.tap(find.text('Hitung Fisik'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('verify_qty_crt')), '7');
+    await tester.tap(find.text('Simpan Draf di Perangkat'));
+    await tester.pumpAndSettle();
+
+    expect(repository.verifyPayloads, isEmpty);
+    expect(find.text('Draf'), findsOneWidget);
+    expect(find.textContaining('Draf CRT 7'), findsOneWidget);
+
+    // Submit mengirim draf ke server lalu menandai input selesai.
+    await tester.tap(find.text('Submit Hasil Opname'));
+    await tester.pumpAndSettle();
+
+    expect(repository.verifyPayloads, hasLength(1));
+    expect(repository.verifyPayloads.single['qty_fisik_crt'], 7.0);
+    expect(repository.markCompleteCalls, [1]);
     expect(
       find.text('Input selesai — validasi dilakukan dari web.'),
       findsOneWidget,

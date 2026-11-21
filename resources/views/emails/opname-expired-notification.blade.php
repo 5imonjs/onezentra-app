@@ -8,6 +8,8 @@
                     ⏰ Pengingat Opname Expired
                 @elseif ($kind === 'submitted')
                     ⏳ Opname Expired Menunggu Persetujuan
+                @elseif ($kind === 'input_completed')
+                    🟢 Input Selesai Divalidasi
                 @elseif ($kind === 'approved')
                     ✅ Opname Expired Disetujui
                 @elseif ($kind === 'revisi')
@@ -25,6 +27,8 @@
                 <p>Halo,<br><br>Depo berikut <strong>belum mengirim</strong> hasil opname expired minggu {{ $weekStart }}:</p>
             @elseif ($kind === 'submitted')
                 <p>Halo,<br><br>Hasil opname expired berikut <strong>menunggu persetujuan</strong> — koreksi stok berlaku setelah disetujui:</p>
+            @elseif ($kind === 'input_completed')
+                <p>Halo,<br><br>Input opname expired berikut <strong>siap divalidasi</strong> — semua baris sudah dihitung, validasi dilakukan di web.</p>
             @elseif ($kind === 'approved')
                 <p>Halo,<br><br>Sesi opname berikut <strong>disetujui</strong> — koreksi telah diterapkan ke wave:</p>
             @elseif ($kind === 'revisi')
@@ -47,6 +51,7 @@
                         <td style="padding: 8px; text-align: right; border-bottom: 1px solid #f1f5f9;">{{ $row['validated'] }}</td>
                         <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">
                             {{ match (true) {
+                                ($row['input_completed'] ?? false) => 'Input selesai',
                                 ($row['validated'] ?? 0) > 0 => 'Disetujui',
                                 ($row['submitted'] ?? false) => 'Menunggu persetujuan',
                                 default => 'Belum tuntas',

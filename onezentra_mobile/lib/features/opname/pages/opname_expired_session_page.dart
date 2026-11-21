@@ -11,6 +11,7 @@ import 'package:onezentra_mobile/features/opname/models/opname_expired_models.da
 import 'package:onezentra_mobile/features/opname/models/opname_expired_session_models.dart';
 import 'package:onezentra_mobile/features/opname/providers/opname_expired_session_provider.dart';
 import 'package:onezentra_mobile/features/opname/repositories/opname_expired_session_repository.dart';
+import 'package:onezentra_mobile/features/opname/services/opname_session_draft_store.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 AppBadgeVariant _sessionBadgeVariant(String status) => switch (status) {
@@ -23,6 +24,20 @@ AppBadgeVariant _sessionBadgeVariant(String status) => switch (status) {
   'CANCELLED' => AppBadgeVariant.danger,
   _ => AppBadgeVariant.gray,
 };
+
+/// Aksen warna per produk — sama seperti kartu warna-warni di menu Opname
+/// Expired. Memakai token tema supaya tetap kontras di mode gelap.
+Color _productAccent(String key, ThemeColors colors) {
+  var palette = <Color>[
+    colors.info,
+    colors.success,
+    colors.warning,
+    colors.critical,
+    colors.primaryWellText,
+    colors.danger,
+  ];
+  return palette[key.hashCode % palette.length];
+}
 
 AppBadgeVariant _riskBadgeVariant(String status) => switch (status) {
   'EXPIRED' => AppBadgeVariant.danger,
@@ -64,6 +79,13 @@ String _dispositionLabel(String? value) => switch (value) {
   'DISPOSAL' => 'Disposal',
   _ => value ?? '—',
 };
+
+double? _draftQty(dynamic value) {
+  if (value is num) {
+    return value.toDouble();
+  }
+  return double.tryParse(value?.toString() ?? '');
+}
 
 final NumberFormat _qtyFormatter = NumberFormat('#,##0.##', 'id_ID');
 
@@ -149,12 +171,13 @@ String _statusHint(String status) => switch (status) {
 /// Sesi Opname Expired — alur kerja lapangan (aturan A2).
 ///
 /// Daftar sesi → detail dengan ringkasan progres → hitung fisik per label
-/// batch (qty + kondisi + disposisi) → kirim untuk persetujuan. Aksi berat
-/// diarahkan ke backend (opname-sessions).
+/// batch → simpan draf lokal bila belum selesai → submit hasil. Validasi
+/// koreksi dilakukan di web, bukan per baris oleh BLC.
 class OpnameExpiredSessionPage extends StatefulWidget {
-  const OpnameExpiredSessionPage({super.key, this.repository});
+  const OpnameExpiredSessionPage({super.key, this.repository, this.draftStore});
 
   final OpnameExpiredSessionRepository? repository;
+  final OpnameSessionDraftStore? draftStore;
 
   @override
   State<OpnameExpiredSessionPage> createState() =>
@@ -164,6 +187,12 @@ class OpnameExpiredSessionPage extends StatefulWidget {
 class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
   late final OpnameExpiredSessionProvider _provider =
       OpnameExpiredSessionProvider(repository: widget.repository);
+  late final OpnameSessionDraftStore _draftStore =
+      widget.draftStore ?? OpnameSessionDraftStore();
+
+  /// Hasil hitung yang tersimpan di perangkat tapi belum dikirim ke server.
+  /// Kunci = item id. Draft tidak mengubah status verifikasi baris.
+  Map<int, Map<String, dynamic>> _drafts = {};
 
   // Filter cepat nama produk / kode barang / nomor batch di halaman detail.
   final TextEditingController _searchController = TextEditingController();
@@ -222,6 +251,63 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     });
   }
 
+  Future<void> _loadDrafts(int sessionId) async {
+    var loaded = await _draftStore.load(sessionId);
+    if (!mounted) {
+      return;
+    }
+    setState(() => _drafts = loaded);
+  }
+
+  Future<void> _saveDraft(
+    int sessionId,
+    int itemId,
+    Map<String, dynamic> data,
+  ) async {
+    var next = Map<int, Map<String, dynamic>>.from(_drafts);
+    next[itemId] = data;
+    await _draftStore.save(sessionId, next);
+    if (!mounted) {
+      return;
+    }
+    setState(() => _drafts = next);
+  }
+
+  /// Submit: sinkronkan draf lokal ke server dulu, baru tandai input selesai.
+  /// Gagal di tengah jalan → draf tetap tersimpan di perangkat.
+  Future<void> _submitHasil(
+    OpnameExpiredSessionProvider provider,
+    OpnameExpiredSession session,
+  ) async {
+    if (_drafts.isEmpty) {
+      await provider.markInputComplete(session.id);
+      return;
+    }
+    var pending = Map<int, Map<String, dynamic>>.from(_drafts);
+    for (var itemId in pending.keys.toList()) {
+      var error = await provider.verifyItem(
+        session.id,
+        itemId,
+        pending[itemId]!,
+      );
+      if (error != null) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Draft gagal dikirim: $error')));
+        return;
+      }
+    }
+    await _draftStore.clear(session.id);
+    if (!mounted) {
+      return;
+    }
+    setState(() => _drafts = {});
+    await provider.markInputComplete(session.id);
+  }
+
   @override
   Widget build(BuildContext context) =>
       ChangeNotifierProvider<OpnameExpiredSessionProvider>.value(
@@ -270,7 +356,9 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                         // Filter/pencarian dari sesi sebelumnya jangan terbawa
                         // ke sesi lain — petugas selalu melihat kondisi awal.
                         _resetDetailFilters();
-                        provider.show(provider.sessions[index].id);
+                        var id = provider.sessions[index].id;
+                        provider.show(id);
+                        _loadDrafts(id);
                       },
                     ),
                   ),
@@ -367,6 +455,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
             _OpnameProductCard(
               items: entry.value,
               allItems: allProducts[entry.key] ?? entry.value,
+              drafts: _drafts,
               onCount: session.acceptsCounting
                   ? (item) => _showVerifySheet(context, session, item)
                   : null,
@@ -588,6 +677,12 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
   ) {
     var total = session.items.length;
     var productCount = session.items.map(_productKey).toSet().length;
+    // Draft lokal dihitung sebagai "siap" — nanti disinkronkan saat submit.
+    var readyTotal = session.items
+        .where((i) => i.isVerified || _drafts.containsKey(i.id))
+        .map((i) => i.id)
+        .toSet()
+        .length;
     var progress = total == 0 ? 0.0 : countedTotal / total;
     var hint = _statusHint(session.status);
     var colors = context.colors;
@@ -791,15 +886,15 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
           ],
           if (session.acceptsCounting &&
               total > 0 &&
-              countedTotal == total) ...[
+              (session.inputCompletedAt != null || readyTotal == total)) ...[
             const SizedBox(height: AppTheme.space2),
             if (session.inputCompletedAt == null)
               AppPrimaryButton(
-                text: 'Tandai Selesai Input',
-                leadingIcon: Icons.done_all_rounded,
+                text: 'Submit Hasil Opname',
+                leadingIcon: Icons.send_rounded,
                 onPressed: provider.isLoading
                     ? null
-                    : () => provider.markInputComplete(session.id),
+                    : () => _submitHasil(provider, session),
                 height: 40,
               )
             else
@@ -835,29 +930,16 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     BuildContext context,
   ) {
     if (session.isOpen) {
+      // Petugas lapangan hanya memulai sesi yang sudah dibuat di web —
+      // pembatalan bukan haknya, jadi tombol Batalkan sengaja tidak ada.
       return [
         const SizedBox(height: AppTheme.space2),
-        Row(
-          children: [
-            Expanded(
-              child: AppPrimaryButton(
-                text: 'Mulai Sesi',
-                leadingIcon: Icons.play_arrow_rounded,
-                onPressed: () => provider.start(session.id),
-                isLoading: provider.isLoading,
-                height: 40,
-              ),
-            ),
-            const SizedBox(width: AppTheme.space2),
-            AppSecondaryButton(
-              text: 'Batalkan',
-              onPressed: () => provider.cancel(session.id),
-              isLoading: provider.isLoading,
-              isFullWidth: false,
-              width: 104,
-              height: 40,
-            ),
-          ],
+        AppPrimaryButton(
+          text: 'Mulai Sesi',
+          leadingIcon: Icons.play_arrow_rounded,
+          onPressed: () => provider.start(session.id),
+          isLoading: provider.isLoading,
+          height: 40,
         ),
       ];
     }
@@ -879,10 +961,13 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     builder: (_) => _VerifySheet(
       session: session,
       item: item,
+      // Draft lokal dipakai sebagai nilai awal bila petugas belum mengirim.
+      draft: _drafts[item.id],
       // Sheet menangani state simpan & error sendiri; onVerify mengembalikan
       // pesan error (null = sukses) supaya sheet bisa tampil inline.
       onVerify: (data, photoPath) =>
           _provider.verifyItem(session.id, item.id, data, photoPath: photoPath),
+      onSaveDraft: (data) => _saveDraft(session.id, item.id, data),
     ),
   );
 
@@ -937,14 +1022,22 @@ class _VerifySheet extends StatefulWidget {
     required this.session,
     required this.item,
     required this.onVerify,
+    required this.onSaveDraft,
+    this.draft,
   });
 
   final OpnameExpiredSession session;
   final OpnameExpiredSessionItem item;
 
+  /// Nilai draf lokal yang belum dikirim ke server.
+  final Map<String, dynamic>? draft;
+
   /// Mengembalikan pesan error (null = sukses).
   final Future<String?> Function(Map<String, dynamic> data, String? photoPath)
   onVerify;
+
+  /// Simpan ke perangkat saja — tidak memanggil API.
+  final Future<void> Function(Map<String, dynamic> data) onSaveDraft;
 
   @override
   State<_VerifySheet> createState() => _VerifySheetState();
@@ -952,13 +1045,19 @@ class _VerifySheet extends StatefulWidget {
 
 class _VerifySheetState extends State<_VerifySheet> {
   late final TextEditingController _qtyCrt = TextEditingController(
-    text: widget.item.qtyFisikCrt?.toString() ?? '',
+    text:
+        widget.draft?['qty_fisik_crt']?.toString() ??
+        widget.item.qtyFisikCrt?.toString() ??
+        '',
   );
   late final TextEditingController _qtyPcs = TextEditingController(
-    text: widget.item.qtyFisikPcs?.toString() ?? '',
+    text:
+        widget.draft?['qty_fisik_pcs']?.toString() ??
+        widget.item.qtyFisikPcs?.toString() ??
+        '',
   );
   late final TextEditingController _notes = TextEditingController(
-    text: widget.item.notes ?? '',
+    text: widget.draft?['notes']?.toString() ?? widget.item.notes ?? '',
   );
 
   // Kondisi fisik tidak diminta dari petugas — backend tetap menyimpan
@@ -1041,6 +1140,21 @@ class _VerifySheetState extends State<_VerifySheet> {
       return;
     }
     navigator.pop();
+  }
+
+  /// Simpan ke perangkat — dipakai saat hitungan belum selesai atau jaringan
+  /// bermasalah. Draft dikirim ke server saat petugas menekan Submit.
+  Future<void> _saveDraftLocal() async {
+    await widget.onSaveDraft(<String, dynamic>{
+      'qty_fisik_crt': _qtyCrtValue,
+      'qty_fisik_pcs': _qtyPcsValue,
+      'condition': _condition,
+      'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+      'identified_via': 'manual',
+    });
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   String? _validate() {
@@ -1271,6 +1385,14 @@ class _VerifySheetState extends State<_VerifySheet> {
                   text: 'Simpan Hasil Hitung',
                   onPressed: _save,
                   isLoading: _saving,
+                ),
+                const SizedBox(height: AppTheme.space2),
+                AppSecondaryButton(
+                  text: widget.draft == null
+                      ? 'Simpan Draf di Perangkat'
+                      : 'Perbarui Draf',
+                  onPressed: _saving ? null : _saveDraftLocal,
+                  height: 44,
                 ),
               ],
             ),
@@ -1646,6 +1768,7 @@ class _OpnameProductCard extends StatelessWidget {
   const _OpnameProductCard({
     required this.items,
     required this.allItems,
+    required this.drafts,
     required this.onCount,
   });
 
@@ -1655,6 +1778,7 @@ class _OpnameProductCard extends StatelessWidget {
   /// Seluruh batch produk ini, dipakai untuk progres & identitas agar warna
   /// hijau tidak menyesatkan saat filter aktif.
   final List<OpnameExpiredSessionItem> allItems;
+  final Map<int, Map<String, dynamic>> drafts;
   final ValueChanged<OpnameExpiredSessionItem>? onCount;
 
   @override
@@ -1664,7 +1788,8 @@ class _OpnameProductCard extends StatelessWidget {
     var counted = allItems.where((item) => item.isVerified).length;
     var total = allItems.length;
     var complete = counted == total;
-    var accent = complete ? colors.success : AppTheme.primary600;
+    var productAccent = _productAccent(_productKey(first), colors);
+    var accent = complete ? colors.success : productAccent;
     var count = onCount;
     // Stok acuan dihitung per wave unik — produk yang panen dari dua wave
     // tidak boleh menampilkan angka wave pertama seolah-olah itu totalnya.
@@ -1693,7 +1818,7 @@ class _OpnameProductCard extends StatelessWidget {
       color: complete ? colors.success.withValues(alpha: 0.05) : null,
       border: complete
           ? Border.all(color: colors.success.withValues(alpha: 0.45))
-          : null,
+          : Border(top: BorderSide(color: productAccent, width: 3)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1717,6 +1842,7 @@ class _OpnameProductCard extends StatelessWidget {
               // kalau tidak, filter DONE membuat sisa batch tampak hilang.
               index: allItems.indexOf(items[i]) + 1,
               total: total,
+              draft: drafts[items[i].id],
               onCount: count == null ? null : () => count(items[i]),
             ),
           ],
@@ -1781,7 +1907,7 @@ class _OpnameProductCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: colors.foreground,
                   ),
@@ -1862,12 +1988,16 @@ class _OpnameBatchRow extends StatelessWidget {
     required this.index,
     required this.total,
     required this.onCount,
+    this.draft,
   });
 
   final OpnameExpiredSessionItem item;
   final int index;
   final int total;
   final VoidCallback? onCount;
+
+  /// Draft lokal belum dikirim ke server — ditampilkan jelas sebagai draf.
+  final Map<String, dynamic>? draft;
 
   /// Selisih CRT fisik vs acuan (null saat belum dihitung / tanpa acuan).
   (String, Color)? _deltaInfo(BuildContext context) {
@@ -1968,7 +2098,8 @@ class _OpnameBatchRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.roboto(
-                        fontSize: 11,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                         color: colors.textSecondary,
                       ),
                     ),
@@ -2001,17 +2132,27 @@ class _OpnameBatchRow extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: verified
+                    color: draft != null
+                        ? colors.infoWell
+                        : verified
                         ? colors.success.withValues(alpha: 0.18)
                         : colors.warning.withValues(alpha: 0.18),
                     borderRadius: AppTheme.radiusFull,
                   ),
                   child: Text(
-                    verified ? 'Sudah dihitung' : 'Belum dihitung',
+                    draft != null
+                        ? 'Draf'
+                        : verified
+                        ? 'Sudah dihitung'
+                        : 'Belum dihitung',
                     style: GoogleFonts.roboto(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: verified ? colors.success : colors.warning,
+                      color: draft != null
+                          ? colors.info
+                          : verified
+                          ? colors.success
+                          : colors.warning,
                     ),
                   ),
                 ),
@@ -2028,6 +2169,19 @@ class _OpnameBatchRow extends StatelessWidget {
               color: colors.textSecondary,
             ),
           ),
+          if (draft != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Draf CRT ${_formatQty(_draftQty(draft!['qty_fisik_crt']))} · '
+                'PCS ${_formatQty(_draftQty(draft!['qty_fisik_pcs']))} — belum dikirim',
+                style: GoogleFonts.roboto(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: colors.info,
+                ),
+              ),
+            ),
           if (item.diterimaMingguIni)
             Padding(
               padding: const EdgeInsets.only(top: 4),

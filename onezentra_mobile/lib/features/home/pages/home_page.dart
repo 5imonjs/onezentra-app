@@ -90,14 +90,18 @@ class _HomePageState extends State<HomePage> {
     // Opname stok: monitoring wave dan tugas hitung fisik. Sesi dibuat &
     // ditugaskan dari web; mobile menampilkan keduanya sesuai izin.
     var opnameMenus = [
-      _HomeMenu(
-        'Opname Expired',
-        'Monitoring batch mendekati/melewati expired',
-        Icons.insights_rounded,
-        context.colors.info,
-        ['opname.view'],
-        '/opname-expired',
-      ),
+      // Menu monitoring Opname Expired sengaja disembunyikan dari mobile:
+      // di aplikasi ini petugas hanya menginput sesi opname; analisa/monitoring
+      // dilakukan di web. Route & halaman dibiarkan (lihat main.dart) agar
+      // bisa ditampilkan lagi dengan mengembalikan blok ini sewaktu-waktu.
+      // _HomeMenu(
+      //   'Opname Expired',
+      //   'Monitoring batch mendekati/melewati expired',
+      //   Icons.insights_rounded,
+      //   context.colors.info,
+      //   ['opname.view'],
+      //   '/opname-expired',
+      // ),
       _HomeMenu(
         'Sesi Opname',
         'Tugas hitung fisik & disposisi barang kadaluarsa',

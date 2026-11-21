@@ -61,6 +61,10 @@ class OpnameSessionLifecycleService
         $session->setRawAttributes($refreshed->getAttributes(), true);
         $session->syncOriginal();
 
+        // Pemberitahuan sekali selesai ke BLC (konfigurasi dari Penerima Email).
+        // Alih-alih dikirim dari mobile — server punya template eksternal.
+        $this->notify($refreshed, 'input_completed');
+
         return $refreshed;
     }
 
@@ -215,9 +219,12 @@ class OpnameSessionLifecycleService
                 'kode_depo' => $fresh->kode_depo,
                 'nama_depo' => $fresh->nama_depo,
                 'total' => $fresh->items()->count(),
-                'validated' => $trigger === 'approved' ? $fresh->items()->count() : 0,
-                'submitted' => true,
+                'validated' => in_array($trigger, ['approved', 'input_completed'])
+                    ? $fresh->items()->count()
+                    : 0,
+                'submitted' => in_array($trigger, ['submitted', 'input_completed']),
                 'decision_note' => $trigger === 'revisi' ? $fresh->decision_note : null,
+                'input_completed' => $trigger === 'input_completed',
             ]]),
             $fresh->kode_depo
         );

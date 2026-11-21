@@ -303,6 +303,27 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertSame(['approve'], $history);
     }
 
+    public function test_mark_complete_sends_input_completed_email_to_recipients(): void
+    {
+        Mail::fake();
+
+        EmailRecipient::create([
+            'document_type' => 'opname_expired',
+            'trigger' => 'input_completed',
+            'recipient_type' => 'email',
+            'field' => 'TO',
+            'email' => 'blc-baru@example.com',
+            'is_active' => true,
+        ]);
+
+        $session = $this->countedSession();
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/mark-complete")->assertOk();
+
+        Mail::assertSent(OpnameExpiredNotification::class, fn ($mail) => $mail->kind === 'input_completed' && $mail->hasTo('blc-baru@example.com'));
+    }
+
     public function test_mark_input_complete_is_a_flag_not_an_approval(): void
     {
         $session = $this->makeSession();

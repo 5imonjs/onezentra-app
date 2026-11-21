@@ -109,6 +109,8 @@ class EmailRecipientControllerTest extends TestCase
         );
         $this->assertContains('reminder', $res->json('document_type_triggers.gate'));
         $this->assertContains('reminder', $res->json('document_type_triggers.sj_ba'));
+        // Penerima Email memiliki setting 'input selesai' milik Mobile.
+        $this->assertContains('input_completed', $res->json('document_type_triggers.opname_expired'));
     }
 
     public function test_store_rejects_trigger_not_valid_for_document_type(): void

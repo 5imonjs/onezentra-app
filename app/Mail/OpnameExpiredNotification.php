@@ -24,6 +24,7 @@ class OpnameExpiredNotification extends Mailable
             subject: match ($this->kind) {
                 'reminder' => '[Pengingat] Opname Expired minggu '.$this->weekStart.' belum dikirim',
                 'submitted' => '[Opname Expired] Sesi minggu '.$this->weekStart.' menunggu persetujuan',
+                'input_completed' => '[Opname Expired] Sesi minggu '.$this->weekStart.' input selesai — siap divalidasi',
                 'approved' => '[Opname Expired] Sesi minggu '.$this->weekStart.' disetujui — koreksi berlaku',
                 'revisi' => '[Opname Expired] Sesi minggu '.$this->weekStart.' perlu revisi',
                 'cancelled' => '[Opname Expired] Sesi minggu '.$this->weekStart.' dibatalkan',

@@ -248,6 +248,7 @@ class EmailNotificationSeeder extends Seeder
             'completed' => 'selesai',
             'reminder' => 'pengingat',
             'submitted' => 'menunggu persetujuan',
+            'input_completed' => 'input selesai',
             'approved' => 'disetujui',
             'revisi' => 'perlu revisi',
             'cancelled' => 'dibatalkan',
