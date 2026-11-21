@@ -330,7 +330,7 @@ void main() {
       expect(find.text('BATCH-11'), findsOneWidget);
       expect(find.text('BATCH-12'), findsOneWidget);
       // Qty acuan baris (qty wave ada di header cluster).
-      expect(find.text('Acuan CRT 6 / PCS -'), findsOneWidget);
+      expect(find.text('Acuan batch CRT 6 · PCS tanpa acuan'), findsOneWidget);
       // Konteks penerimaan per baris + petunjuk analisa selisih terima.
       expect(
         find.text('Barcode LBL-11 · Terima 09/09/2026 · Exp 01/12/2026'),
@@ -360,10 +360,10 @@ void main() {
     },
   );
 
-  testWidgets('detail sesi: baris sudah diinput dibedakan warna dari belum', (
+  testWidgets('detail sesi: baris sudah dihitung dibedakan warna dari belum', (
     tester,
   ) async {
-    // Produk A sudah diinput petugas (tanpa acuan → chip status input),
+    // Produk A sudah dihitung petugas (tanpa acuan → chip status hitung),
     // Produk B belum disentuh sama sekali.
     const sudah = OpnameExpiredSessionItem(
       id: 21,
@@ -411,15 +411,13 @@ void main() {
     await tester.tap(find.text('Sesi minggu 02/11/2026'));
     await tester.pumpAndSettle();
 
-    // Status input jelas: hijau "Sudah diinput" vs abu "Belum diinput".
-    expect(find.text('Sudah diinput'), findsOneWidget);
-    // Daftar lambat (lazy): baris kedua terbentuk saat digulir.
-    await tester.drag(find.byType(ListView).first, const Offset(0, -300));
-    await tester.pumpAndSettle();
-    expect(find.text('Belum diinput'), findsOneWidget);
+    // Status hitung jelas: hijau "Sudah dihitung" vs abu "Belum dihitung".
+    expect(find.text('Sudah dihitung'), findsOneWidget);
     // Penanda visual hijau: ikon ✓ hanya di baris yang sudah dihitung.
+    // Dicek sebelum menggulir — kartu produk yang lebih tinggi membuat baris
+    // pertama keluar layar (ListView lazy) setelah drag.
     expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
-    // Kartu yang sudah diinput bernuansa hijau (warna latar tidak null).
+    // Kartu produk yang sudah tuntas bernuansa hijau (latar tidak null).
     expect(
       tester
           .widgetList<AppCard>(find.byType(AppCard))
@@ -427,6 +425,10 @@ void main() {
           .length,
       greaterThanOrEqualTo(1),
     );
+    // Daftar lambat (lazy): baris kedua terbentuk saat digulir.
+    await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+    await tester.pumpAndSettle();
+    expect(find.text('Belum dihitung'), findsOneWidget);
   });
 
   // Fixture sesi berjalan dengan satu label batch untuk uji sheet hitung.
@@ -663,4 +665,345 @@ void main() {
       expect(find.text('Batalkan Sesi'), findsNothing);
     },
   );
+
+  testWidgets('detail sesi: batch produk yang sama jadi satu kartu', (
+    tester,
+  ) async {
+    // Dua wave berbeda dengan kode barang sama harus tetap bergabung.
+    const batchPertama = OpnameExpiredSessionItem(
+      id: 41,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-900',
+      namaBarang: 'Sirup Herbal 200ml',
+      batchNumber: 'BATCH-41',
+      qtyWaveCrt: 12,
+      statusIni: 'AMAN',
+      expectedCrt: 6,
+    );
+    const batchKedua = OpnameExpiredSessionItem(
+      id: 42,
+      sessionId: 1,
+      waveId: 101,
+      kodeBarang: 'KB-900',
+      namaBarang: 'Sirup Herbal 200ml',
+      batchNumber: 'BATCH-42',
+      qtyWaveCrt: 8,
+      statusIni: 'AMAN',
+      expectedCrt: 8,
+    );
+    const produkLain = OpnameExpiredSessionItem(
+      id: 43,
+      sessionId: 1,
+      waveId: 102,
+      kodeBarang: 'KB-901',
+      namaBarang: 'Susu Kental Manis',
+      batchNumber: 'BATCH-43',
+      qtyWaveCrt: 4,
+      statusIni: 'KRITIS',
+      expectedCrt: 4,
+    );
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          weekEnd: '2026-11-08',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: [batchPertama, batchKedua, produkLain],
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+
+    // Satu judul produk untuk dua batch (tidak ada header cluster terpisah).
+    expect(find.text('KB-900 — Sirup Herbal 200ml'), findsOneWidget);
+    expect(find.text('BATCH 1/2'), findsOneWidget);
+    expect(find.text('BATCH 2/2'), findsOneWidget);
+    expect(find.text('0/2'), findsOneWidget);
+
+    // Kedua batch bersatu di dalam AppCard yang sama.
+    var kartuBatchSatu = find.ancestor(
+      of: find.text('BATCH-41'),
+      matching: find.byType(AppCard),
+    );
+    var kartuBatchDua = find.ancestor(
+      of: find.text('BATCH-42'),
+      matching: find.byType(AppCard),
+    );
+    expect(kartuBatchSatu, findsOneWidget);
+    expect(kartuBatchDua, findsOneWidget);
+    expect(
+      kartuBatchSatu.evaluate().single,
+      same(kartuBatchDua.evaluate().single),
+    );
+  });
+
+  testWidgets('filter input memisahkan batch belum dan sudah dihitung', (
+    tester,
+  ) async {
+    const belum = OpnameExpiredSessionItem(
+      id: 51,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-910',
+      namaBarang: 'Produk Belum',
+      batchNumber: 'BATCH-51',
+      qtyWaveCrt: 5,
+      statusIni: 'AMAN',
+      expectedCrt: 5,
+    );
+    const sudah = OpnameExpiredSessionItem(
+      id: 52,
+      sessionId: 1,
+      waveId: 100,
+      kodeBarang: 'KB-911',
+      namaBarang: 'Produk Sudah',
+      batchNumber: 'BATCH-52',
+      qtyWaveCrt: 3,
+      statusIni: 'AMAN',
+      expectedCrt: 3,
+      qtyFisikCrt: 3,
+      verifiedAt: '2026-11-06T02:30:00Z',
+    );
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          weekEnd: '2026-11-08',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: [belum, sudah],
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Belum'), findsOneWidget);
+    expect(find.text('Sudah'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('opname-input-filter-PENDING')));
+    await tester.pumpAndSettle();
+    expect(find.text('BATCH-51'), findsOneWidget);
+    expect(find.text('BATCH-52'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('opname-input-filter-DONE')));
+    await tester.pumpAndSettle();
+    expect(find.text('BATCH-52'), findsOneWidget);
+    expect(find.text('BATCH-51'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('opname-input-filter-ALL')));
+    await tester.pumpAndSettle();
+    expect(find.text('BATCH-51'), findsOneWidget);
+  });
+
+  testWidgets('detail sesi rapi di layar ponsel sempit tanpa overflow', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const items = [
+      OpnameExpiredSessionItem(
+        id: 61,
+        sessionId: 1,
+        waveId: 99,
+        kodeBarang: 'KB-900',
+        namaBarang: 'Sirup Herbal Buah Merah Campuran 200 ml',
+        batchNumber: 'BATCH-20261105-AB2-LONG',
+        barcodeLabel: 'LBL-10240001',
+        expiredDateIni: '2026-12-01',
+        qtyWaveCrt: 12,
+        statusIni: 'KRITIS',
+        expectedCrt: 6,
+        umurSimpanHari: 83,
+        sisaHariBatch: 5,
+        diterimaMingguIni: true,
+        selisihTerima: -2,
+      ),
+      OpnameExpiredSessionItem(
+        id: 62,
+        sessionId: 1,
+        waveId: 100,
+        kodeBarang: 'KB-901',
+        namaBarang: 'Susu Kental Manis Coklat 370 gram',
+        batchNumber: 'BATCH-20261105-CD3-LONG',
+        expiredDateIni: '2027-01-05',
+        qtyWaveCrt: 8,
+        statusIni: 'AMAN',
+        expectedCrt: 8,
+      ),
+    ];
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          weekEnd: '2026-11-08',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: items,
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('BATCH 1/1'), findsOneWidget);
+    expect(find.text('2 produk · 2 batch'), findsOneWidget);
+    expect(find.text('Belum dihitung'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('filter DONE tidak mengubah progres asli kartu produk', (
+    tester,
+  ) async {
+    const batchSelesai = OpnameExpiredSessionItem(
+      id: 71,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-900',
+      namaBarang: 'Sirup Herbal 200ml',
+      batchNumber: 'BATCH-71',
+      qtyWaveCrt: 12,
+      statusIni: 'AMAN',
+      expectedCrt: 4,
+      qtyFisikCrt: 4,
+      verifiedAt: '2026-11-06T02:30:00Z',
+    );
+    const batchMenungguSatu = OpnameExpiredSessionItem(
+      id: 72,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-900',
+      namaBarang: 'Sirup Herbal 200ml',
+      batchNumber: 'BATCH-72',
+      qtyWaveCrt: 12,
+      statusIni: 'AMAN',
+      expectedCrt: 4,
+    );
+    const batchMenungguDua = OpnameExpiredSessionItem(
+      id: 73,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-900',
+      namaBarang: 'Sirup Herbal 200ml',
+      batchNumber: 'BATCH-73',
+      qtyWaveCrt: 12,
+      statusIni: 'AMAN',
+      expectedCrt: 4,
+    );
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          weekEnd: '2026-11-08',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: [batchSelesai, batchMenungguSatu, batchMenungguDua],
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('opname-input-filter-DONE')));
+    await tester.pumpAndSettle();
+
+    // Tampil 1 baris, tapi progres tetap 1/3 dan kartu tidak hijau.
+    expect(find.text('BATCH-71'), findsOneWidget);
+    expect(find.text('BATCH-72'), findsNothing);
+    expect(find.text('1/3'), findsOneWidget);
+    // Posisi batch tetap 1 dari 3, bukan 1 dari 1 setelah difilter.
+    expect(find.text('BATCH 1/3'), findsOneWidget);
+    expect(
+      tester
+          .widgetList<AppCard>(find.byType(AppCard))
+          .where((card) => card.color != null)
+          .length,
+      0,
+    );
+  });
+
+  testWidgets('tombol bersihkan pencarian tidak menggugurkan filter', (
+    tester,
+  ) async {
+    const belum = OpnameExpiredSessionItem(
+      id: 81,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-910',
+      namaBarang: 'Produk Belum',
+      batchNumber: 'BATCH-81',
+      qtyWaveCrt: 5,
+      statusIni: 'AMAN',
+      expectedCrt: 5,
+    );
+    const sudah = OpnameExpiredSessionItem(
+      id: 82,
+      sessionId: 1,
+      waveId: 100,
+      kodeBarang: 'KB-911',
+      namaBarang: 'Produk Sudah',
+      batchNumber: 'BATCH-82',
+      qtyWaveCrt: 3,
+      statusIni: 'AMAN',
+      expectedCrt: 3,
+      qtyFisikCrt: 3,
+      verifiedAt: '2026-11-06T02:30:00Z',
+    );
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          weekEnd: '2026-11-08',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: [belum, sudah],
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('opname-input-filter-PENDING')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'KB-91');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Bersihkan pencarian'));
+    await tester.pumpAndSettle();
+
+    // Filter PENDING tetap aktif; hanya teks pencarian yang hilang.
+    expect(find.text('BATCH-81'), findsOneWidget);
+    expect(find.text('BATCH-82'), findsNothing);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller?.text,
+      '',
+    );
+  });
 }
