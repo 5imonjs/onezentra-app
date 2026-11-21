@@ -145,7 +145,16 @@ class OpnameExpiredSessionRepository {
     return _expectObject(await _post(endpoint, data));
   }
 
-  // Kirim/approve/revise tidak dibutuhkan mobile — petugas hanya menginput,
+  /// Penanda ringan: seluruh baris sudah diinput. Bukan approval — status
+  /// sesi tidak berubah dan koreksi tetap menunggu validasi di web.
+  Future<OpnameExpiredSession> markComplete(int id) async {
+    var body = _expectObject(
+      await _post('/opname-sessions/$id/mark-complete', <String, dynamic>{}),
+    );
+    return _sessionFromBody(body);
+  }
+
+  // Approve/revise tidak dibutuhkan mobile — petugas hanya menginput,
   // validasi dilakukan di sistem web (pemisahan tugas).
 
   Future<OpnameExpiredSession> cancel(int id, {String? notes}) async {

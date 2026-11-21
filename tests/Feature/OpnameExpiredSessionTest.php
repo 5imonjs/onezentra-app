@@ -303,6 +303,54 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertSame(['approve'], $history);
     }
 
+    public function test_mark_input_complete_is_a_flag_not_an_approval(): void
+    {
+        $session = $this->makeSession();
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+
+        // Belum semua baris dihitung — penanda ditolak.
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/mark-complete")->assertStatus(422);
+
+        foreach ($session->items as $si) {
+            $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$si->id}", [
+                'qty_fisik_crt' => 5,
+                'qty_fisik_pcs' => 5,
+                'identified_via' => 'scan',
+                'condition' => 'FISIK_BAGUS',
+                'disposition' => 'LANJUT',
+            ])->assertOk();
+        }
+
+        // Bukan petugas yang ditugaskan tidak boleh menandai.
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/mark-complete")->assertForbidden();
+
+        Sanctum::actingAs($this->field);
+        $res = $this->postJson("/api/v1/opname-sessions/{$session->id}/mark-complete")->assertOk();
+        $this->assertNotNull($res->json('data.input_completed_at'));
+        // Status tidak berubah, koreksi wave belum berlaku.
+        $this->assertSame('IN_PROGRESS', $session->fresh()->status);
+        $this->assertNull($session->items->first()->wave->fresh()->validated_by);
+
+        // Idempoten: jejak hanya sekali.
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/mark-complete")->assertOk();
+        $this->assertSame(1, ApprovalHistory::where('subject_type', OpnameExpiredSession::class)
+            ->where('subject_id', $session->id)
+            ->where('action', 'input_complete')->count());
+
+        // Hitungan diubah → penanda dicabut, harus ditandai ulang.
+        $item = $session->items()->first();
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
+            'qty_fisik_crt' => 6,
+            'identified_via' => 'manual',
+            'condition' => 'FISIK_BAGUS',
+            'disposition' => 'LANJUT',
+        ])->assertOk();
+        $this->assertNull($session->fresh()->input_completed_at);
+    }
+
     public function test_counter_cannot_approve_own_counting(): void
     {
         $session = $this->countedSession();

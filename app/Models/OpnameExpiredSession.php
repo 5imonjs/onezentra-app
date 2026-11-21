@@ -34,7 +34,7 @@ class OpnameExpiredSession extends Model
     protected $fillable = [
         'week_start', 'week_end', 'kode_depo', 'nama_depo', 'assigned_to',
         'status', 'notes', 'started_at', 'completed_at', 'created_by',
-        'submitted_by', 'submitted_at', 'decided_by', 'decided_at', 'decision_note',
+        'submitted_by', 'submitted_at', 'input_completed_at', 'decided_by', 'decided_at', 'decision_note',
     ];
 
     protected function casts(): array
@@ -43,6 +43,7 @@ class OpnameExpiredSession extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'submitted_at' => 'datetime',
+            'input_completed_at' => 'datetime',
             'decided_at' => 'datetime',
         ];
     }

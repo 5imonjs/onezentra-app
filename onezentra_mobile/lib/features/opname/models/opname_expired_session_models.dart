@@ -193,6 +193,7 @@ class OpnameExpiredSession {
     this.createdBy,
     this.submittedBy,
     this.submittedAt,
+    this.inputCompletedAt,
     this.finishedAt,
     this.decidedBy,
     this.decidedAt,
@@ -246,6 +247,7 @@ class OpnameExpiredSession {
   final int? createdBy;
   final int? submittedBy;
   final String? submittedAt;
+  final String? inputCompletedAt;
   final String? finishedAt;
   final int? decidedBy;
   final String? decidedAt;

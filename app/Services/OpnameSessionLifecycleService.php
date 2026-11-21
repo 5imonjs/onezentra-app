@@ -23,6 +23,48 @@ class OpnameSessionLifecycleService
     ) {}
 
     /**
+     * Petugas menandai seluruh input selesai. Bukan approval: status tidak
+     * berubah dan koreksi belum berlaku — ini hanya sinyal ke web bahwa semua
+     * baris sudah dihitung dan siap divalidasi.
+     */
+    public function markInputComplete(OpnameExpiredSession $session, User $officer): OpnameExpiredSession
+    {
+        $refreshed = DB::transaction(function () use ($session, $officer): OpnameExpiredSession {
+            $locked = OpnameExpiredSession::whereKey($session->id)->lockForUpdate()->firstOrFail();
+
+            $this->ensureStatus($locked, [
+                OpnameExpiredSession::STATUS_IN_PROGRESS,
+                OpnameExpiredSession::STATUS_REVISI,
+            ]);
+            $this->ensureOfficer($locked, $officer);
+
+            $unverified = $locked->items()->whereNull('verified_at')->count();
+            if ($unverified > 0) {
+                throw ValidationException::withMessages([
+                    'items' => "Masih ada {$unverified} baris belum dihitung sebelum ditandai selesai.",
+                ]);
+            }
+
+            if ($locked->input_completed_at === null) {
+                $from = $locked->status;
+                $locked->update(['input_completed_at' => now()]);
+                $refreshed = $locked->refresh();
+                $this->recordHistory($refreshed, $from, 'input_complete', null, $officer);
+            } else {
+                // Idempoten: petugas menekan dua kali tidak menggandakan jejak.
+                $refreshed = $locked->refresh();
+            }
+
+            return $refreshed;
+        }, 5);
+
+        $session->setRawAttributes($refreshed->getAttributes(), true);
+        $session->syncOriginal();
+
+        return $refreshed;
+    }
+
+    /**
      * Approver menyetujui hasil hitung: koreksi diterapkan ke wave dan wave
      * menjadi validated. Pemutus wajib ≠ penghitung (segregation of duties).
      */
@@ -99,6 +141,8 @@ class OpnameSessionLifecycleService
                 'decided_by' => null,
                 'decided_at' => null,
                 'decision_note' => $reason,
+                // Input harus ditandai selesai lagi setelah perbaikan.
+                'input_completed_at' => null,
             ]);
 
             $refreshed = $locked->refresh();
@@ -113,6 +157,14 @@ class OpnameSessionLifecycleService
         $this->notify($refreshed, 'revisi');
 
         return $refreshed;
+    }
+
+    /**
+     * Hanya petugas yang ditugaskan yang boleh menandai input selesai.
+     */
+    private function ensureOfficer(OpnameExpiredSession $session, User $actor): void
+    {
+        abort_unless($session->assigned_to === $actor->id, 403, 'Hanya petugas yang ditugaskan yang dapat menandai input selesai.');
     }
 
     /**

@@ -793,25 +793,35 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
               total > 0 &&
               countedTotal == total) ...[
             const SizedBox(height: AppTheme.space2),
-            Row(
-              children: [
-                Icon(
-                  Icons.check_circle_outline_rounded,
-                  size: 14,
-                  color: colors.success,
-                ),
-                const SizedBox(width: AppTheme.space2),
-                Expanded(
-                  child: Text(
-                    'Input selesai — validasi dilakukan dari web.',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      color: colors.success,
+            if (session.inputCompletedAt == null)
+              AppPrimaryButton(
+                text: 'Tandai Selesai Input',
+                leadingIcon: Icons.done_all_rounded,
+                onPressed: provider.isLoading
+                    ? null
+                    : () => provider.markInputComplete(session.id),
+                height: 40,
+              )
+            else
+              Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 14,
+                    color: colors.success,
+                  ),
+                  const SizedBox(width: AppTheme.space2),
+                  Expanded(
+                    child: Text(
+                      'Input selesai — validasi dilakukan dari web.',
+                      style: GoogleFonts.roboto(
+                        fontSize: 11,
+                        color: colors.success,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
           ],
           ..._buildSessionActions(session, provider, context),
         ],

@@ -560,8 +560,9 @@ export const opnameSessions = {
       headers: { 'Content-Type': 'multipart/form-data' },
     } : undefined);
   },
-  // Base praktik: kirim sesi (penghitung) lalu approve/revise (approver).
-  // Koreksi wave baru berlaku saat /approve.
+  // Penanda ringan petugas (bukan approval): status tidak berubah.
+  markComplete: (id: number) => apiClient.post(`/opname-sessions/${id}/mark-complete`),
+  // Approve/revise dilakukan approver independen di web; koreksi berlaku saat /approve.
   approve: (id: number) => apiClient.post(`/opname-sessions/${id}/approve`),
   revise: (id: number, reason: string) => apiClient.post(`/opname-sessions/${id}/revise`, { reason }),
   cancel: (id: number, notes?: string) => apiClient.post(`/opname-sessions/${id}/cancel`, notes ? { notes } : {}),

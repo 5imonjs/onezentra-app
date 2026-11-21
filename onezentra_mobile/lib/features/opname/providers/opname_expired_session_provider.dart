@@ -189,7 +189,11 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
     }
   }
 
-  // Kirim/approve/revise sengaja tidak ada di mobile: petugas hanya menginput,
+  /// Tandai input selesai (penanda, bukan approval) lalu segarkan detail.
+  Future<void> markInputComplete(int id) =>
+      _execute(() => _repository.markComplete(id));
+
+  // Approve/revise sengaja tidak ada di mobile: petugas hanya menginput,
   // validasi dilakukan di sistem web (pemisahan tugas).
 
   Future<void> cancel(int id, {String? notes}) =>

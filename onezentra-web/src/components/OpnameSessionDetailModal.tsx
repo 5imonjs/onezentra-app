@@ -58,6 +58,8 @@ export interface SessionDetail {
   started_at: string | null;
   completed_at: string | null;
   submitted_at?: string | null;
+  /** Penanda ringan petugas: semua baris dihitung, bukan status approval. */
+  input_completed_at?: string | null;
   decided_at?: string | null;
   decision_note?: string | null;
   assignee?: { id: number; full_name: string; email: string } | null;
@@ -372,6 +374,14 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold ${STATUS_META[detail.status] || STATUS_META.OPEN}`}>{detail.status}</span>
+              {detail.input_completed_at && (
+                <span
+                  className="inline-flex px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700"
+                  title={`Petugas menandai input selesai pada ${fmtDate(detail.input_completed_at)} — menunggu validasi`}
+                >
+                  Input selesai
+                </span>
+              )}
               {canEdit && detail.status === 'OPEN' && (
                 <button onClick={() => act(() => opnameSessions.start(sessionId), 'Sesi dimulai.')} disabled={busy} className="btn-primary text-sm disabled:opacity-50">Mulai Sesi</button>
               )}

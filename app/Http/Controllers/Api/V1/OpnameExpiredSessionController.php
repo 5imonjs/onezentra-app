@@ -445,9 +445,32 @@ class OpnameExpiredSessionController extends Controller
 
         $result = $service->verifySessionItem($item, $data, $request->user());
 
+        // Setiap perubahan hitungan membatalkan penanda "input selesai" —
+        // penanda harus selalu menggambarkan kondisi baris terkini.
+        if ($session->input_completed_at !== null) {
+            $session->update(['input_completed_at' => null]);
+        }
+
         return response()->json([
             'message' => "Baris terhitung ({$result['batches_issued']} label diterbitkan).",
             'data' => array_merge($result, ['item' => $item->fresh()->load('wave')]),
+        ]);
+    }
+
+    /**
+     * Penanda ringan dari petugas: semua baris sudah dihitung. Tidak mengubah
+     * status dan tidak menjalankan koreksi — web yang memvalidasi.
+     */
+    public function markInputComplete(Request $request, OpnameExpiredSession $session): JsonResponse
+    {
+        $this->authorizeSession($request, $session);
+        $this->authorizeSessionWorker($session, $request->user(), ['Menandai input selesai']);
+
+        app(OpnameSessionLifecycleService::class)->markInputComplete($session, $request->user());
+
+        return response()->json([
+            'message' => 'Input ditandai selesai — menunggu validasi dari web.',
+            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
         ]);
     }
 

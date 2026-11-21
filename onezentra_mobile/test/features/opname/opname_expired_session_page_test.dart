@@ -26,6 +26,33 @@ class _FakeOpnameExpiredSessionRepository
   int listCalls = 0;
   bool? lastMine;
   final List<Map<String, dynamic>> verifyPayloads = [];
+  final Set<int> markedIds = <int>{};
+  final List<int> markCompleteCalls = <int>[];
+
+  OpnameExpiredSession _withMark(OpnameExpiredSession s) =>
+      OpnameExpiredSession(
+        id: s.id,
+        weekStart: s.weekStart,
+        weekEnd: s.weekEnd,
+        kodeDepo: s.kodeDepo,
+        namaDepo: s.namaDepo,
+        assignedTo: s.assignedTo,
+        status: s.status,
+        notes: s.notes,
+        startedAt: s.startedAt,
+        completedAt: s.completedAt,
+        createdBy: s.createdBy,
+        submittedBy: s.submittedBy,
+        submittedAt: s.submittedAt,
+        inputCompletedAt: markedIds.contains(s.id)
+            ? '2026-11-21T12:00:00Z'
+            : s.inputCompletedAt,
+        finishedAt: s.finishedAt,
+        decidedBy: s.decidedBy,
+        decidedAt: s.decidedAt,
+        decisionNote: s.decisionNote,
+        items: s.items,
+      );
 
   @override
   Future<List<OpnameExpiredSession>> list({
@@ -49,7 +76,7 @@ class _FakeOpnameExpiredSessionRepository
   Future<OpnameExpiredSession> show(int id) async {
     for (var session in sessions) {
       if (session.id == id) {
-        return session;
+        return _withMark(session);
       }
     }
     throw const ApiException('Sesi tidak ditemukan.', 0);
@@ -64,6 +91,18 @@ class _FakeOpnameExpiredSessionRepository
   }) async {
     verifyPayloads.add({...data, 'photo_path': photoPath, 'item_id': itemId});
     return <String, dynamic>{'batches_issued': 1};
+  }
+
+  @override
+  Future<OpnameExpiredSession> markComplete(int id) async {
+    markCompleteCalls.add(id);
+    markedIds.add(id);
+    for (var session in sessions) {
+      if (session.id == id) {
+        return _withMark(session);
+      }
+    }
+    throw const ApiException('Sesi tidak ditemukan.', 0);
   }
 }
 
@@ -1043,7 +1082,7 @@ void main() {
     expect(find.text('Hitung Fisik'), findsOneWidget);
   });
 
-  testWidgets('input selesai hanya menginformasikan validasi dari web', (
+  testWidgets('tandai selesai input adalah penanda, bukan approval', (
     tester,
   ) async {
     const selesai = OpnameExpiredSessionItem(
@@ -1077,11 +1116,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('1/1 dihitung'), findsOneWidget);
+    // Pemicu ringan tersedia, bukan tombol kirim/approval.
+    expect(find.text('Tandai Selesai Input'), findsOneWidget);
+    expect(find.text('Kirim Hasil Opname'), findsNothing);
+    expect(find.text('Setujui'), findsNothing);
+
+    await tester.tap(find.text('Tandai Selesai Input'));
+    await tester.pumpAndSettle();
+
+    expect(repository.markCompleteCalls, [1]);
+    expect(find.text('Tandai Selesai Input'), findsNothing);
     expect(
       find.text('Input selesai — validasi dilakukan dari web.'),
       findsOneWidget,
     );
-    expect(find.text('Kirim Hasil Opname'), findsNothing);
-    expect(find.text('Setujui'), findsNothing);
   });
 }
