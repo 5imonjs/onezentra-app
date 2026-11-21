@@ -175,7 +175,7 @@ export default function OpnameSessionsPage() {
   if (!hasPermission('opname.session.view')) {
     return (
       <DashboardLayout>
-        <div className="p-6 text-sm text-muted-foreground">Anda tidak memiliki izin untuk melihat Stock Opname.</div>
+        <div className="p-6 text-sm text-muted-foreground">Anda tidak memiliki izin untuk melihat Sesi Opname.</div>
       </DashboardLayout>
     );
   }
@@ -185,8 +185,8 @@ export default function OpnameSessionsPage() {
       <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="rounded-2xl border border-border bg-card px-5 py-4 shadow-sm">
-            <h1 className="text-xl font-bold leading-tight text-foreground">Stock Opname</h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">Penugasan hitung fisik per minggu + depo — label lot terbit saat baris diverifikasi</p>
+            <h1 className="text-xl font-bold leading-tight text-foreground">Sesi Opname</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">Buat & tugaskan sesi hitung fisik per minggu + depo — petugas menginput hasil, validasi dari web</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {hasPermission('opname.view') && (
@@ -293,7 +293,7 @@ export default function OpnameSessionsPage() {
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
               <svg aria-hidden="true" className="h-7 w-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
-            <p className="text-sm font-medium text-foreground">Belum ada sesi Stock Opname.</p>
+            <p className="text-sm font-medium text-foreground">Belum ada sesi opname.</p>
             <p className="text-xs text-slate-400 mt-1">Buat sesi dari baris monitoring kedaluwarsa, tugaskan ke petugas lapangan.</p>
             {hasPermission('opname.view') && (
               <Link href="/opname-expired" className="btn-secondary text-xs mt-4 inline-flex">
@@ -305,7 +305,7 @@ export default function OpnameSessionsPage() {
           <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
             <div className="max-h-[560px] overflow-x-auto overflow-y-auto">
               <table className="w-full min-w-[860px] border-collapse">
-                <caption className="sr-only">Daftar sesi Stock Opname</caption>
+                <caption className="sr-only">Daftar sesi opname</caption>
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-border bg-popover">
                     <th scope="col" className="px-5 py-3 whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Minggu</th>

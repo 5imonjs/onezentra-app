@@ -423,12 +423,12 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
                 </p>
                 {currentBaseline.has_open_session && (
                   <p className="mt-1 text-[11px] font-medium text-amber-700">
-                    Stock Opname depo ini masih terbuka. Koreksi tanggal saldo awal dikunci sampai sesi selesai atau dibatalkan; hapus baseline tetap bisa dilakukan.
+                    Sesi opname depo ini masih terbuka. Koreksi tanggal saldo awal dikunci sampai sesi selesai atau dibatalkan; hapus baseline tetap bisa dilakukan.
                   </p>
                 )}
                 {!currentBaseline.has_open_session && currentBaseline.has_finalized_current_week && (
                   <p className="mt-1 text-[11px] font-medium text-amber-700">
-                    Stock Opname minggu ini sudah final. Koreksi saldo awal tidak bisa mengubah saldo yang sudah disetujui.
+                    Sesi opname minggu ini sudah final. Koreksi saldo awal tidak bisa mengubah saldo yang sudah disetujui.
                   </p>
                 )}
               </div>

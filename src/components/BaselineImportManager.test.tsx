@@ -123,7 +123,7 @@ describe('BaselineImportManager — koreksi saldo awal', () => {
 
     render(<BaselineImportManager open onClose={vi.fn()} />);
 
-    expect(await screen.findByText(/Stock Opname depo ini masih terbuka/)).toBeTruthy();
+    expect(await screen.findByText(/Sesi opname depo ini masih terbuka/)).toBeTruthy();
     expect((screen.getByRole('button', { name: /Simpan koreksi/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -134,7 +134,7 @@ describe('BaselineImportManager — koreksi saldo awal', () => {
 
     render(<BaselineImportManager open onClose={vi.fn()} />);
 
-    expect(await screen.findByText(/Stock Opname minggu ini sudah final/)).toBeTruthy();
+    expect(await screen.findByText(/Sesi opname minggu ini sudah final/)).toBeTruthy();
     expect((screen.getByRole('button', { name: /Simpan koreksi/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

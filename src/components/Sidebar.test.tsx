@@ -69,12 +69,12 @@ describe('Sidebar — ikon menu', () => {
     expect(setting).not.toEqual(penerima);
   });
 
-  it('membedakan ikon menu "Monitoring Kedaluwarsa" dan "Stock Opname" (grup Stok & Opname)', () => {
+  it('membedakan ikon menu "Monitoring Kedaluwarsa" dan "Sesi Opname" (grup Stok & Opname)', () => {
     nav.pathname = '/opname-sessions';
     renderSidebar();
 
     const monitoring = screen.getByText('Monitoring Kedaluwarsa').closest('a')?.querySelector('path')?.getAttribute('d');
-    const stock = screen.getByText('Stock Opname').closest('a')?.querySelector('path')?.getAttribute('d');
+    const stock = screen.getByText('Sesi Opname').closest('a')?.querySelector('path')?.getAttribute('d');
 
     expect(monitoring).toBeTruthy();
     expect(stock).toBeTruthy();
@@ -125,12 +125,12 @@ describe('Sidebar — ikon menu', () => {
     expect(screen.queryByRole('link', { name: 'Stok Manual' })).not.toBeInTheDocument();
   });
 
-  it('menyembunyikan "Stock Opname" dari viewer murni (opname.view tanpa opname.session.view)', () => {
+  it('menyembunyikan "Sesi Opname" dari viewer murni (opname.view tanpa opname.session.view)', () => {
     nav.pathname = '/opname-expired';
     auth.can = (permission: string) => permission !== 'opname.session.view';
     renderSidebar();
 
     expect(screen.getByText('Monitoring Kedaluwarsa')).toBeInTheDocument();
-    expect(screen.queryByText('Stock Opname')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sesi Opname')).not.toBeInTheDocument();
   });
 });

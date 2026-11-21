@@ -740,7 +740,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
             if (target) markHabis(target);
           }
         }}
-        title={confirm === 'approve' ? 'Validasi Stock Opname' : confirm === 'revise' ? 'Minta Revisi' : confirm === 'habis' ? 'Tandai Habis (kosong)' : 'Batalkan Sesi'}
+        title={confirm === 'approve' ? 'Validasi Sesi Opname' : confirm === 'revise' ? 'Minta Revisi' : confirm === 'habis' ? 'Tandai Habis (kosong)' : 'Batalkan Sesi'}
         message={confirm === 'approve'
             ? 'Koreksi selisih akan diterapkan ke baris monitoring dan baris monitoring menjadi tervalidasi. Penghitung tidak boleh menyetujui hitungannya sendiri. Lanjutkan?'
             : confirm === 'revise'
