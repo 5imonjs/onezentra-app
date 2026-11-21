@@ -23,7 +23,7 @@ const operasionalMenus = [
 // antara halaman kerja dan halaman rekap jelas.
 const opnameMenus = [
   { name: 'Monitoring Kedaluwarsa', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
-  { name: 'Stock Opname', path: '/opname-sessions', icon: 'user-group', permission: 'opname.session.view' },
+  { name: 'Sesi Opname', path: '/opname-sessions', icon: 'user-group', permission: 'opname.session.view' },
 ];
 
 const masterDataMenus = [

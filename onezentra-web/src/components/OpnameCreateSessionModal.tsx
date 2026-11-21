@@ -152,7 +152,7 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
         assigned_to: Number(assignedTo),
         wave_ids: Array.from(picked),
       });
-      notifyGlobal('Sesi Stock Opname dibuat.', 'success');
+      notifyGlobal('Sesi opname dibuat.', 'success');
       onCreated();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal membuat sesi'));
@@ -162,7 +162,7 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
   };
 
   return (
-    <Modal open onClose={onClose} title="Buat Sesi Stock Opname" subtitle="Pilih minggu + depo, tugaskan baris monitoring ke petugas lapangan" size="xl"
+    <Modal open onClose={onClose} title="Buat Sesi Opname" subtitle="Pilih minggu + depo, tugaskan baris monitoring ke petugas lapangan" size="xl"
       footer={<><button onClick={onClose} className="btn-secondary">Batal</button><button onClick={save} disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Menyimpan...' : 'Buat Sesi'}</button></>}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>

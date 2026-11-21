@@ -115,7 +115,7 @@ describe('OpnameExpiredPage', () => {
     expect(screen.queryByText('Pantau lot kedaluwarsa per minggu dan depo, termasuk status Aman.')).not.toBeInTheDocument();
     // Header sekarang ringkas: tidak ada tombol Stock Opname generik yang bersaing
     // dengan CTA kontekstual di banner (buat/lanjutkan/lihat hasil sesi).
-    expect(screen.queryByRole('link', { name: 'Stock Opname' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Sesi Opname' })).not.toBeInTheDocument();
     // Header sekarang ringkas: langkah alur tidak lagi dirender sebagai chip di header.
     expect(screen.queryByLabelText('Alur monitoring kedaluwarsa')).not.toBeInTheDocument();
   });
@@ -258,7 +258,7 @@ describe('OpnameExpiredPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
     expect(await screen.findByText('Hitung fisik minggu ini selesai')).toBeInTheDocument();
-    const link = screen.getByRole('link', { name: /Lihat Hasil Stock Opname/ });
+    const link = screen.getByRole('link', { name: /Lihat Hasil Sesi Opname/ });
     expect(link.getAttribute('href')).toContain('/opname-sessions?');
     expect(link.getAttribute('href')).toContain('week_start=');
     expect(link.getAttribute('href')).toContain('kode_depo=DPO');
@@ -290,8 +290,8 @@ describe('OpnameExpiredPage', () => {
     render(<OpnameExpiredPage />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
-    expect(await screen.findByText('Stock Opname sedang berjalan')).toBeInTheDocument();
-    const link = screen.getByRole('link', { name: /Lanjutkan Stock Opname/ });
+    expect(await screen.findByText('Sesi Opname sedang berjalan')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: /Lanjutkan Sesi Opname/ });
     expect(link.getAttribute('href')).toContain('/opname-sessions?');
     expect(link.getAttribute('href')).toContain('week_start=');
     expect(link.getAttribute('href')).toContain('kode_depo=DPO');
@@ -368,7 +368,7 @@ describe('OpnameExpiredPage', () => {
     expect(screen.getByText(/1 lot dalam karantina/)).toBeInTheDocument();
   });
 
-  it('mengarahkan tombol Buat Sesi ke halaman Stock Opname dengan minggu+depo dan modal create', async () => {
+  it('mengarahkan tombol Buat Sesi ke halaman Sesi Opname dengan minggu+depo dan modal create', async () => {
     pending.mockResolvedValue({
       data: {
         data: {
@@ -407,7 +407,7 @@ describe('OpnameExpiredPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
     expect(await screen.findByText('Baris monitoring siap dihitung fisik')).toBeInTheDocument();
-    const link = screen.getByRole('link', { name: /Buat Sesi Stock Opname/ });
+    const link = screen.getByRole('link', { name: /Buat Sesi Opname/ });
     expect(link.getAttribute('href')).toContain('/opname-sessions?');
     expect(link.getAttribute('href')).toContain('week_start=');
     expect(link.getAttribute('href')).toContain('kode_depo=DPO');

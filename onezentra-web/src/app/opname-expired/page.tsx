@@ -587,7 +587,7 @@ export default function OpnameExpiredPage() {
   const refreshAfterDataChange = useCallback(() => reloadAll(true), [reloadAll]);
 
   /**
-   * Semua tombol ke modul Stock Opname membawa konteks minggu + depo agar
+   * Semua tombol ke modul Sesi Opname membawa konteks minggu + depo agar
    * user tidak mendarat di daftar sesi mentah lalu memfilter ulang.
    */
   const sessionHref = (options: { depo?: string; create?: boolean; sessionId?: number | null } = {}): string => {
@@ -885,10 +885,10 @@ export default function OpnameExpiredPage() {
     if (allRowsValidated) {
       return {
         title: 'Hitung fisik minggu ini selesai',
-        description: 'Semua baris sudah tervalidasi. Hasil hitung fisik bisa dilihat di Stock Opname.',
+        description: 'Semua baris sudah tervalidasi. Hasil hitung fisik bisa dilihat di Sesi Opname.',
         action: hasPermission('opname.session.view') ? (
           <Link href={sessionHref({ sessionId: onlyFinalizedSessionId })} className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
-            Lihat Hasil Stock Opname
+            Lihat Hasil Sesi Opname
             <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
           </Link>
         ) : null,
@@ -896,11 +896,11 @@ export default function OpnameExpiredPage() {
     }
     if (hasOpenSession) {
       return {
-        title: 'Stock Opname sedang berjalan',
+        title: 'Sesi Opname sedang berjalan',
         description: `${fnum(progressValidated)} dari ${fnum(progressTotal)} baris sudah tervalidasi. Lanjutkan sesi yang sudah dibuka.`,
         action: hasPermission('opname.session.view') ? (
           <Link href={sessionHref({ sessionId: onlyOpenSessionId })} className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
-            Lanjutkan Stock Opname
+            Lanjutkan Sesi Opname
             <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
           </Link>
         ) : null,
@@ -908,15 +908,15 @@ export default function OpnameExpiredPage() {
     }
     return {
       title: 'Baris monitoring siap dihitung fisik',
-      description: 'Baris monitoring minggu ini sudah terbentuk. Buat sesi Stock Opname agar petugas bisa input hasil hitung lapangan.',
+      description: 'Baris monitoring minggu ini sudah terbentuk. Buat sesi opname agar petugas bisa input hasil hitung lapangan.',
       action: hasPermission('opname.session.create') ? (
         <Link href={sessionHref({ create: true })} className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
-          Buat Sesi Stock Opname
+          Buat Sesi Opname
           <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </Link>
       ) : hasPermission('opname.session.view') ? (
         <Link href={sessionHref()} className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
-          Lihat Stock Opname
+          Lihat Sesi Opname
           <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </Link>
       ) : null,
@@ -1143,7 +1143,7 @@ export default function OpnameExpiredPage() {
           <div className="bg-card rounded-2xl shadow-sm border border-border px-5 py-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="text-sm font-bold text-foreground">
-                Progres Stock Opname per Depo
+                Progres Sesi Opname per Depo
                 <span className="ml-2 font-medium text-slate-400">
                   {depoProgress.filter((d) => d.submitted).length}/{depoProgress.length} depo sudah submit · {progressPct}% baris tervalidasi
                 </span>
@@ -1177,7 +1177,7 @@ export default function OpnameExpiredPage() {
                       <Link
                         href={sessionHref({ depo: d.kode_depo })}
                         className="rounded-lg border border-border px-2 py-1 text-[11px] font-bold text-foreground transition-colors hover:bg-slate-100"
-                        aria-label={`Buka Stock Opname ${d.nama_depo || d.kode_depo}`}
+                        aria-label={`Buka Sesi Opname ${d.nama_depo || d.kode_depo}`}
                       >
                         Buka
                       </Link>
@@ -1714,7 +1714,7 @@ export default function OpnameExpiredPage() {
                     href={sessionHref({ depo: current.kode_depo })}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-500 px-3 py-2.5 text-xs font-bold text-white transition-colors hover:bg-primary-600"
                   >
-                    Buka Stock Opname Depo Ini
+                    Buka Sesi Opname Depo Ini
                     <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                   </Link>
                 )}
