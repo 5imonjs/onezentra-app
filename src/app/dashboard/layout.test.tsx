@@ -1,19 +1,20 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardLayout from './layout';
 
-const { authState } = vi.hoisted(() => ({
+const { authState, pathnameRef } = vi.hoisted(() => ({
   authState: {
     user: { full_name: 'Budi Santoso' },
     loadUser: vi.fn(),
     isLoading: false,
     hasPermission: () => true,
   },
+  pathnameRef: { value: '/dashboard' as string },
 }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => '/dashboard',
+  usePathname: () => pathnameRef.value,
 }));
 
 vi.mock('next/image', () => ({
@@ -30,6 +31,7 @@ vi.mock('@/store/auth', () => ({
 describe('DashboardLayout — scroll konten mandiri', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    pathnameRef.value = '/dashboard';
   });
 
   afterEach(cleanup);
@@ -51,5 +53,28 @@ describe('DashboardLayout — scroll konten mandiri', () => {
     const root = main?.parentElement as HTMLElement;
     expect(root.className).toContain('h-dvh');
     expect(root.className).toContain('overflow-hidden');
+  });
+
+  it('tidak memunculkan splash ulang saat pindah menu', async () => {
+    const { rerender } = render(
+      <DashboardLayout>
+        <div>KONTEN</div>
+      </DashboardLayout>,
+    );
+
+    // Tunggu hingga splash selesai (visible → fade out → gone) sebelum pindah.
+    await screen.findByText('KONTEN');
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument(), { timeout: 2000 });
+
+    // Pindah menu: splash tidak boleh muncul lagi. Sebelum fix, pathname di-
+    // dependency splash → overlay muncul ulang (~350 ms fade + 600 ms hilang).
+    pathnameRef.value = '/gate';
+    rerender(
+      <DashboardLayout>
+        <div>KONTEN GATE</div>
+      </DashboardLayout>,
+    );
+    await screen.findByText('KONTEN GATE');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 });

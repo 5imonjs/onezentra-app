@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { PDFDocument, PDFName, PDFNumber, PDFRawStream } from 'pdf-lib';
 import { notifyPermissionDenied } from '@/store/globalToast';
 
@@ -466,8 +466,32 @@ export const standarisasiTumpukan = {
   template: () => apiClient.get('/standarisasi-tumpukan/template', { responseType: 'blob' }),
 };
 
+/**
+ * Cache ringkasan daftar depo (module scope — bertahan antar navigasi,
+ * mirror useDashboardSummary): halaman yang pakai depo.list() dibuka lewat
+ * menu lain sebelum TTL tidak re-request. Invalidasi eksplisit lewat
+ * clearDepoListCache pada login/logout; TTL 60 dtk bounded.
+ */
+type DepoListResponse = AxiosResponse;
+
+const DEPO_LIST_TTL_MS = 60_000;
+let depoListCache: { at: number; response: DepoListResponse } | null = null;
+
+/** Hapus cache daftar depo — wajib dipanggil pada login/logout. */
+export function clearDepoListCache(): void {
+  depoListCache = null;
+}
+
 export const depo = {
-  list: () => apiClient.get('/depo'),
+  list: (): Promise<DepoListResponse> => {
+    if (depoListCache && Date.now() - depoListCache.at < DEPO_LIST_TTL_MS) {
+      return Promise.resolve(depoListCache.response);
+    }
+    return apiClient.get('/depo').then((response) => {
+      depoListCache = { at: Date.now(), response };
+      return response;
+    });
+  },
 };
 
 export const depotSettings = {

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { auth } from '@/lib/api';
+import { auth, clearDepoListCache } from '@/lib/api';
 import { clearDashboardSummaryCache } from '@/lib/dashboardSummary';
 
 interface User {
@@ -42,6 +42,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Buang ringkasan dashboard milik sesi sebelumnya (bila ada) agar user
       // baru tidak melihat data user lama sebelum cache kedaluwarsa.
       clearDashboardSummaryCache();
+      clearDepoListCache();
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('ow_login_splash', '1');
       }
@@ -60,6 +61,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Buang ringkasan dashboard milik sesi sebelumnya (bila ada) agar user
       // baru tidak melihat data user lama sebelum cache kedaluwarsa.
       clearDashboardSummaryCache();
+      clearDepoListCache();
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('ow_login_splash', '1');
       }
@@ -81,6 +83,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       sessionStorage.removeItem('ow_login_splash');
     }
     clearDashboardSummaryCache();
+    clearDepoListCache();
     set({ user: null, permissions: [] });
   },
 

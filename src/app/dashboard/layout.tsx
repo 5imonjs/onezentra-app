@@ -71,6 +71,10 @@ export default function DashboardLayout({
   // mengatur ulang posisi scroll saat pindah halaman — kita lakukan manual.
   const mainRef = useRef<HTMLElement | null>(null);
   const [splash, setSplash] = useState<{ visible: boolean; leaving: boolean; immersive: boolean }>({ visible: false, leaving: false, immersive: false });
+  // Splash hanya sekali per mount/login. Pathname di-dependency splash sebelumnya
+  // → tiap klik menu memunculkan overlay 350 ms fade + 600 ms hilang
+  // (artificial delay per navigasi); ref membatasi tampilnya ke first mount.
+  const splashShownRef = useRef(false);
 
   const loadUserFn = useCallback(() => loadUser(), [loadUser]);
 
@@ -82,7 +86,8 @@ export default function DashboardLayout({
   }, [user, loadUserFn]);
 
   useEffect(() => {
-    if (!mounted || !user) return;
+    if (!mounted || !user || splashShownRef.current) return;
+    splashShownRef.current = true;
     const loginSplash = typeof window !== 'undefined' && sessionStorage.getItem('ow_login_splash') === '1';
     setSplash({ visible: true, leaving: false, immersive: loginSplash });
     const t1 = setTimeout(() => setSplash(s => ({ ...s, leaving: true })), 350);
@@ -94,7 +99,7 @@ export default function DashboardLayout({
     }, 600);
 
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [mounted, user, pathname]);
+  }, [mounted, user]);
 
   useEffect(() => {
     if (mounted && !isLoading && !user) {
