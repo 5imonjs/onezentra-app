@@ -174,6 +174,10 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
   // apakah "diinput" dan "dihitung" adalah keadaan yang sama.
   String _itemFilter = 'ALL';
 
+  // Petugas bisa menciutkan detail header saat ingin fokus penuh ke daftar
+  // barang. Ringkasan + progres tetap terlihat.
+  bool _headerCompact = false;
+
   @override
   void initState() {
     super.initState();
@@ -329,120 +333,107 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     }
     var countedTotal = session.items.where((i) => i.isVerified).length;
 
+    Widget listContent;
+    if (needle.isNotEmpty && searched.isEmpty) {
+      listContent = const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppTheme.space8),
+        child: AppEmptyState(
+          icon: Icons.search_off_rounded,
+          title: 'Tidak ada yang cocok',
+          subtitle: 'Coba kata kunci lain — nama produk atau kode batch.',
+        ),
+      );
+    } else if (items.isEmpty) {
+      listContent = Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppTheme.space8),
+        child: AppEmptyState(
+          icon: Icons.filter_alt_off_rounded,
+          title: _filterLabel.isEmpty
+              ? 'Tidak ada batch'
+              : 'Tidak ada batch $_filterLabel',
+          subtitle: 'Ganti filter status hitung atau kosongkan pencarian.',
+          action: TextButton(
+            onPressed: _resetDetailFilters,
+            style: TextButton.styleFrom(minimumSize: const Size(0, 44)),
+            child: const Text('Tampilkan semua'),
+          ),
+        ),
+      );
+    } else {
+      listContent = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var entry in products.entries) ...[
+            _OpnameProductCard(
+              items: entry.value,
+              allItems: allProducts[entry.key] ?? entry.value,
+              onCount: session.acceptsCounting
+                  ? (item) => _showVerifySheet(context, session, item)
+                  : null,
+            ),
+            const SizedBox(height: AppTheme.space4),
+          ],
+        ],
+      );
+    }
+
+    // Header ikut bergulir bersama daftar — setelah petugas menggulir sedikit,
+    // seluruh layar dipakai untuk barang yang akan dihitung.
     return RefreshIndicator(
       onRefresh: () => provider.show(session.id),
-      // Header tetap (hero + pencarian) tidak ikut bergerak; hanya daftar
-      // barang yang digulir — pas saat daftar batch panjang.
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppTheme.space4,
+          AppTheme.space4,
+          AppTheme.space4,
+          AppTheme.space8,
+        ),
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppTheme.space4,
-              AppTheme.space4,
-              AppTheme.space4,
-              0,
-            ),
-            child: _buildSessionHeaderCard(session, provider, countedTotal),
-          ),
-          if (session.items.length > 1)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppTheme.space4,
-                AppTheme.space4,
-                AppTheme.space4,
-                0,
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) => setState(() => _search = value),
-                decoration: InputDecoration(
-                  isDense: true,
-                  filled: true,
-                  fillColor: context.colors.surfaceCard,
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  suffixIcon: _search.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          tooltip: 'Bersihkan pencarian',
-                          onPressed: _clearSearch,
-                        ),
-                  hintText: 'Cari nama produk / kode batch...',
-                  hintStyle: GoogleFonts.roboto(
-                    fontSize: 13,
-                    color: context.colors.textMuted,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: AppTheme.radiusLg,
-                    borderSide: BorderSide(color: context.colors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: AppTheme.radiusLg,
-                    borderSide: BorderSide(color: context.colors.border),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                    horizontal: 12,
-                  ),
+          _buildSessionHeaderCard(session, provider, countedTotal),
+          if (session.items.length > 1) ...[
+            const SizedBox(height: AppTheme.space3),
+            TextField(
+              controller: _searchController,
+              onChanged: (value) => setState(() => _search = value),
+              decoration: InputDecoration(
+                isDense: true,
+                filled: true,
+                fillColor: context.colors.surfaceCard,
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                suffixIcon: _search.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                        tooltip: 'Bersihkan pencarian',
+                        onPressed: _clearSearch,
+                      ),
+                hintText: 'Cari nama produk / kode batch...',
+                hintStyle: GoogleFonts.roboto(
+                  fontSize: 13,
+                  color: context.colors.textMuted,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: AppTheme.radiusLg,
+                  borderSide: BorderSide(color: context.colors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: AppTheme.radiusLg,
+                  borderSide: BorderSide(color: context.colors.border),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 12,
                 ),
               ),
             ),
-          if (session.items.isNotEmpty)
+          ],
+          if (session.items.isNotEmpty) ...[
+            const SizedBox(height: AppTheme.space3),
             _buildInputFilterChips(context, searched),
-          Expanded(
-            child: needle.isNotEmpty && searched.isEmpty
-                ? const SingleChildScrollView(
-                    physics: AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.all(AppTheme.space4),
-                    child: AppEmptyState(
-                      icon: Icons.search_off_rounded,
-                      title: 'Tidak ada yang cocok',
-                      subtitle:
-                          'Coba kata kunci lain — nama produk atau kode batch.',
-                    ),
-                  )
-                : items.isEmpty
-                ? SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(AppTheme.space4),
-                    child: AppEmptyState(
-                      icon: Icons.filter_alt_off_rounded,
-                      title: _filterLabel.isEmpty
-                          ? 'Tidak ada batch'
-                          : 'Tidak ada batch $_filterLabel',
-                      subtitle:
-                          'Ganti filter status hitung atau kosongkan pencarian.',
-                      action: TextButton(
-                        onPressed: _resetDetailFilters,
-                        style: TextButton.styleFrom(
-                          minimumSize: const Size(0, 44),
-                        ),
-                        child: const Text('Tampilkan semua'),
-                      ),
-                    ),
-                  )
-                : ListView(
-                    // Selalu dapat digulir agar pull-to-refresh tetap bekerja
-                    // saat daftar lebih pendek dari layar.
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(AppTheme.space4),
-                    children: [
-                      for (var entry in products.entries) ...[
-                        _OpnameProductCard(
-                          items: entry.value,
-                          allItems: allProducts[entry.key] ?? entry.value,
-                          onCount: session.acceptsCounting
-                              ? (item) =>
-                                    _showVerifySheet(context, session, item)
-                              : null,
-                        ),
-                        const SizedBox(height: AppTheme.space4),
-                      ],
-                      const SizedBox(height: AppTheme.space8),
-                    ],
-                  ),
-          ),
+          ],
+          const SizedBox(height: AppTheme.space4),
+          listContent,
         ],
       ),
     );
@@ -466,60 +457,52 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     var pending = searched.where((item) => !item.isVerified).length;
     var done = searched.length - pending;
     var colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppTheme.space4,
-        AppTheme.space3,
-        AppTheme.space4,
-        0,
-      ),
-      child: Wrap(
-        spacing: AppTheme.space2,
-        runSpacing: AppTheme.space2,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          // Label kontekstual: "Belum"/"Sudah" hanya jelas kalau pembacanya
-          // tahu yang difilter adalah status hitung, bukan risiko barang.
-          SizedBox(
-            height: 44,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Tampilkan:',
-                style: GoogleFonts.roboto(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textMuted,
-                ),
+    return Wrap(
+      spacing: AppTheme.space2,
+      runSpacing: AppTheme.space2,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        // Label kontekstual: "Belum"/"Sudah" hanya jelas kalau pembacanya
+        // tahu yang difilter adalah status hitung, bukan risiko barang.
+        SizedBox(
+          height: 44,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Tampilkan:',
+              style: GoogleFonts.roboto(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: colors.textMuted,
               ),
             ),
           ),
-          _inputFilterChip(
-            context,
-            label: 'Semua',
-            semanticLabel: 'semua batch',
-            value: 'ALL',
-            count: searched.length,
-            onTap: () => setState(() => _itemFilter = 'ALL'),
-          ),
-          _inputFilterChip(
-            context,
-            label: 'Belum',
-            semanticLabel: 'yang belum dihitung',
-            value: 'PENDING',
-            count: pending,
-            onTap: () => setState(() => _itemFilter = 'PENDING'),
-          ),
-          _inputFilterChip(
-            context,
-            label: 'Sudah',
-            semanticLabel: 'yang sudah dihitung',
-            value: 'DONE',
-            count: done,
-            onTap: () => setState(() => _itemFilter = 'DONE'),
-          ),
-        ],
-      ),
+        ),
+        _inputFilterChip(
+          context,
+          label: 'Semua',
+          semanticLabel: 'semua batch',
+          value: 'ALL',
+          count: searched.length,
+          onTap: () => setState(() => _itemFilter = 'ALL'),
+        ),
+        _inputFilterChip(
+          context,
+          label: 'Belum',
+          semanticLabel: 'yang belum dihitung',
+          value: 'PENDING',
+          count: pending,
+          onTap: () => setState(() => _itemFilter = 'PENDING'),
+        ),
+        _inputFilterChip(
+          context,
+          label: 'Sudah',
+          semanticLabel: 'yang sudah dihitung',
+          value: 'DONE',
+          count: done,
+          onTap: () => setState(() => _itemFilter = 'DONE'),
+        ),
+      ],
     );
   }
 
@@ -609,11 +592,11 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     var hint = _statusHint(session.status);
     var colors = context.colors;
 
-    // Hero sesi: gradien + ikon tile selaras halaman lain (beranda,
-    // sesi validasi) agar aplikasi terasa satu bahasa desain.
+    // Header ringkas: identitas + progres + aksi utama. Tidak ada lagi hero
+    // tinggi yang menyisakan sedikit ruang untuk daftar barang.
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.space4),
+      padding: const EdgeInsets.all(AppTheme.space3),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -625,20 +608,19 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
         boxShadow: [
           BoxShadow(
             color: colors.surfaceHover,
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -648,15 +630,15 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                       AppTheme.primary600,
                     ],
                   ),
-                  borderRadius: AppTheme.radiusXl,
+                  borderRadius: AppTheme.radiusLg,
                 ),
                 child: const Icon(
                   Icons.inventory_2_rounded,
-                  size: 22,
+                  size: 18,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(width: AppTheme.space3),
+              const SizedBox(width: AppTheme.space2),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -664,19 +646,19 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                     Text(
                       'SESI OPNAME EXPIRED',
                       style: GoogleFonts.roboto(
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
+                        letterSpacing: 0.7,
                         color: colors.textMuted,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 1),
                     Text(
                       'Sesi minggu ${_formatDate(session.weekStart)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.roboto(
-                        fontSize: 15,
+                        fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: colors.foreground,
                       ),
@@ -690,62 +672,99 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                 variant: _sessionBadgeVariant(session.status),
                 icon: _sessionIcon(session.status),
               ),
+              IconButton(
+                onPressed: () =>
+                    setState(() => _headerCompact = !_headerCompact),
+                tooltip: _headerCompact
+                    ? 'Tampilkan detail sesi'
+                    : 'Ciutkan header',
+                icon: Icon(
+                  _headerCompact
+                      ? Icons.expand_more_rounded
+                      : Icons.expand_less_rounded,
+                  size: 20,
+                  color: colors.textMuted,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 32),
+                visualDensity: VisualDensity.compact,
+              ),
             ],
           ),
-          const SizedBox(height: AppTheme.space3),
+          const SizedBox(height: AppTheme.space2),
           Row(
             children: [
-              Icon(Icons.warehouse_rounded, size: 14, color: colors.textMuted),
-              const SizedBox(width: 6),
+              Icon(Icons.warehouse_rounded, size: 12, color: colors.textMuted),
+              const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   session.namaDepo ?? session.kodeDepo ?? '-',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: colors.textSecondary,
                   ),
                 ),
               ),
+              const SizedBox(width: AppTheme.space2),
+              Text(
+                '$productCount produk · $total batch',
+                style: GoogleFonts.roboto(
+                  fontSize: 10,
+                  color: colors.textMuted,
+                ),
+              ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.only(left: 20, top: 2),
-            child: Text(
-              '$productCount produk · $total batch',
-              style: GoogleFonts.roboto(fontSize: 11, color: colors.textMuted),
-            ),
-          ),
-          if (hint.isNotEmpty) ...[
+          if (!_headerCompact && hint.isNotEmpty) ...[
             const SizedBox(height: AppTheme.space2),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline_rounded, size: 14, color: colors.info),
-                const SizedBox(width: AppTheme.space2),
-                Expanded(
-                  child: Text(
-                    hint,
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      height: 1.4,
-                      color: colors.info,
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.space2,
+                vertical: 6,
+              ),
+              decoration: BoxDecoration(
+                color: colors.infoWell,
+                borderRadius: AppTheme.radiusLg,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 13,
+                    color: colors.info,
+                  ),
+                  const SizedBox(width: AppTheme.space2),
+                  Expanded(
+                    child: Tooltip(
+                      message: hint,
+                      child: Text(
+                        hint,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.roboto(
+                          fontSize: 10.5,
+                          color: colors.info,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
           if (total > 0) ...[
-            const SizedBox(height: AppTheme.space3),
-            _SessionDuration(session: session),
-            const SizedBox(height: AppTheme.space3),
+            if (!_headerCompact) ...[
+              const SizedBox(height: AppTheme.space2),
+              _SessionDuration(session: session),
+            ],
+            const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppTheme.radiusFull,
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 6,
@@ -779,6 +798,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
               leadingIcon: Icons.send_rounded,
               onPressed: () => provider.submit(session.id),
               isLoading: provider.isLoading,
+              height: 40,
             ),
           ],
           ..._buildSessionActions(session, provider, context),
@@ -794,31 +814,35 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
   ) {
     if (session.isOpen) {
       return [
-        const SizedBox(height: AppTheme.space3),
-        AppPrimaryButton(
-          text: 'Mulai Sesi',
-          leadingIcon: Icons.play_arrow_rounded,
-          onPressed: () => provider.start(session.id),
-          isLoading: provider.isLoading,
-        ),
         const SizedBox(height: AppTheme.space2),
-        AppSecondaryButton(
-          text: 'Batalkan Sesi',
-          onPressed: () => provider.cancel(session.id),
-          isLoading: provider.isLoading,
-          isFullWidth: false,
-          width: 180,
-          height: 44,
+        Row(
+          children: [
+            Expanded(
+              child: AppPrimaryButton(
+                text: 'Mulai Sesi',
+                leadingIcon: Icons.play_arrow_rounded,
+                onPressed: () => provider.start(session.id),
+                isLoading: provider.isLoading,
+                height: 40,
+              ),
+            ),
+            const SizedBox(width: AppTheme.space2),
+            AppSecondaryButton(
+              text: 'Batalkan',
+              onPressed: () => provider.cancel(session.id),
+              isLoading: provider.isLoading,
+              isFullWidth: false,
+              width: 104,
+              height: 40,
+            ),
+          ],
         ),
       ];
     }
 
     if (session.isPendingApproval) {
-      // Tanpa aksi approval di mobile: pengecekan hasil dilakukan di
-      // sistem web (pemisahan tugas). Petugas hanya melihat info status —
-      // proses lapangan tidak tertahan menunggu keputusan.
       return [
-        const SizedBox(height: AppTheme.space3),
+        const SizedBox(height: AppTheme.space2),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1438,10 +1462,14 @@ class _SessionDurationState extends State<_SessionDuration> {
     var isRunning = _ended == null;
     var duration = (_ended ?? DateTime.now()).difference(started);
 
+    // Chip durasi ringkas — cukup untuk memberi pace tanpa memakan ruang
+    // daftar barang seperti strip durasi versi lama.
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.space2,
+        vertical: 6,
+      ),
       decoration: BoxDecoration(
-        // Inset lembut: menyatu rapi dengan hero gradien di belakangnya.
         color: colors.foreground.withValues(alpha: 0.04),
         borderRadius: AppTheme.radiusLg,
         border: Border.all(color: colors.border),
@@ -1450,19 +1478,24 @@ class _SessionDurationState extends State<_SessionDuration> {
         children: [
           Icon(
             isRunning ? Icons.timer_rounded : Icons.timer_outlined,
-            size: 16,
+            size: 14,
             color: isRunning ? AppTheme.primary600 : colors.textMuted,
           ),
-          const SizedBox(width: 8),
-          Text(
-            isRunning ? 'Durasi berjalan' : 'Durasi opname',
-            style: GoogleFonts.roboto(fontSize: 11, color: colors.textMuted),
+          const SizedBox(width: 6),
+          // Label boleh dipangkas, angka durasi tetap terbaca penuh.
+          Flexible(
+            child: Text(
+              isRunning ? 'Durasi berjalan' : 'Durasi opname',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.roboto(fontSize: 10, color: colors.textMuted),
+            ),
           ),
-          const Spacer(),
+          const SizedBox(width: AppTheme.space2),
           Text(
             _formatDuration(duration),
             style: GoogleFonts.robotoMono(
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               color: isRunning ? colors.foreground : colors.success,
             ),
@@ -1680,11 +1713,7 @@ class _OpnameProductCard extends StatelessWidget {
           ),
           const SizedBox(height: AppTheme.space2),
           for (var i = 0; i < items.length; i++) ...[
-            if (i > 0)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
-                child: Divider(height: 1, color: colors.border),
-              ),
+            if (i > 0) const SizedBox(height: AppTheme.space2),
             _OpnameBatchRow(
               item: items[i],
               // Posisi stabil dari seluruh batch, bukan urutan hasil filter —
@@ -1767,7 +1796,7 @@ class _OpnameProductCard extends StatelessWidget {
                       child: Text(
                         '$total batch · Stok wave ${_formatQty(stokWave)} CRT'
                         '${stokPcs > 0 ? ' / ${_formatQty(stokPcs)} PCS' : ''}',
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.roboto(
                           fontSize: 11,
@@ -1872,261 +1901,295 @@ class _OpnameBatchRow extends StatelessWidget {
     var deltaInfo = _deltaInfo(context);
     var verified = item.isVerified;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            if (verified)
-              Icon(Icons.check_circle_rounded, size: 18, color: colors.success)
-            else
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: colors.border,
-                ),
-              ),
-            const SizedBox(width: AppTheme.space2),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'BATCH $index/$total',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.4,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.robotoMono(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: colors.foreground,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (deltaInfo != null)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.space2,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: deltaInfo.$2.withValues(alpha: 0.12),
-                  borderRadius: AppTheme.radiusFull,
-                ),
-                child: Text(
-                  deltaInfo.$1,
-                  style: GoogleFonts.roboto(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: deltaInfo.$2,
-                  ),
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.space2,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: verified
-                      ? colors.success.withValues(alpha: 0.12)
-                      : colors.textMuted.withValues(alpha: 0.08),
-                  borderRadius: AppTheme.radiusFull,
-                ),
-                child: Text(
-                  verified ? 'Sudah dihitung' : 'Belum dihitung',
-                  style: GoogleFonts.roboto(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: verified ? colors.success : colors.textMuted,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: AppTheme.space2),
-        Text(
-          'Barcode ${item.barcodeLabel ?? '—'}'
-          '${item.tanggalPenerimaan != null ? ' · Terima ${_formatDate(item.tanggalPenerimaan)}' : ''}'
-          ' · Exp ${_formatDate(item.expiredDateIni)}',
-          style: GoogleFonts.roboto(
-            fontSize: 11,
-            height: 1.35,
-            color: colors.textSecondary,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppTheme.space3,
+        AppTheme.space3,
+        AppTheme.space2,
+        AppTheme.space2,
+      ),
+      decoration: BoxDecoration(
+        color: verified
+            ? colors.success.withValues(alpha: 0.10)
+            : colors.warning.withValues(alpha: 0.08),
+        borderRadius: AppTheme.radiusLg,
+        border: Border(
+          left: BorderSide(
+            color: verified ? colors.success : colors.warning,
+            width: 3,
           ),
         ),
-        if (item.diterimaMingguIni)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.space2,
-                vertical: 2,
-              ),
-              decoration: BoxDecoration(
-                color: colors.primaryWell,
-                borderRadius: AppTheme.radiusFull,
-                border: Border.all(color: colors.primaryWellBorder),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.local_shipping_rounded,
-                    size: 11,
-                    color: colors.primaryWellText,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Terima minggu ini',
-                    style: GoogleFonts.roboto(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: colors.primaryWellText,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        const SizedBox(height: 2),
-        Text(
-          'Acuan batch CRT ${_formatQty(item.expectedCrt)} · PCS '
-          '${item.expectedPcs == null ? 'tanpa acuan' : _formatQty(item.expectedPcs)}',
-          style: GoogleFonts.roboto(fontSize: 11, color: colors.textMuted),
-        ),
-        if (item.umurSimpanHari != null || item.sisaHariBatch != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.hourglass_bottom_rounded,
-                  size: 12,
-                  color: (item.sisaHariBatch ?? 999) <= 7
-                      ? colors.danger
-                      : colors.textMuted,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    [
-                      if (item.umurSimpanHari != null)
-                        'Umur simpan ${item.umurSimpanHari} hari',
-                      if (item.sisaHariBatch != null)
-                        'Sisa ${item.sisaHariBatch} hari',
-                    ].join(' · '),
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      fontWeight: (item.sisaHariBatch ?? 999) <= 7
-                          ? FontWeight.w700
-                          : FontWeight.w400,
-                      color: (item.sisaHariBatch ?? 999) <= 7
-                          ? colors.danger
-                          : colors.textSecondary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        if (item.selisihTerima != null && item.selisihTerima != 0)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              'Sudah selisih saat terima: '
-              '${item.selisihTerima! > 0 ? '+' : ''}'
-              '${_formatQty(item.selisihTerima)} CRT dari rencana terima',
-              style: GoogleFonts.roboto(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: colors.warning,
-              ),
-            ),
-          )
-        else if (item.conditionTerima != null &&
-            item.conditionTerima!.toUpperCase() != 'FISIK_BAGUS')
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              'Kondisi saat terima: ${_conditionLabel(item.conditionTerima)}',
-              style: GoogleFonts.roboto(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: colors.warning,
-              ),
-            ),
-          ),
-        if (verified) ...[
-          const SizedBox(height: 2),
-          Text(
-            'Fisik CRT ${_formatQty(item.qtyFisikCrt)} · PCS ${_formatQty(item.qtyFisikPcs)}',
-            style: GoogleFonts.roboto(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: colors.foreground,
-            ),
-          ),
-          const SizedBox(height: AppTheme.space2),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              if (item.condition != null && item.condition!.isNotEmpty)
-                Text(
-                  _conditionLabel(item.condition),
-                  style: GoogleFonts.roboto(
-                    fontSize: 11,
-                    color: colors.textSecondary,
+              if (verified)
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 18,
+                  color: colors.success,
+                )
+              else
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: colors.warning,
                   ),
                 ),
-              if (item.disposition != null)
-                Text(
-                  'Disposisi ${_dispositionLabel(item.disposition)}',
-                  style: GoogleFonts.roboto(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textSecondary,
+              const SizedBox(width: AppTheme.space2),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'BATCH $index/$total',
+                      style: GoogleFonts.roboto(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.robotoMono(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: colors.foreground,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.namaBarang ?? item.kodeBarang ?? 'Tanpa nama',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.roboto(
+                        fontSize: 11,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (deltaInfo != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.space2,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: deltaInfo.$2.withValues(alpha: 0.12),
+                    borderRadius: AppTheme.radiusFull,
+                  ),
+                  child: Text(
+                    deltaInfo.$1,
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: deltaInfo.$2,
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.space2,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: verified
+                        ? colors.success.withValues(alpha: 0.18)
+                        : colors.warning.withValues(alpha: 0.18),
+                    borderRadius: AppTheme.radiusFull,
+                  ),
+                  child: Text(
+                    verified ? 'Sudah dihitung' : 'Belum dihitung',
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: verified ? colors.success : colors.warning,
+                    ),
                   ),
                 ),
             ],
           ),
-          if (item.notes != null && item.notes!.isNotEmpty) ...[
-            const SizedBox(height: AppTheme.space2),
-            Text(
-              'Catatan: ${item.notes}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.roboto(
-                fontSize: 11,
-                color: colors.textSecondary,
+          const SizedBox(height: AppTheme.space2),
+          Text(
+            'Barcode ${item.barcodeLabel ?? '—'}'
+            '${item.tanggalPenerimaan != null ? ' · Terima ${_formatDate(item.tanggalPenerimaan)}' : ''}'
+            ' · Exp ${_formatDate(item.expiredDateIni)}',
+            style: GoogleFonts.roboto(
+              fontSize: 11,
+              height: 1.35,
+              color: colors.textSecondary,
+            ),
+          ),
+          if (item.diterimaMingguIni)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.space2,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.primaryWell,
+                  borderRadius: AppTheme.radiusFull,
+                  border: Border.all(color: colors.primaryWellBorder),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.local_shipping_rounded,
+                      size: 11,
+                      color: colors.primaryWellText,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Terima minggu ini',
+                      style: GoogleFonts.roboto(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: colors.primaryWellText,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            ),
+          const SizedBox(height: 2),
+          Text(
+            'Acuan batch CRT ${_formatQty(item.expectedCrt)} · PCS '
+            '${item.expectedPcs == null ? 'tanpa acuan' : _formatQty(item.expectedPcs)}',
+            style: GoogleFonts.roboto(fontSize: 11, color: colors.textMuted),
+          ),
+          if (item.umurSimpanHari != null || item.sisaHariBatch != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.hourglass_bottom_rounded,
+                    size: 12,
+                    color: (item.sisaHariBatch ?? 999) <= 7
+                        ? colors.danger
+                        : colors.textMuted,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      [
+                        if (item.umurSimpanHari != null)
+                          'Umur simpan ${item.umurSimpanHari} hari',
+                        if (item.sisaHariBatch != null)
+                          'Sisa ${item.sisaHariBatch} hari',
+                      ].join(' · '),
+                      style: GoogleFonts.roboto(
+                        fontSize: 11,
+                        fontWeight: (item.sisaHariBatch ?? 999) <= 7
+                            ? FontWeight.w700
+                            : FontWeight.w400,
+                        color: (item.sisaHariBatch ?? 999) <= 7
+                            ? colors.danger
+                            : colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (item.selisihTerima != null && item.selisihTerima != 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Sudah selisih saat terima: '
+                '${item.selisihTerima! > 0 ? '+' : ''}'
+                '${_formatQty(item.selisihTerima)} CRT dari rencana terima',
+                style: GoogleFonts.roboto(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: colors.warning,
+                ),
+              ),
+            )
+          else if (item.conditionTerima != null &&
+              item.conditionTerima!.toUpperCase() != 'FISIK_BAGUS')
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Kondisi saat terima: ${_conditionLabel(item.conditionTerima)}',
+                style: GoogleFonts.roboto(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: colors.warning,
+                ),
+              ),
+            ),
+          if (verified) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Fisik CRT ${_formatQty(item.qtyFisikCrt)} · PCS ${_formatQty(item.qtyFisikPcs)}',
+              style: GoogleFonts.roboto(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: colors.foreground,
+              ),
+            ),
+            const SizedBox(height: AppTheme.space2),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (item.condition != null && item.condition!.isNotEmpty)
+                  Text(
+                    _conditionLabel(item.condition),
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                if (item.disposition != null)
+                  Text(
+                    'Disposisi ${_dispositionLabel(item.disposition)}',
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+            if (item.notes != null && item.notes!.isNotEmpty) ...[
+              const SizedBox(height: AppTheme.space2),
+              Text(
+                'Catatan: ${item.notes}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.roboto(
+                  fontSize: 11,
+                  color: colors.textSecondary,
+                ),
+              ),
+            ],
+          ],
+          if (onCount != null) ...[
+            const SizedBox(height: AppTheme.space3),
+            AppSecondaryButton(
+              text: verified ? 'Hitung Ulang' : 'Hitung Fisik',
+              onPressed: onCount,
+              height: 44,
             ),
           ],
         ],
-        if (onCount != null) ...[
-          const SizedBox(height: AppTheme.space3),
-          AppSecondaryButton(
-            text: verified ? 'Hitung Ulang' : 'Hitung Fisik',
-            onPressed: onCount,
-            height: 44,
-          ),
-        ],
-      ],
+      ),
     );
   }
 }

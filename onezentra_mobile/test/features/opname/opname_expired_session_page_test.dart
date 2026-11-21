@@ -351,6 +351,10 @@ void main() {
       expect(find.text('BATCH-13'), findsOneWidget);
 
       // Search cepat: mengetik nama produk menyaring cluster lain keluar.
+      // Kolom cari ikut bergulir bersama header — gulir kembali ke atas agar
+      // widget-nya masih ada di tree sebelum mengetik.
+      await tester.drag(find.byType(ListView).first, const Offset(0, 600));
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Susu Kental');
       await tester.pumpAndSettle();
 
@@ -865,9 +869,9 @@ void main() {
     await tester.tap(find.text('Sesi minggu 02/11/2026'));
     await tester.pumpAndSettle();
 
-    expect(find.text('BATCH 1/1'), findsOneWidget);
+    expect(find.text('BATCH 1/1'), findsNWidgets(2));
     expect(find.text('2 produk · 2 batch'), findsOneWidget);
-    expect(find.text('Belum dihitung'), findsOneWidget);
+    expect(find.text('Belum dihitung'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 
@@ -993,6 +997,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('opname-input-filter-PENDING')));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byType(TextField));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'KB-91');
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Bersihkan pencarian'));
@@ -1005,5 +1011,32 @@ void main() {
       tester.widget<TextField>(find.byType(TextField)).controller?.text,
       '',
     );
+  });
+
+  testWidgets('header bisa dinciutkan agar daftar barang lebih luas', (
+    tester,
+  ) async {
+    var now = DateTime.now().toUtc();
+    var repository = buildCountingFixture(
+      startedAt: now.subtract(const Duration(seconds: 60)).toIso8601String(),
+      finishedAt: now.subtract(const Duration(seconds: 10)).toIso8601String(),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Durasi opname'), findsOneWidget);
+    expect(find.byTooltip('Ciutkan header'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Ciutkan header'));
+    await tester.pumpAndSettle();
+
+    // Detail disembunyikan, ringkasan progres tetap terlihat.
+    expect(find.byTooltip('Tampilkan detail sesi'), findsOneWidget);
+    expect(find.text('Durasi opname'), findsNothing);
+    expect(find.text('0/1 dihitung'), findsOneWidget);
+    expect(find.text('Hitung Fisik'), findsOneWidget);
   });
 }
