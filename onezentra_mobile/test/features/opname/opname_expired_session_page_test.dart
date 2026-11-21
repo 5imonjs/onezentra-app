@@ -25,6 +25,7 @@ class _FakeOpnameExpiredSessionRepository
   final bool fail;
   int listCalls = 0;
   bool? lastMine;
+  bool lastActiveOnly = false;
   final List<Map<String, dynamic>> verifyPayloads = [];
   final Set<int> markedIds = <int>{};
   final List<int> markCompleteCalls = <int>[];
@@ -60,17 +61,29 @@ class _FakeOpnameExpiredSessionRepository
     String? kodeDepo,
     String? status,
     bool? mine,
+    bool activeOnly = false,
   }) async {
     listCalls++;
     lastMine = mine;
+    lastActiveOnly = activeOnly;
     if (fail) {
       throw const ApiException(
         'Gagal memuat sesi opname. Silakan coba lagi.',
         0,
       );
     }
-    return sessions;
+    return activeOnly
+        ? sessions.where((s) => !_isSesiPenumpuk(s.status)).toList()
+        : sessions;
   }
+
+  /// Terminal statuses sebagai `activeOnly` di backend — sesi sudah
+  /// selesai dari web atau dibatalkan tidak ikut muncul di daftar.
+  bool _isSesiPenumpuk(String status) => const {
+    'APPROVED',
+    'COMPLETED',
+    'CANCELLED',
+  }.contains(status.toUpperCase());
 
   @override
   Future<OpnameExpiredSession> show(int id) async {
@@ -212,6 +225,57 @@ void main() {
     expect(find.text('Depo Utama'), findsOneWidget);
     // Beranda = daftar tugas: hanya sesi yang ditugaskan ke user.
     expect(repository.lastMine, isTrue);
+    expect(repository.lastActiveOnly, isTrue);
+  });
+
+  testWidgets('daftar sesi menyembunyikan yang sudah selesai/cancel dari web', (
+    tester,
+  ) async {
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-09',
+          weekEnd: '2026-11-15',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+        ),
+        const OpnameExpiredSession(
+          id: 2,
+          weekStart: '2026-11-16',
+          weekEnd: '2026-11-22',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'APPROVED',
+        ),
+        const OpnameExpiredSession(
+          id: 3,
+          weekStart: '2026-11-23',
+          weekEnd: '2026-11-29',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'COMPLETED',
+        ),
+        const OpnameExpiredSession(
+          id: 4,
+          weekStart: '2026-11-30',
+          weekEnd: '2026-12-06',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'CANCELLED',
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+
+    expect(find.text('Sesi minggu 09/11/2026'), findsOneWidget);
+    expect(find.text('Sesi minggu 16/11/2026'), findsNothing);
+    expect(find.text('Sesi minggu 23/11/2026'), findsNothing);
+    expect(find.text('Sesi minggu 30/11/2026'), findsNothing);
+    expect(repository.lastActiveOnly, isTrue);
   });
 
   testWidgets('membuka detail sesi menampilkan aksi mulai sesi', (

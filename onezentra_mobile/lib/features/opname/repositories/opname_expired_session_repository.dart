@@ -62,6 +62,7 @@ class OpnameExpiredSessionRepository {
     String? kodeDepo,
     String? status,
     bool? mine,
+    bool activeOnly = false,
   }) async {
     var query = Uri(
       queryParameters: <String, String>{
@@ -71,6 +72,9 @@ class OpnameExpiredSessionRepository {
         if (kodeDepo != null && kodeDepo.isNotEmpty) 'kode_depo': kodeDepo,
         if (status != null && status.isNotEmpty) 'status': status,
         if (mine == true) 'mine': '1',
+        // Judul meminta agar sesi yang sudah APPROVED/COMPLETED/CANCELLED
+        // tak bengkak di daftar Tugas Lapangan — filtering di server.
+        if (activeOnly) 'active_only': '1',
       },
     ).query;
     var response = _expectObject(await _get('/opname-sessions?$query'));

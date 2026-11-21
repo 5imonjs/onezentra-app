@@ -51,7 +51,7 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
       // Beranda Flutter = daftar tugas: hanya sesi yang ditugaskan ke user
       // ini. Pembuatan & penugasan sesi tetap di web — monitoring wave
       // (opname-expired) tidak dibuka dari mobile.
-      var result = await _repository.list(mine: true);
+      var result = await _repository.list(mine: true, activeOnly: true);
       if (requestId != _requestId) {
         return;
       }

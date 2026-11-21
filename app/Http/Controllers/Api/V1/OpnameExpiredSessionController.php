@@ -67,6 +67,18 @@ class OpnameExpiredSessionController extends Controller
             $query->where('assigned_to', $request->user()->id);
         }
 
+        if ($request->boolean('active_only')) {
+            // Daftar pada layar Tugas Lapangan tidak tumpuk: sesi yang
+            // sudah APPROVED/COMPLETED atau dibatalkan (CANCELLED) dari
+            // web ikut hilang, sehingga petugas baru kita segera ke sesi
+            // baru tanpa harus scroll dicolokkan status final.
+            $query->whereNotIn('status', [
+                OpnameExpiredSession::STATUS_APPROVED,
+                OpnameExpiredSession::STATUS_COMPLETED,
+                OpnameExpiredSession::STATUS_CANCELLED,
+            ]);
+        }
+
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
             $like = LikePattern::contains($search);

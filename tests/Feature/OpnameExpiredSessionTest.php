@@ -1012,6 +1012,33 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertContains($session->id, $ids);
     }
 
+    public function test_index_active_only_menyaring_status_penumpuk(): void
+    {
+        Sanctum::actingAs($this->supervisor);
+
+        $approvable = $this->makeSession();
+        $approvable->update(['status' => 'APPROVED']);
+
+        $cancelled = $this->makeSession();
+        $cancelled->update(['status' => 'CANCELLED']);
+        $this->assertSame($cancelled->status, 'CANCELLED');
+
+        $fetch = function (?string $params = null) use (&$fetch): array {
+            $res = $this->getJson("/api/v1/opname-sessions?per_page=100{$params}")->assertOk();
+            return collect($res->json('data.data'))->pluck('id')->all();
+        };
+
+        // Tanpa filter: semua sesi dikembalikan.
+        $all = $fetch();
+        $this->assertContains($approvable->id, $all);
+        $this->assertContains($cancelled->id, $all);
+
+        // Dengan active_only=1: sesi APPROVED/CANCELLED tak ikut muncul.
+        $active = $fetch('&active_only=1');
+        $this->assertNotContains($approvable->id, $active);
+        $this->assertNotContains($cancelled->id, $active);
+    }
+
     public function test_receiving_item_addition_is_blocked_while_depot_session_is_open(): void
     {
         $session = $this->makeSession();
