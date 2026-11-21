@@ -184,7 +184,7 @@ String _statusHint(String status) => switch (status) {
 ///
 /// Daftar sesi → detail dengan ringkasan progres → hitung fisik per label
 /// batch → simpan draf lokal bila belum selesai → submit hasil. Validasi
-/// koreksi dilakukan di web, bukan per baris oleh BLC.
+/// koreksi diterapkan saat web memvalidasi, bukan per baris.
 class OpnameExpiredSessionPage extends StatefulWidget {
   const OpnameExpiredSessionPage({super.key, this.repository, this.draftStore});
 
@@ -472,26 +472,26 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (var group in principalGroups.entries) ...[
-            _PrincipalHeader(
+            _ExpandablePrincipalGroup(
               label: group.key,
               productCount: group.value.length,
               batchCount: group.value.fold(
                 0,
                 (sum, key) => sum + (products[key]?.length ?? 0),
               ),
+              cards: [
+                for (var productKey in group.value)
+                  _OpnameProductCard(
+                    items: products[productKey]!,
+                    allItems: allProducts[productKey] ?? products[productKey]!,
+                    drafts: _drafts,
+                    onCount: session.acceptsCounting
+                        ? (item) => _showVerifySheet(context, session, item)
+                        : null,
+                  ),
+                const SizedBox(height: AppTheme.space3),
+              ],
             ),
-            const SizedBox(height: AppTheme.space3),
-            for (var productKey in group.value) ...[
-              _OpnameProductCard(
-                items: products[productKey]!,
-                allItems: allProducts[productKey] ?? products[productKey]!,
-                drafts: _drafts,
-                onCount: session.acceptsCounting
-                    ? (item) => _showVerifySheet(context, session, item)
-                    : null,
-              ),
-              const SizedBox(height: AppTheme.space3),
-            ],
             const SizedBox(height: AppTheme.space3),
           ],
         ],
@@ -746,8 +746,8 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
           Row(
             children: [
               Container(
-                width: 30,
-                height: 30,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -849,7 +849,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppTheme.space2,
-                vertical: 5,
+                vertical: 6,
               ),
               decoration: BoxDecoration(
                 color: colors.infoWell,
@@ -1154,9 +1154,8 @@ class _VerifySheetState extends State<_VerifySheet> {
       'qty_fisik_crt': _qtyCrtValue,
       'qty_fisik_pcs': _qtyPcsValue,
       'condition': _condition,
-      // Proses disposisi (lanjut/retur/disposal) sudah dilepas dari alur
-      // hitung — tindak lanjut fisik diurus terpisah di lapangan;
-      // koreksi tetap menunggu validasi BLC di web.
+      // Tindak lanjut fisik (retur/disposal) dan koreksi waktu habis
+      // tetap dipicu saat approver memvalidasi di web.
       'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       'identified_via': 'manual',
     };
@@ -1341,8 +1340,8 @@ class _VerifySheetState extends State<_VerifySheet> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Tandai habis — fisik 0; koreksi menunggu '
-                            'validasi BLC saat approve.',
+                            'Tandai habis — fisik 0; koreksi (retur/disposal) '
+                            'dilakukan saat web memvalidasi sesi ini.',
                             style: GoogleFonts.roboto(
                               fontSize: 11,
                               height: 1.35,
@@ -1545,11 +1544,10 @@ class _QuickChip extends StatelessWidget {
 }
 
 /// Strip durasi opname di header sesi: dari "Mulai Sesi" sampai penghitungan
-/// selesai (kirim untuk persetujuan / verifikasi terakhir).
+/// selesai (saat semua baris dalam grup produk siap, petugas tekan Submit).
 ///
-/// - sesi berjalan: durasi hidup berdetak per detik (menit–detik) — petugas
-///   dan supervisor melihat pace opname;
-/// - sesi terkirim: durasi terkunci mulai → submitted_at, tetap tampil
+/// - sesi berjalan: durasi hidup berdetak per detik (menit–detik);
+/// - sesi selesai: durasi terkunci mulai → input_completed_at, tetap tampil
 ///   sebagai laporan selesai (jelas, fungsional, terukur).
 class _SessionDuration extends StatefulWidget {
   const _SessionDuration({required this.session});
@@ -1570,6 +1568,7 @@ class _SessionDurationState extends State<_SessionDuration> {
     super.initState();
     _started = _parseTimestamp(widget.session.startedAt);
     _ended =
+        _parseTimestamp(widget.session.inputCompletedAt) ??
         _parseTimestamp(widget.session.submittedAt) ??
         _parseTimestamp(widget.session.finishedAt);
     if (_started != null && _ended == null) {
@@ -1587,6 +1586,7 @@ class _SessionDurationState extends State<_SessionDuration> {
     super.didUpdateWidget(oldWidget);
     // Sesi bisa berubah status (mis. submit) — apit waktu akhir baru.
     var newEnded =
+        _parseTimestamp(widget.session.inputCompletedAt) ??
         _parseTimestamp(widget.session.submittedAt) ??
         _parseTimestamp(widget.session.finishedAt);
     if (newEnded != null && newEnded != _ended) {
@@ -1773,12 +1773,28 @@ class _OpnameSessionTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                total > 0 && counted > 0
-                    ? '$counted/$total dihitung'
-                    : '$total batch',
+                total > 0 ? '$counted/$total dihitung' : 'Tidak ada batch',
                 style: GoogleFonts.roboto(
                   fontSize: 11,
                   color: colors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 3),
+              SizedBox(
+                width: 56,
+                child: ClipRRect(
+                  borderRadius: AppTheme.radiusFull,
+                  child: LinearProgressIndicator(
+                    value: total == 0 ? 0 : counted / total,
+                    minHeight: 3,
+                    backgroundColor: colors.border,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      session.status == 'APPROVED' ||
+                              session.status == 'COMPLETED'
+                          ? colors.success
+                          : AppTheme.primary600,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1795,51 +1811,98 @@ class _OpnameSessionTile extends StatelessWidget {
 
 /// Header kelompokan principal: mirik monitoring kadaluarsa di web
 /// (3px rail berwarna, nama principal, jumlah produk & batch di dalamnya).
-class _PrincipalHeader extends StatelessWidget {
-  const _PrincipalHeader({
+/// Group collapsible per principal — petugas bisa buka/tutup; maksudnya:
+/// fokus ke satu principal kalau lagi mengerjakan satu jenis produk.
+class _ExpandablePrincipalGroup extends StatefulWidget {
+  const _ExpandablePrincipalGroup({
     required this.label,
     required this.productCount,
     required this.batchCount,
+    required this.cards,
   });
 
   final String label;
   final int productCount;
   final int batchCount;
+  final List<Widget> cards;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Container(
-        width: 3,
-        height: 16,
-        decoration: BoxDecoration(
-          color: context.colors.primaryWell,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-      const SizedBox(width: AppTheme.space2),
-      Expanded(
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.roboto(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: context.colors.foreground,
+  State<_ExpandablePrincipalGroup> createState() =>
+      _ExpandablePrincipalGroupState();
+}
+
+class _ExpandablePrincipalGroupState extends State<_ExpandablePrincipalGroup> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: AppTheme.radiusLg,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppTheme.space2),
+            child: Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: colors.primaryWell,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.space2),
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.roboto(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: colors.foreground,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.space2),
+                Text(
+                  '${widget.productCount} produk · ${widget.batchCount} batch',
+                  style: GoogleFonts.roboto(
+                    fontSize: 10.5,
+                    color: colors.textMuted,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _expanded = !_expanded),
+                  tooltip: _expanded ? 'Ciutkan' : 'Kembangkan',
+                  icon: Icon(
+                    _expanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    size: 20,
+                    color: colors.textMuted,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 40,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-      const SizedBox(width: AppTheme.space2),
-      Text(
-        '$productCount produk · $batchCount batch',
-        style: GoogleFonts.roboto(
-          fontSize: 10.5,
-          color: context.colors.textMuted,
-        ),
-      ),
-    ],
-  );
+        if (_expanded)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: widget.cards,
+          ),
+      ],
+    );
+  }
 }
 
 /// Satu produk = satu kartu. Header memuat identitas + progres, baris batch
