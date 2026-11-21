@@ -330,6 +330,9 @@ export default function OpnameSessionsPage() {
                           ) : (
                             <span className="text-xs text-gray-400">—</span>
                           )}
+                          {s.input_completed_at && (
+                            <span className="mt-1 block text-[10px] font-semibold text-emerald-600">Input selesai</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           <button onClick={() => loadDetail(s.id)} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-foreground hover:bg-slate-200 transition-colors">Buka</button>
