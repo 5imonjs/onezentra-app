@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { login, logout, getUser, clearDashboardSummaryCache } = vi.hoisted(() => ({
+const { login, logout, getUser, clearDashboardSummaryCache, clearDepoListCache } = vi.hoisted(() => ({
   login: vi.fn(),
   logout: vi.fn(),
   getUser: vi.fn(),
   clearDashboardSummaryCache: vi.fn(),
+  clearDepoListCache: vi.fn(),
 }));
 
-vi.mock('@/lib/api', () => ({ auth: { login, logout, getUser } }));
+vi.mock('@/lib/api', () => ({ auth: { login, logout, getUser }, clearDepoListCache }));
 vi.mock('@/lib/dashboardSummary', () => ({ clearDashboardSummaryCache }));
 
 import { useAuthStore } from './auth';
@@ -27,7 +28,7 @@ const user = (id: number, depo: string) => ({
   roles: [],
 });
 
-describe('useAuthStore — reset cache ringkasan dashboard', () => {
+describe('useAuthStore — reset cache ringkasan dashboard & daftar depo', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useAuthStore.setState({ user: null, permissions: [], isLoading: false });
@@ -41,6 +42,7 @@ describe('useAuthStore — reset cache ringkasan dashboard', () => {
     await useAuthStore.getState().logout();
 
     expect(clearDashboardSummaryCache).toHaveBeenCalled();
+    expect(clearDepoListCache).toHaveBeenCalled();
     expect(useAuthStore.getState().user).toBeNull();
     expect(useAuthStore.getState().permissions).toEqual([]);
   });
@@ -52,6 +54,7 @@ describe('useAuthStore — reset cache ringkasan dashboard', () => {
     await useAuthStore.getState().logout();
 
     expect(clearDashboardSummaryCache).toHaveBeenCalled();
+    expect(clearDepoListCache).toHaveBeenCalled();
     expect(useAuthStore.getState().user).toBeNull();
   });
 
@@ -62,6 +65,7 @@ describe('useAuthStore — reset cache ringkasan dashboard', () => {
 
     expect(login).toHaveBeenCalledWith('b@depot.test', 'secret', 'REG-001');
     expect(clearDashboardSummaryCache).toHaveBeenCalled();
+    expect(clearDepoListCache).toHaveBeenCalled();
     expect(useAuthStore.getState().user?.id).toBe(2);
   });
 });

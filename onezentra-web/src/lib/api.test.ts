@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosResponse } from 'axios';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getErrorMessage, isSessionLossStatus, registerResponseInterceptors } from './api';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiClient, clearDepoListCache, depo, getErrorMessage, isSessionLossStatus, registerResponseInterceptors } from './api';
 
 /** Bangun AxiosError dengan payload `data` tertentu, untuk uji getErrorMessage. */
 function apiError(data: Record<string, unknown>, status = 422) {
@@ -247,5 +247,54 @@ describe('registerResponseInterceptors — penanganan 419', () => {
 
     expect(calls.n).toBe(1);
     expect(refreshCsrf).not.toHaveBeenCalled();
+  });
+});
+
+describe('depo.list — cache antar navigasi', () => {
+  // Build respons baru per call supai pemeriksaan identitas (toBe) hanya
+  // lolos kalau respons BENAR-BENAR datang dari cache.
+  const buildResponse = () => ({ data: [{ kode_depo: 'A' }], status: 200, statusText: 'OK', headers: {}, config: {} }) as AxiosResponse;
+
+  beforeEach(() => {
+    clearDepoListCache();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('satu request; respons sama dalam TTL — navigasi ke halaman lain tanpa re-fetch', async () => {
+    const get = vi.spyOn(apiClient, 'get').mockImplementation(async () => buildResponse());
+
+    const first = await depo.list();
+    const second = await depo.list();
+
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(second).toBe(first);
+  });
+
+  it('mengambil ulang setelah TTL kadaluwarsa (60 dtk)', async () => {
+    let now = 1_000_000_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const get = vi.spyOn(apiClient, 'get').mockImplementation(async () => buildResponse());
+
+    await depo.list();
+    now += 59_999;
+    await depo.list();
+    expect(get).toHaveBeenCalledTimes(1); // masih dalam TTL
+
+    now += 2_001; // mau lebih dari 60 dtk sejak cache
+    await depo.list();
+    expect(get).toHaveBeenCalledTimes(2);
+  });
+
+  it('clearDepoListCache memaksa request ulang', async () => {
+    const get = vi.spyOn(apiClient, 'get').mockImplementation(async () => buildResponse());
+
+    await depo.list();
+    clearDepoListCache();
+    await depo.list();
+
+    expect(get).toHaveBeenCalledTimes(2);
   });
 });

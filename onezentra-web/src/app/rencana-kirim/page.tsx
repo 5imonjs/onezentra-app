@@ -11,59 +11,17 @@ import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Calendar from '@/components/Calendar';
 import { downloadSuratJalan, previewSuratJalan } from '@/lib/suratJalanPdf';
-import { findDuplicateIndexes, firstIndexOfCode, takenCodesExcept } from '@/lib/itemDuplicates';
-import NpnSearchInput, { type NpnProduct } from '@/components/NpnSearchInput';
+import { findDuplicateIndexes, takenCodesExcept } from '@/lib/itemDuplicates';
+import { type NpnProduct } from '@/components/NpnSearchInput';
 import { useAuthStore } from '@/store/auth';
+import dynamic from 'next/dynamic';
 
-interface RencanaKirimItem {
-  id?: number;
-  npn_id?: number;
-  item_number: number;
-  kode_barang: string;
-  nama_barang: string;
-  jumlah: number;
-  satuan: string;
-  keterangan: string;
-  umur?: number | null;
-  decVolume?: number | null;
-  SAPdecUom?: number | null;
-  kubikasi?: number | null;
-  npn?: NpnProduct | null;
-}
+const DynRencanaKirimCreateModal = dynamic(() => import('./RencanaKirimCreateModal'));
+const DynRencanaKirimBarangModal = dynamic(() => import('./RencanaKirimBarangModal'));
+const DynRencanaKirimImportModal = dynamic(() => import('./RencanaKirimImportModal'));
+const DynRencanaKirimSavePreviewModal = dynamic(() => import('./RencanaKirimSavePreviewModal'));
 
-interface RencanaKirim {
-  id: number;
-  rkh_date: string;
-  eta_date: string;
-  po_transporter: string;
-  driver_name: string;
-  nopol: string;
-  jenis_kendaraan: string;
-  expedisi: string;
-  shipper_name: string;
-  shipper_address: string;
-  shipper_phone: string;
-  destination_name: string;
-  destination_address: string;
-  kode_depo: string;
-  nama_depo: string;
-  total_qty: number;
-  total_kubikasi?: number | null;
-  items_tanpa_npn?: number;
-  status: string;
-  notes: string;
-  scheduled_at: string;
-  checked_in_at: string;
-  verified_at: string;
-  completed_at: string;
-  items: RencanaKirimItem[];
-  created_at: string;
-}
-
-interface DepoOption {
-  kode_depo: string;
-  nama_depo: string;
-}
+import type { DepoOption, RencanaKirim, RencanaKirimItem } from './RencanaKirimCreateModal';
 
 /** Statistik global rencana kirim dari endpoint /rencana-kirim/stats. */
 interface RkStats {
@@ -1397,593 +1355,87 @@ export default function RencanaKirimPage() {
         )}
       </Modal>
 
-      {/* Create Modal */}
-      <Modal open={showCreate} onClose={requestCloseCreate} onCloseRequest={requestCloseCreate} title={editingId ? 'Edit Replenishment' : 'Buat Replenishment'} subtitle={editingId ? 'Perbarui jadwal, kendaraan, dan daftar barang.' : 'Lengkapi data pengiriman — isi dari atas ke bawah.'} size="2xl"
-        footer={
-          <div className="flex w-full items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs">
-              {typingItems.size > 0 ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-warning text-background px-3 py-1 font-bold shadow-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" /> Lengkapi NPN dulu
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                  <span className={`w-2 h-2 rounded-full ${canSave ? 'bg-success' : 'bg-muted-foreground'}`} /> {canSave ? 'Siap simpan' : !isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat' : 'Isi minimal 1 barang'}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={requestCloseCreate} className="btn-secondary px-5">Batal</button>
-              <button
-                type="button"
-                onClick={() => setShowSavePreview(true)}
-                disabled={saving || typingItems.size > 0 || !canSave || poDuplicate || editLocked || (editingId ? !hasPermission('rencana_kirim.edit') : !hasPermission('rencana_kirim.create'))}
-                title={poDuplicate ? 'PO Transporter sudah dipakai di depo yang sama' : !canSave ? (!isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat dulu' : duplicateCount > 0 ? `${duplicateCount} nama barang terduplikasi — gabungkan atau hapus dulu` : 'Isi minimal 1 barang') : undefined}
-                className="btn-primary min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-600/20"
-              >
-                <span className="flex items-center justify-center gap-2">
-                  {saving ? (
-                    <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg> {editingId ? 'Menyimpan perubahan...' : 'Menyimpan rencana kirim...'}</>
-                  ) : (
-                    <><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg> {editingId ? 'Update Rencana' : 'Simpan Rencana'}</>
-                  )}
-                </span>
-              </button>
-            </div>
-          </div>
-        }
-      >
-        <div className="space-y-5">
-          {editingId && editLocked && (
-            <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${editingStatus === 'CANCELLED' ? 'bg-destructive/10 border-destructive/30 text-destructive' : editingStatus === 'COMPLETED' ? 'bg-muted border-border text-foreground' : 'bg-warning/10 border-warning/30 text-foreground'}`}>
-              {editingStatus === 'CANCELLED'
-                ? 'Rencana kirim ini sudah dibatalkan. Perubahan tidak dapat disimpan.'
-                : editingStatus === 'COMPLETED'
-                  ? 'Rencana kirim ini sudah selesai. Perubahan tidak dapat disimpan.'
-                  : 'Rencana kirim ini sudah diproses (Check In / Verifikasi / Dikerjakan). Perubahan tidak dapat disimpan.'}
-            </div>
-          )}
-          {/* Modern Stepper */}
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-2">
-              {[
-                { n: 1, label: 'Dokumen', key: 'dokumen', icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25' },
-                { n: 2, label: 'Kendaraan', key: 'kendaraan', icon: 'M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193' },
-                { n: 3, label: 'Alamat', key: 'pengirim', icon: 'M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z' },
-                { n: 4, label: 'Barang', key: 'barang', icon: 'M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z' },
-                { n: 5, label: 'Catatan', key: 'catatan', icon: 'M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227' },
-              ].map((step, idx) => {
-                const isActive = currentStep === step.n;
-                const isDone = (sectionComplete as Record<string, boolean>)[step.key];
-                const isPast = currentStep > step.n;
-                return (
-                  <div key={step.n} className="flex flex-1 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (step.n === 1 || (step.n > 1 && (sectionComplete as Record<string, boolean>)[['dokumen','kendaraan','pengirim','barang'][step.n-2] as string] || step.n <= currentStep)) {
-                          setCurrentStep(step.n);
-                        }
-                      }}
-                      className={`flex flex-col items-center gap-1.5 flex-1 ${step.n <= currentStep || isDone ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
-                    >
-                      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-all ${isActive ? 'bg-primary-600 text-white shadow-primary-600/25 scale-105' : isDone || isPast ? 'bg-success text-background' : 'bg-muted text-muted-foreground border border-border'}`}>
-                        {isDone && !isActive ? '✓' : step.n}
-                      </span>
-                      <span className={`text-[11px] font-semibold ${isActive ? 'text-accent-text' : isDone ? 'text-success' : 'text-muted-foreground'}`}>{step.label}</span>
-                    </button>
-                    {idx < 4 && <div className={`h-0.5 flex-1 rounded-full transition-colors ${currentStep > step.n || isDone ? 'bg-success' : 'bg-border'}`} />}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-3 flex items-center justify-between text-xs">
-              <span className="font-medium text-muted-foreground">Langkah {currentStep} dari 5</span>
-              <span className={`font-semibold ${canSave ? 'text-success' : 'text-accent-text'}`}>{completedCount}/5 lengkap • {canSave ? 'Siap simpan' : 'Lengkapi dulu'}</span>
-            </div>
-            <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-              <div className="h-full rounded-full bg-linear-to-r from-primary-500 to-success transition-all duration-500" style={{ width: `${(completedCount / 5) * 100}%` }} />
-            </div>
-          </div>
+      {/* Create Modal — di-lazy-load agar tidak ikut bundle halaman utama. */}
+      <DynRencanaKirimCreateModal
+        showCreate={showCreate}
+        requestCloseCreate={requestCloseCreate}
+        editingId={editingId}
+        editingStatus={editingStatus}
+        createForm={createForm}
+        setCreateForm={setCreateForm}
+        createItems={createItems}
+        setCurrentStep={setCurrentStep}
+        currentStep={currentStep}
+        depoList={depoList}
+        setShowBarangModal={setShowBarangModal}
+        setShowImport={setShowImport}
+        setShowSavePreview={setShowSavePreview}
+        clearNamaDepo={clearNamaDepo}
+        handleNamaDepoChange={handleNamaDepoChange}
+        poDuplicate={poDuplicate}
+        duplicateCount={duplicateCount}
+        saving={saving}
+        typingItems={typingItems}
+        sectionComplete={sectionComplete}
+        completedCount={completedCount}
+        isMainFormValid={isMainFormValid}
+        canSave={canSave}
+        editLocked={editLocked}
+        itemCount={itemCount}
+        totalQty={totalQty}
+        totalKubikasiDisplay={totalKubikasiDisplay}
+        itemKubikasi={itemKubikasi}
+        jenisKendaraanOptions={jenisKendaraanOptions}
+        todayDateStr={todayDateStr}
+        hasPermission={hasPermission}
+        NamaDepoInput={NamaDepoInput}
+      />
 
-          {currentStep === 1 && (
-          <div className="bg-card border border-border rounded-xl p-5 shadow-sm animate-fade-in">
-            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-chip-primary flex items-center justify-center text-accent-text text-xs font-bold">1</span> Informasi Dokumen</h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="f-po-transporter" className="block text-xs font-medium text-muted-foreground mb-1">PO Transporter <span className="text-destructive">*</span></label>
-                <input id="f-po-transporter" aria-invalid={poDuplicate || undefined} type="text" value={createForm.po_transporter ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, po_transporter: e.target.value }))} placeholder="cth: PO-2026-0001" className="input-field text-sm py-2 uppercase" />
-                <p className="text-[10px] text-muted-foreground mt-0.5">Nomor PO transporter (SJ/BA)</p>
-                {poDuplicate && (
-                  <p role="alert" className="mt-1 text-xs font-semibold text-warning">PO Transporter ini sudah dipakai rencana kirim lain di depo yang sama.</p>
-                )}
-              </div>
-              <div>
-                <label htmlFor="f-rkh-date" className="block text-xs font-medium text-muted-foreground mb-1">Tanggal Rencana Kirim (RKH) <span className="text-destructive">*</span></label>
-                <input id="f-rkh-date" type="date" min={editingId ? undefined : todayDateStr()} value={createForm.rkh_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, rkh_date: e.target.value }))} className="input-field text-sm py-2" />
-                <p className="mt-1 text-[11px] text-muted-foreground">RKH = kapan barang direncanakan berangkat. Berbeda dengan &quot;Dibuat&quot; (waktu input dokumen).</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Tanggal pengiriman rencana</p>
-              </div>
-              <div>
-                <label htmlFor="f-eta-date" className="block text-xs font-medium text-muted-foreground mb-1">Rencana Tiba di Depo <span className="text-destructive">*</span></label>
-                <input id="f-eta-date" type="date" value={createForm.eta_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, eta_date: e.target.value }))} className="input-field text-sm py-2" />
-                <p className="mt-1 text-[11px] text-info">Ditentukan planner saat membuat rencana. Rencana tiba = kapan barang diharapkan sampai di depo tujuan (berbeda dengan RKH = rencana berangkat).</p>
-              </div>
-            </div>
-          </div>
-          )}
+      {/* Save Preview Modal — di-lazy-load; pencegahan salah input barang sebelum disimpan. */}
+      <DynRencanaKirimSavePreviewModal
+        showSavePreview={showSavePreview}
+        setShowSavePreview={setShowSavePreview}
+        createForm={createForm}
+        createItems={createItems}
+        handleCreate={handleCreate}
+        saving={saving}
+      />
+      {/* Daftar Barang Popup — kelola setelah informasi dokumen/kendaraan/alamat lengkap. Di-lazy-load. */}
+      <DynRencanaKirimBarangModal
+        showBarangModal={showBarangModal}
+        setShowBarangModal={setShowBarangModal}
+        createItems={createItems}
+        duplicateIndexes={duplicateIndexes}
+        duplicateCount={duplicateCount}
+        sectionComplete={sectionComplete}
+        totalQty={totalQty}
+        totalKubikasiDisplay={totalKubikasiDisplay}
+        itemKubikasi={itemKubikasi}
+        itemCount={itemCount}
+        takenCodesByIndex={takenCodesByIndex}
+        typingItems={typingItems}
+        markTyping={markTyping}
+        EMPTY_CODES={EMPTY_CODES}
+        addItem={addItem}
+        updateItem={updateItem}
+        removeItem={removeItem}
+        handleClearItem={handleClearItem}
+        handleNamaBarangSelect={handleNamaBarangSelect}
+      />
 
-          {currentStep === 2 && (
-          <div className="bg-card border border-border rounded-xl p-5 shadow-sm animate-fade-in">
-            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-info/10 flex items-center justify-center text-info text-xs font-bold">2</span> Kendaraan & Driver</h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="f-driver" className="block text-xs font-medium text-muted-foreground mb-1">Nama Driver <span className="text-destructive">*</span></label>
-                <input id="f-driver" type="text" value={createForm.driver_name ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, driver_name: e.target.value }))} placeholder="cth: Budi Santoso" className="input-field text-sm py-2" />
-              </div>
-              <div>
-                <label htmlFor="f-expedisi" className="block text-xs font-medium text-muted-foreground mb-1">Expedisi / Nama Kendaraan <span className="text-destructive">*</span></label>
-                <input id="f-expedisi" type="text" value={createForm.expedisi ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, expedisi: e.target.value }))} placeholder="cth: CTP / Nama ekspedisi" className="input-field text-sm py-2" />
-              </div>
-              <div>
-                <label htmlFor="f-nopol" className="block text-xs font-medium text-muted-foreground mb-1">Nopol <span className="text-destructive">*</span></label>
-                <input id="f-nopol" type="text" value={createForm.nopol ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, nopol: e.target.value }))} placeholder="cth: DA 8323 BU" className="input-field text-sm py-2 uppercase" />
-              </div>
-              <div>
-                <label htmlFor="f-jenis" className="block text-xs font-medium text-muted-foreground mb-1">Jenis Kendaraan <span className="text-destructive">*</span></label>
-                <select id="f-jenis" value={createForm.jenis_kendaraan ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, jenis_kendaraan: e.target.value }))} className="select-field text-sm py-2">
-                  <option value="">Pilih jenis kendaraan</option>
-                  {jenisKendaraanOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
-                </select>
-              </div>
-            </div>
-          </div>
-          )}
-
-          {currentStep === 3 && (
-          <div className="bg-card border border-border rounded-xl p-5 shadow-sm animate-fade-in">
-            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center text-success text-xs font-bold">3</span> Alamat Pengiriman & Tujuan</h3>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="space-y-3 rounded-xl bg-overlay-70 p-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Asal Pengirim</h4>
-                <div>
-                  <label htmlFor="f-shipper-name" className="block text-xs font-medium text-muted-foreground mb-1">Asal Pengirim <span className="text-destructive">*</span></label>
-                  <input id="f-shipper-name" type="text" value={createForm.shipper_name ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_name: e.target.value }))} placeholder="cth: PT Sinar Abadi" className="input-field text-sm py-2" />
-                </div>
-                <div>
-                  <label htmlFor="f-shipper-addr" className="block text-xs font-medium text-muted-foreground mb-1">Alamat Pengirim</label>
-                  <textarea id="f-shipper-addr" value={createForm.shipper_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_address: e.target.value }))} placeholder="cth: Jl. Raya Singkawang No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
-                </div>
-                <div>
-                  <label htmlFor="f-shipper-phone" className="block text-xs font-medium text-muted-foreground mb-1">No. HP Pengirim</label>
-                  <input id="f-shipper-phone" type="text" value={createForm.shipper_phone ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_phone: e.target.value }))} placeholder="cth: 08xx-xxxx-xxxx" className="input-field text-sm py-2" />
-                </div>
-              </div>
-              <div className="space-y-3 rounded-xl bg-overlay-70 p-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Ditujukan</h4>
-                <div>
-                  <label htmlFor="f-nama-depo" className="block text-xs font-medium text-muted-foreground mb-1">Nama Depo <span className="text-destructive">*</span>{!!editingId && !hasPermission('depot.move') && (<span className="ml-1 font-normal normal-case text-muted-foreground">(terkunci — butuh izin Pindah Depo)</span>)}</label>
-                  <NamaDepoInput value={createForm.nama_depo ?? ''} depoList={depoList} onChange={handleNamaDepoChange} onClear={clearNamaDepo} disabled={!!editingId && !hasPermission('depot.move')} />
-                </div>
-                <div>
-                  <label htmlFor="f-kode-depo" className="block text-xs font-medium text-muted-foreground mb-1">Kode Depo</label>
-                  <input id="f-kode-depo" type="text" value={createForm.kode_depo ?? ''} disabled className="input-field text-sm py-2 uppercase" placeholder="Otomatis terisi" />
-                </div>
-                <div>
-                  <label htmlFor="f-dest-name" className="block text-xs font-medium text-muted-foreground mb-1">Ditujukan <span className="text-destructive">*</span></label>
-                  <input id="f-dest-name" type="text" value={createForm.destination_name ?? createForm.nama_depo ?? ''} disabled placeholder="Otomatis dari Nama Depo" className="input-field cursor-not-allowed bg-muted text-sm py-2 text-foreground" />
-                </div>
-                <div>
-                  <label htmlFor="f-dest-addr" className="block text-xs font-medium text-muted-foreground mb-1">Alamat Tujuan</label>
-                  <textarea id="f-dest-addr" value={createForm.destination_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, destination_address: e.target.value }))} placeholder="cth: Jl. Karang Intan No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Terisi otomatis dari depo tujuan — boleh diubah manual</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Alamat lengkap tujuan (akan tampil di Detail & PDF di bawah Singkawang)</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          )}
-
-          {currentStep === 4 && (
-          <div className="animate-fade-in space-y-4">
-            {/* Header card - lebih premium */}
-            <div className="rounded-2xl border border-warning/30 bg-warning/10 p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-warning flex items-center justify-center shadow shrink-0">
-                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
-                  </div>
-                  <div>
-                    <h3 className="text-[15px] font-bold text-foreground tracking-tight">Daftar Barang</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Kelola produk NPN • auto hitung umur & kubikasi</p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border ${sectionComplete.barang ? 'bg-success text-background border-success shadow-sm' : 'bg-card text-foreground border-warning/30'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${sectionComplete.barang ? 'bg-card' : 'bg-warning'}`} />{sectionComplete.barang ? `${itemCount} barang siap` : 'Belum ada barang'}
-                      </span>
-                      {sectionComplete.barang && (
-                        <>
-                          <span className="inline-flex items-center rounded-full bg-foreground text-background px-2.5 py-1 text-xs font-bold">{totalQty} Qty</span>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-info text-background px-2.5 py-1 text-xs font-bold">{totalKubikasiDisplay.toFixed(2)} m³</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <span className={`hidden sm:inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border shadow-sm ${sectionComplete.barang ? 'bg-success/10 text-success border-success/30' : 'bg-card text-muted-foreground border-border'}`}>
-                  {sectionComplete.barang ? '✓ Lengkap' : '• Belum'}
-                </span>
-              </div>
-            </div>
-
-            {!isMainFormValid ? (
-              <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 flex gap-3">
-                <div className="w-8 h-8 rounded-lg bg-warning flex items-center justify-center shrink-0"><svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-3 3h6M12 3v3m0 12.75h.008v.008H12v-.008z" /></svg></div>
-                <div className="text-xs leading-relaxed text-foreground"><b>Lengkapi dulu</b> Informasi Dokumen, Kendaraan & Alamat — baru kelola barang. Progress {completedCount}/5.</div>
-              </div>
-            ) : itemCount === 0 ? (
-              <div className="rounded-2xl border-2 border-dashed border-border bg-overlay-50 p-8 text-center">
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-card border border-border shadow-sm flex items-center justify-center mb-3">
-                  <svg className="w-7 h-7 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
-                </div>
-                <h4 className="text-sm font-bold text-foreground">Belum ada barang</h4>
-                <p className="text-xs text-muted-foreground mt-1">Tambah manual atau import Excel — minimal 1 barang dengan jumlah &gt;0</p>
-                <div className="mt-5 flex flex-col sm:flex-row gap-2 justify-center">
-                  <button onClick={() => setShowBarangModal(true)} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 shadow-lg">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                    Tambah Barang
-                  </button>
-                  {hasPermission('rencana_kirim.import') && (
-                  <button onClick={() => { setShowBarangModal(true); setTimeout(()=>{ setShowImport(true); }, 150); }} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-card border border-border text-sm font-semibold text-foreground hover:bg-popover">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                    Import Excel
-                  </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-popover border-b border-border">
-                  <span className="text-xs font-bold text-foreground uppercase tracking-wider">Ringkasan barang</span>
-                  <button onClick={() => setShowBarangModal(true)} className="text-xs font-semibold text-accent-text hover:text-accent-text flex items-center gap-1">
-                    Kelola <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-                  </button>
-                </div>
-                <div className="divide-y divide-border max-h-52 overflow-auto">
-                  {createItems.filter(i=>i.kode_barang).map((it, idx) => (
-                    <div key={idx} className="flex items-center gap-3 px-4 py-2.5 hover:bg-popover">
-                      <span className="w-6 h-6 rounded-lg bg-foreground text-background text-xs font-bold flex items-center justify-center shrink-0">{idx+1}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground truncate">{it.nama_barang}</p>
-                        <p className="text-xs font-mono text-muted-foreground">{it.kode_barang} • {it.umur != null ? `${it.umur} bln` : '-'}</p>
-                      </div>
-                      <span className="text-sm font-bold text-foreground whitespace-nowrap">{it.jumlah} <span className="text-xs font-normal text-muted-foreground">{it.satuan}</span></span>
-                      <span className="text-xs font-mono font-semibold text-info whitespace-nowrap">{itemKubikasi(it).toFixed(2)} m³</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between px-4 py-3 bg-foreground text-background">
-                  <span className="text-xs font-medium text-background/70">Total {itemCount} barang</span>
-                  <span className="text-sm font-bold">{totalQty} Qty • {totalKubikasiDisplay.toFixed(2)} m³</span>
-                </div>
-              </div>
-            )}
-
-          </div>
-          )}
-
-          {currentStep === 5 && (
-          <div className="bg-card border border-border rounded-xl p-5 shadow-sm animate-fade-in">
-            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-foreground text-xs font-bold">5</span> Catatan</h3>
-            <textarea id="f-notes" aria-label="Catatan tambahan" value={createForm.notes ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, notes: e.target.value }))} placeholder="Catatan tambahan untuk pengiriman ini..." rows={3} className="input-field text-sm py-2 w-full resize-none" />
-          </div>
-          )}
-
-          {/* Wizard Navigation — setelah Barang (4) tidak ada Selanjutnya, langsung Simpan */}
-          <div className="flex items-center justify-between pt-2">
-            <button
-              type="button"
-              onClick={() => setCurrentStep(s => Math.max(1, s - 1))}
-              disabled={currentStep === 1}
-              className="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              ← Sebelumnya
-            </button>
-            {currentStep < 4 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentStep === 1 && !sectionComplete.dokumen) { notifyGlobal('Lengkapi PO Transporter, Tanggal Rencana Kirim & Rencana Tiba di Depo dulu', 'error'); return; }
-                  if (currentStep === 2 && !sectionComplete.kendaraan) { notifyGlobal('Lengkapi Nama Driver, Nopol, Expedisi & Jenis Kendaraan dulu', 'error'); return; }
-                  if (currentStep === 3 && !sectionComplete.pengirim) { notifyGlobal('Lengkapi Asal Pengirim & Nama Depo dulu', 'error'); return; }
-                  setCurrentStep(s => Math.min(5, s + 1));
-                }}
-                className="btn-primary text-sm"
-              >
-                Selanjutnya →
-              </button>
-            ) : currentStep === 4 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (!sectionComplete.barang) { notifyGlobal('Tambahkan minimal 1 barang dengan jumlah > 0 dulu', 'error'); return; }
-                  setCurrentStep(5);
-                }}
-                className="btn-primary text-sm"
-              >
-                Selanjutnya →
-              </button>
-            ) : (
-              <span className="text-xs text-success font-semibold">Simpan lewat tombol di bawah ✓</span>
-            )}
-          </div>
-        </div>
-      </Modal>
-
-      {/* Save Preview Modal — pencegahan salah input barang sebelum disimpan */}
-      <Modal open={showSavePreview} onClose={() => setShowSavePreview(false)} title="Periksa ulang sebelum simpan" subtitle="Satu salah ketik = selisih di penerimaan & opname. Pastikan barang di bawah BENAR sebelum dikirim." size="lg"
-        footer={
-          <>
-            <button type="button" onClick={() => setShowSavePreview(false)} className="btn-secondary">Kembali & Cek Dulu</button>
-            <button type="button" onClick={() => { setShowSavePreview(false); handleCreate(); }} className="btn-primary shadow-lg shadow-primary-600/20" disabled={saving}>
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                Ya, Barang Sudah Benar
-              </span>
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3">
-            <svg className="w-6 h-6 shrink-0 text-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c.866 1.5-.217 3.374-1.947 3.374h-14.71c-1.73 0-2.813-1.874-1.948-3.374L13.95 3.378c.866-1.5 3.032-1.5 3.899 0l8.454 12.373M12 15.75h.007v.008H12v-.008z" /></svg>
-            <div className="text-xs text-foreground">
-              <strong>Berhenti sebentar.</strong> Rencana kirim yang sudah di-check-in di bongkar/penerimaan langsung jadi acuan scan. Kesalahan kode, jumlah, atau satuan akan menjadi selisih di seluruh alur — perbaiki sebelum simpan, bukan setelah.
-            </div>
-          </div>
-
-          {/* Ringkasan dokumen */}
-          <div className="rounded-xl border border-border bg-popover/40 p-3">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Dokumen & Kendaraan</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-              <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">PO Transporter</span><span className="font-mono font-bold text-foreground">{createForm.po_transporter || '-'}</span></div>
-              <div className="flex items-baseline gap-2"><span className="w-40 shrink-0 text-muted-foreground">Tanggal Rencana Kirim</span><span className="font-semibold text-foreground">{createForm.rkh_date ? new Date(createForm.rkh_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</span></div>
-              <div className="flex items-baseline gap-2"><span className="w-40 shrink-0 text-muted-foreground">Rencana Tiba di Depo</span><span className="font-semibold text-info">{createForm.eta_date ? new Date(createForm.eta_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</span></div>
-              <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">Kendaraan</span><span className="font-semibold text-foreground">{createForm.driver_name || '-'}{createForm.nopol ? ` • ${createForm.nopol}` : ''}</span></div>
-              <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">Ekspedisi</span><span className="font-semibold text-foreground">{createForm.expedisi || '-'}{createForm.jenis_kendaraan ? ` • ${createForm.jenis_kendaraan}` : ''}</span></div>
-              <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">Pengirim</span><span className="font-semibold text-foreground">{createForm.shipper_name || '-'}</span></div>
-              <div className="flex items-baseline gap-2"><span className="w-24 shrink-0 text-muted-foreground">Depo</span><span className="font-semibold text-foreground">{createForm.nama_depo || createForm.kode_depo || '-'}</span></div>
-            </div>
-          </div>
-
-          {/* Daftar barang */}
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Barang yang akan dikirim</p>
-              <p className="text-xs font-mono text-muted-foreground tabular-nums">{createItems.filter(i => i.kode_barang && Number(i.jumlah) > 0).length} baris · {createItems.reduce((acc, i) => acc + (i.kode_barang ? Number(i.jumlah) || 0 : 0), 0)} total CRT</p>
-            </div>
-            <div className="max-h-72 divide-y divide-border overflow-y-auto rounded-xl border border-border">
-              {createItems.filter(i => i.kode_barang && Number(i.jumlah) > 0).map((item, index) => (
-                <div key={index} className="grid grid-cols-[1fr_auto] gap-3 px-4 py-2.5 hover:bg-overlay-50">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold leading-snug text-foreground">{item.nama_barang || 'Tanpa nama'}</p>
-                    <p className="text-[10px] font-mono text-muted-foreground">{item.kode_barang}</p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-sm font-black tabular-nums text-foreground">{item.jumlah}</p>
-                    <p className="text-[10px] font-semibold text-muted-foreground">{item.satuan || 'CRT'}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {createForm.notes?.trim() && (
-              <p className="mt-2 text-[11px] text-muted-foreground"><strong>Catatan:</strong> {createForm.notes}</p>
-            )}
-          </div>
-        </div>
-      </Modal>
-      {/* Daftar Barang Popup — kelola setelah informasi dokumen/kendaraan/alamat lengkap */}
-      <Modal
-        open={showBarangModal}
-        onClose={() => setShowBarangModal(false)}
-        title="Kelola Daftar Barang"
-        subtitle={`${itemCount} barang • ${totalQty} qty • ${totalKubikasiDisplay.toFixed(2)} m³`}
-        size="2xl"
-        footer={
-          <div className="flex w-full items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {duplicateCount > 0
-                ? `${duplicateCount} baris duplikat — gabungkan atau hapus dulu`
-                : sectionComplete.barang
-                  ? 'Barang siap disimpan'
-                  : 'Isi minimal 1 barang dengan jumlah >0'}
-            </span>
-            <button onClick={() => setShowBarangModal(false)} className="btn-primary">Selesai</button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          {duplicateCount > 0 && (
-            <div role="alert" className="flex gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
-              <div className="w-8 h-8 rounded-lg bg-destructive flex items-center justify-center shrink-0">
-                <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                </svg>
-              </div>
-              <div className="text-xs leading-relaxed text-destructive">
-                <b>{duplicateCount} nama barang terduplikasi.</b> Satu produk hanya boleh muncul sekali per rencana —
-                gabungkan jumlahnya ke baris pertama, atau hapus baris yang tidak dipakai. Rencana tidak bisa disimpan selama duplikat ada.
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-3">
-            {createItems.map((item, index) => {
-              const isDuplicate = duplicateIndexes.has(index);
-              const duplicateOf = isDuplicate
-                ? firstIndexOfCode(createItems, item.kode_barang)
-                : -1;
-              const needsAttention = typingItems.has(index) || (item.nama_barang.trim().length > 0 && !item.kode_barang) || isDuplicate;
-              const rowKubikasi = itemKubikasi(item);
-              return (
-              <div key={index} className={`group relative rounded-2xl border bg-card p-5 shadow-sm transition-all ${needsAttention ? 'border-warning/30 bg-warning/10' : 'border-border hover:border-border hover:shadow-md'}`}>
-                <div className="flex items-start gap-3">
-                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${needsAttention ? 'bg-warning text-background' : 'bg-card border border-border text-foreground shadow-sm'}`}>{item.item_number}</span>
-                  <div className="flex-1 min-w-0 space-y-3">
-                    <div>
-                      <label htmlFor={`item-nama-${index}`} className="block text-xs font-semibold text-foreground mb-1.5">Nama Barang <span className="text-destructive">*</span></label>
-                      <NpnSearchInput
-                        inputId={`item-nama-${index}`}
-                        namaValue={item.nama_barang}
-                        onSelect={(p) => handleNamaBarangSelect(index, p)}
-                        onClear={() => handleClearItem(index)}
-                        onTypingChange={(v) => markTyping(index, v)}
-                        takenCodes={takenCodesByIndex.get(index) ?? EMPTY_CODES}
-                      />
-                      {item.kode_barang ? (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-foreground text-background px-2.5 py-1 text-xs font-mono font-bold">{item.kode_barang}</span>
-                          <span title="Umur diambil dari master Standar Umur Produk" className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${item.umur != null ? 'bg-success/10 text-success border-success/30' : 'bg-warning/10 text-foreground border-warning/30'}`}>{item.umur != null ? `${item.umur} bulan` : 'Umur belum diset'}</span>
-                          <span className="inline-flex items-center rounded-full bg-info/10 text-info border border-info/30 px-2.5 py-1 text-xs font-bold">{rowKubikasi > 0 ? `${rowKubikasi.toFixed(2)} m³` : '0 m³'}</span>
-                          {isDuplicate && (
-                            <span role="alert" className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive border border-destructive/30 px-2.5 py-1 text-xs font-bold">
-                              <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                              </svg>
-                              Duplikat dari baris #{duplicateOf + 1} — gabungkan ke sana
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="mt-1.5 text-xs text-muted-foreground">Ketik nama barang lalu pilih dari NPN</p>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="col-span-2 sm:col-span-1">
-                        <label htmlFor={`item-jumlah-${index}`} className="block text-xs font-semibold text-foreground mb-1">Jumlah <span className="text-destructive">*</span></label>
-                        <input id={`item-jumlah-${index}`} type="number" value={item.jumlah || ''} onChange={(e) => updateItem(index, 'jumlah', parseFloat(e.target.value) || 0)} placeholder="0" min="0" className="w-full px-3 py-2.5 text-center text-base font-black text-foreground bg-card border border-border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm" />
-                      </div>
-                      <div>
-                        <label htmlFor={`item-satuan-${index}`} className="block text-xs font-semibold text-foreground mb-1">Satuan</label>
-                        <select id={`item-satuan-${index}`} value={item.satuan} onChange={(e) => updateItem(index, 'satuan', e.target.value)} className="w-full px-3 py-2.5 text-sm font-bold bg-card border border-border rounded-xl focus:ring-2 focus:ring-primary-500 text-center">
-                          <option value="CRT">CRT</option><option value="PCS">PCS</option><option value="DUS">DUS</option><option value="BOX">BOX</option><option value="KG">KG</option><option value="LUSIN">LUSIN</option><option value="ZAK">ZAK</option>
-                        </select>
-                      </div>
-                      <div className="hidden sm:block">
-                        <label htmlFor={`item-ket-${index}`} className="block text-xs font-semibold text-foreground mb-1">Keterangan</label>
-                        <input id={`item-ket-${index}`} type="text" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Opsional" className="w-full px-3 py-2.5 text-sm bg-card border border-border rounded-xl focus:ring-2 focus:ring-primary-500" />
-                      </div>
-                    </div>
-                    <div className="sm:hidden">
-                      <input type="text" aria-label="Keterangan barang (opsional)" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Keterangan (opsional)" className="w-full px-3 py-2 text-sm bg-popover border border-border rounded-xl focus:bg-card focus:ring-2 focus:ring-primary-500" />
-                    </div>
-                  </div>
-                  <button onClick={() => removeItem(index)} disabled={createItems.length <= 1} aria-label={`Hapus barang ${item.item_number}`} className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/10 disabled:opacity-30 shrink-0 transition-colors">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </div>
-              </div>
-              );
-            })}
-            <button onClick={addItem} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-border bg-card text-sm font-bold text-foreground hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text transition-colors">
-              <span className="w-7 h-7 rounded-xl bg-primary-600 text-white flex items-center justify-center"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></span>
-              Tambah barang lagi
-            </button>
-            <div className="flex items-center justify-between rounded-2xl bg-foreground text-background px-4 py-3">
-              <span className="text-xs font-bold tracking-widest text-background/70 uppercase">Total • {itemCount} barang</span>
-              <span className="text-sm font-black">{totalQty} Qty • {totalKubikasiDisplay.toFixed(2)} m³</span>
-            </div>
-            {createItems.some(i => i.kode_barang && i.umur == null) && (
-              <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">Umur produk diambil dari master Standar Umur Produk dan dipakai untuk pemeriksaan sisa umur di Validasi SJ. Produk tanpa umur tidak dapat diperiksa sisa umurnya — hubungi administrator untuk melengkapi master.</p>
-            )}
-          </div>
-        </div>
-      </Modal>
-
-      {/* Import Barang Modal */}
-      <Modal open={showImport} onClose={() => { setShowImport(false); setImportResult(null); setSelectedFile(null); }} title="Import Barang" subtitle="Upload file Excel untuk import daftar barang" size="md"
-        footer={
-          <>
-            <button onClick={() => { setShowImport(false); setImportResult(null); setSelectedFile(null); }} className="btn-secondary">Batal</button>
-            <button onClick={handleImportItems} disabled={!selectedFile || importing} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
-              <span className="flex items-center gap-2">
-                {importing ? (
-                  <>
-                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
-                    Importing...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                    Import Sekarang
-                  </>
-                )}
-              </span>
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-5">
-          <div className="flex items-center justify-between">
-            <label className="block text-sm font-semibold text-foreground">File Excel</label>
-            <button onClick={handleItemTemplate} className="text-xs text-accent-text hover:text-accent-text font-medium flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-chip-primary transition-colors">
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-              Download Template
-            </button>
-          </div>
-          <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${selectedFile ? 'border-warning/30 bg-warning/10' : 'border-border hover:border-warning/30 hover:bg-popover'}`}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="hidden" />
-            {selectedFile ? (
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-warning/10 flex items-center justify-center">
-                  <svg className="w-7 h-7 text-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">{selectedFile.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Klik untuk ganti file</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
-                  <svg className="w-7 h-7 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">Klik untuk pilih file</p>
-                  <p className="text-xs text-muted-foreground mt-1">Mendukung .xlsx, .xls, .csv (maks 10MB)</p>
-                </div>
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">Format: 1 baris = 1 barang. Kolom: Kode Barang, Nama Barang, Jumlah, Satuan, Keterangan. Barang akan dicocokkan dengan data NPN.</p>
-
-          {importResult && (
-            <div className={`p-4 rounded-xl animate-fade-in ${importResult.ok ? 'bg-success/10 border border-success/30' : 'bg-destructive/10 border border-destructive/30'}`}>
-              <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${importResult.ok ? 'bg-success/10' : 'bg-destructive/10'}`}>
-                  {importResult.ok ? (
-                    <svg className="w-5 h-5 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                  ) : (
-                    <svg className="w-5 h-5 text-destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-                  )}
-                </div>
-                <div>
-                  <p className={`text-sm font-medium ${importResult.ok ? 'text-success' : 'text-destructive'}`}>{importResult.message}</p>
-                  {importResult.matched !== undefined && (
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className="badge badge-success">Cocok: {importResult.matched} barang</span>
-                      <span className="badge badge-info">Total: {importResult.total_rows} baris</span>
-                      <span className="badge badge-warning">Skip: {importResult.skipped}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </Modal>
+      {/* Import Barang Modal — di-lazy-load. */}
+      <DynRencanaKirimImportModal
+        showImport={showImport}
+        setShowImport={setShowImport}
+        importing={importing}
+        selectedFile={selectedFile}
+        setSelectedFile={setSelectedFile}
+        importResult={importResult}
+        setImportResult={setImportResult}
+        fileInputRef={fileInputRef}
+        handleImportItems={handleImportItems}
+        handleItemTemplate={handleItemTemplate}
+      />
 
       <ConfirmDialog open={confirmCloseOpen} onClose={() => setConfirmCloseOpen(false)} onConfirm={() => { setConfirmCloseOpen(false); resetCreateForm(); }} title="Buang perubahan?" message="Ada isian yang belum disimpan. Tutup form dan buang semua perubahan?" confirmLabel="Buang & Tutup" cancelLabel="Lanjut Mengisi" variant="warning" />
       <ConfirmDialog open={showDeleteConfirm} onClose={() => { if (deleting) return; setShowDeleteConfirm(false); setDeleteTargetId(null); }} onConfirm={confirmDelete} title="Hapus Replenishment" message="Apakah Anda yakin ingin menghapus rencana kirim ini?" confirmLabel="Hapus" variant="danger" loading={deleting} />

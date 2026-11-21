@@ -135,10 +135,11 @@ describe('BiayaThlPage — pola input langsung di step Data Pekerja', () => {
   });
 
   const openDataPekerjaStep = async () => {
-    const { getByRole, getByLabelText } = screen;
-    fireEvent.click(await getByRole('button', { name: 'Buat Pengajuan' }));
-    fireEvent.change(getByLabelText('Tanggal Pengajuan'), { target: { value: '2026-09-24' } });
-    fireEvent.click(getByRole('button', { name: /Lanjut ke Data Pekerja/ }));
+    const { findByRole, findByLabelText } = screen;
+    fireEvent.click(await findByRole('button', { name: 'Buat Pengajuan' }));
+    // Modal create di-lazy-load — tunggu muncul sebelum interaksi.
+    fireEvent.change(await findByLabelText('Tanggal Pengajuan'), { target: { value: '2026-09-24' } });
+    fireEvent.click(await findByRole('button', { name: /Lanjut ke Data Pekerja/ }));
   };
 
   it('auto-membuat 1 grup Surat Jalan + 1 baris pekerja kosong saat masuk step Data Pekerja pada pembuatan baru', async () => {
