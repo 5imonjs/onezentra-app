@@ -606,6 +606,42 @@ void main() {
     );
   }
 
+  /// Sesi berjalan dengan dua item (untuk tes gulir header & pencarian).
+  _FakeOpnameExpiredSessionRepository buildTwoItemSession() {
+    const itemA = OpnameExpiredSessionItem(
+      id: 31,
+      sessionId: 1,
+      waveId: 200,
+      kodeBarang: 'KB-777',
+      namaBarang: 'Vitamin Sirup 60ml',
+      batchNumber: 'BATCH-31',
+      barcodeLabel: 'LBL-31',
+      expectedCrt: 10,
+    );
+    const itemB = OpnameExpiredSessionItem(
+      id: 32,
+      sessionId: 1,
+      waveId: 200,
+      kodeBarang: 'KB-888',
+      namaBarang: 'Obat Pereda Nyeri',
+      batchNumber: 'BATCH-32',
+      expectedCrt: 4,
+    );
+    return _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          weekEnd: '2026-11-08',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: [itemA, itemB],
+        ),
+      ],
+    );
+  }
+
   Future<void> openVerifySheet(WidgetTester tester) async {
     await tester.tap(find.text('Sesi minggu 02/11/2026'));
     await tester.pumpAndSettle();
@@ -679,6 +715,50 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back_rounded));
     await tester.pumpAndSettle();
     expect(find.text('1/1 dihitung'), findsOneWidget);
+  });
+
+  testWidgets(
+    'header ikut ciut saat gulir ke bawah, kembali saat balik ke atas',
+    (tester) async {
+      var repository = buildTwoItemSession();
+      var auth = await _loginAuth();
+
+      await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+      await tester.tap(find.text('Sesi minggu 02/11/2026'));
+      await tester.pumpAndSettle();
+
+      var hint = find.text(
+        'Hitung semua baris sampai 0 sisa. Validasi dilakukan dari web.',
+      );
+      expect(hint, findsOneWidget);
+
+      // Gulir ke bawah — header ciut (hint & durasi ikut hilang).
+      await tester.drag(find.byType(ListView).first, const Offset(0, -600));
+      await tester.pumpAndSettle();
+      expect(hint, findsNothing);
+
+      // Balik ke atas — header kembali lengkap.
+      await tester.drag(find.byType(ListView).first, const Offset(0, 600));
+      await tester.pumpAndSettle();
+      expect(hint, findsOneWidget);
+    },
+  );
+
+  testWidgets('kolom pencarian ikut filter setelah debounce', (tester) async {
+    var repository = buildTwoItemSession();
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+
+    // Field cari muncul (>1 item), ketik kata yang tidak cocok.
+    await tester.enterText(find.byType(TextField), 'NPN-TIDAK');
+    // Filter berlaku setelah 200ms tanpa input — tidak langsung sebelum
+    // keystroke selesai, tapi segera setelah debounce jalan.
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+    expect(find.text('Tidak ada yang cocok'), findsOneWidget);
   });
 
   testWidgets('hitung fisik: payload lengkap & identifikasi manual tercatat', (
@@ -1630,7 +1710,11 @@ void main() {
       expect(find.text('BATCH-31'), findsOneWidget);
       expect(find.text('10 CRT'), findsOneWidget);
       expect(find.text('Selisih -4'), findsOneWidget);
-      // Status sesi di response verify mengganti petunjuk REVISI.
+      // Status sesi di response verify mengganti petunjuk REVISI. Header
+      // otomatis ciut saat menggulir ke bawah — gulir ke atas lagi biar
+      // hint bisa terlihat.
+      await tester.drag(find.byType(ListView).first, const Offset(0, 600));
+      await tester.pumpAndSettle();
       expect(
         find.text(
           'Hitung semua baris sampai 0 sisa. Validasi dilakukan dari web.',

@@ -307,12 +307,17 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
   String _itemFilter = 'ALL';
 
   // Petugas bisa menciutkan detail header saat ingin fokus penuh ke daftar
-  // barang. Ringkasan + progres tetap terlihat.
+  // barang. Ringkasan + progres tetap terlihat. Otomatis ciutkan saat user
+  // gulir ke bawah (pattern modern) dan kembali saat balik ke atas.
   bool _headerCompact = false;
+  Timer? _searchTimer;
+
+  final ScrollController _sessionScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _sessionScrollController.addListener(_onSessionScrolled);
     // Deferred so `context.read` runs after the first frame, when the
     // inherited AuthProvider is guaranteed to be available.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -331,13 +336,41 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _sessionScrollController.removeListener(_onSessionScrolled);
+    _sessionScrollController.dispose();
+    _searchTimer?.cancel();
     _provider.dispose();
     super.dispose();
+  }
+
+  /// Header ikut kompak saat daftar gulir ke bawah (user mulai mencari
+  /// barang), kembali ke full saat balik ke atas.
+  void _onSessionScrolled() {
+    if (!_sessionScrollController.hasClients) {
+      return;
+    }
+    var compact = _sessionScrollController.offset > 120;
+    if (compact != _headerCompact) {
+      setState(() => _headerCompact = compact);
+    }
+  }
+
+  /// Debounce pencarian — typenuk sempit tidak meledak rebuild daftar per
+  /// keystroke, hanya setelah 200 ms tanpa input.
+  void _onSearchChanged(String value) {
+    _searchTimer?.cancel();
+    _searchTimer = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _search = value);
+    });
   }
 
   /// Hanya mengosongkan pencarian — filter status yang dipilih petugas
   /// tidak boleh ikut hilang saat menekan tombol "Bersihkan" di kolom cari.
   void _clearSearch() {
+    _searchTimer?.cancel();
     setState(() {
       _searchController.clear();
       _search = '';
@@ -347,6 +380,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
   /// Kembalikan detail ke kondisi awal saat sesi diganti atau saat petugas
   /// menekan "Tampilkan semua" pada empty state.
   void _resetDetailFilters() {
+    _searchTimer?.cancel();
     setState(() {
       _searchController.clear();
       _search = '';
@@ -716,6 +750,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     return RefreshIndicator(
       onRefresh: () => provider.show(session.id),
       child: ListView(
+        controller: _sessionScrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           AppTheme.space3,
@@ -737,7 +772,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                     const SizedBox(height: AppTheme.space3),
                     TextField(
                       controller: _searchController,
-                      onChanged: (value) => setState(() => _search = value),
+                      onChanged: _onSearchChanged,
                       decoration: InputDecoration(
                         isDense: true,
                         filled: true,
@@ -941,15 +976,29 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     var hint = _statusHint(session.status);
     var colors = context.colors;
 
-    // Header ringkas: identitas + progres + aksi utama. Tidak ada lagi hero
-    // tinggi yang menyisakan sedikit ruang untuk daftar barang.
+    // Header ringkas: identitas + progres + aksi utama, dibedakan dengan
+    // gradient jelemaan agar terasa modern & profesional.
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
       decoration: BoxDecoration(
-        color: colors.surfaceCard,
-        borderRadius: AppTheme.radiusXl,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.primary600.withValues(alpha: 0.12),
+            colors.surfaceCard,
+          ],
+        ),
+        borderRadius: AppTheme.radius2xl,
         border: Border.all(color: colors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary600.withValues(alpha: 0.08),
+            offset: const Offset(0, 2),
+            blurRadius: 8,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2638,22 +2687,23 @@ class _OpnameStatTile extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(height: 1),
+            Icon(icon, size: 17, color: color),
+            const SizedBox(height: 3),
             Text(
               value,
               style: GoogleFonts.roboto(
-                fontSize: 13,
+                fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: color,
               ),
             ),
+            const SizedBox(height: 1),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.roboto(
-                fontSize: 9.5,
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: colors.textMuted,
               ),
@@ -3051,23 +3101,27 @@ class _ProductMiniStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
     child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 3),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.09),
+        color: color.withValues(alpha: 0.08),
         borderRadius: AppTheme.radiusLg,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 3),
-          Text(
-            '$label $value',
-            style: GoogleFonts.roboto(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w800,
-              color: color,
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              '$label $value',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.roboto(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
             ),
           ),
         ],
@@ -3252,8 +3306,9 @@ class _OpnameProductCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                    height: 1.3,
                     color: colors.foreground,
                   ),
                 ),
@@ -3399,7 +3454,7 @@ class _OpnameBatchRow extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+      padding: const EdgeInsets.fromLTRB(10, 9, 10, 12),
       decoration: BoxDecoration(
         color: colors.surfaceCard,
         borderRadius: AppTheme.radiusLg,
