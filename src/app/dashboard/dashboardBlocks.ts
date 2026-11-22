@@ -27,7 +27,13 @@ export const DASHBOARD_BLOCKS: readonly DashboardBlockDef[] = [
   { key: 'opname', anyPermissions: ['opname.view'] },
   {
     key: 'recent',
-    anyPermissions: ['rencana_kirim.view', 'sj_validation.view', 'standarisasi.view', 'receiving.view'],
+    anyPermissions: [
+      'activity.view',
+      'rencana_kirim.view',
+      'sj_validation.view',
+      'standarisasi.view',
+      'receiving.view',
+    ],
   },
 ];
 
