@@ -115,6 +115,86 @@ String _formatDate(String? iso) {
   return parsed != null ? _dateOut(parsed) : raw;
 }
 
+/// Nama bulan Indonesia untuk informasi batch. Tanggal terima/kedaluwarsa
+/// ditulis "9 Sep 2026" (bukan 09/09/2026) supaya tidak ambigu di layar
+/// kecil dan langsung terbaca sebagai tanggal, bukan angka acak.
+const List<String> _shortMonths = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
+
+String _formatDateLong(String? iso) {
+  var raw = iso?.trim();
+  if (raw == null || raw.isEmpty) {
+    return '—';
+  }
+  var parsed = DateTime.tryParse(raw);
+  if (parsed == null) {
+    return raw;
+  }
+  return '${parsed.day} ${_shortMonths[parsed.month - 1]} ${parsed.year}';
+}
+
+/// Teks sisa umur simpan dari backend (`sisa_hari`, boleh negatif).
+/// Tidak dihitung ulang di klien agar zona waktu gudang tetap otoritatif.
+/// Null saat backend tidak mengirim angka — lebih jujur daripada menulis
+/// "Tanpa tanggal" padahal tanggal kedaluwarsa batch tersedia.
+String? _daysLeftLabel(int? days) {
+  if (days == null) {
+    return null;
+  }
+  if (days < 0) {
+    return 'Lewat ${-days} hari';
+  }
+  if (days == 0) {
+    return 'Hari ini';
+  }
+  return '$days hari lagi';
+}
+
+/// Nada urgensi kedaluwarsa: merah lewat, oranye <= 7 hari, kuning <= 30
+/// hari, hijau sisanya — pola yang sama dengan dashboard expiry modern.
+Color _expiryTone(ThemeColors colors, int? days) {
+  if (days == null) {
+    return colors.textMuted;
+  }
+  if (days < 0) {
+    return colors.danger;
+  }
+  if (days <= 7) {
+    return colors.critical;
+  }
+  if (days <= 30) {
+    return colors.warning;
+  }
+  return colors.success;
+}
+
+/// Nada kartu kedaluwarsa: utamakan sisa hari (paling presisi), lalu jatuh
+/// ke status risiko backend bila angka sisa hari tidak tersedia.
+Color _expiryToneForItem(ThemeColors colors, OpnameExpiredSessionItem item) {
+  if (item.sisaHariBatch != null) {
+    return _expiryTone(colors, item.sisaHariBatch);
+  }
+  return switch ((item.statusIni ?? '').trim().toUpperCase()) {
+    'EXPIRED' => colors.danger,
+    'KRITIS' => colors.critical,
+    'PERHATIAN' => colors.warning,
+    'AMAN' => colors.success,
+    _ => colors.textMuted,
+  };
+}
+
 /// Durasi menit–detik: "1 j 04 mnt 05 dtk", selalu menampilkan detik
 /// (dan menit) sesuai kebutuhan lapangan.
 String _formatDuration(Duration duration) {
@@ -1354,8 +1434,8 @@ class _VerifySheetState extends State<_VerifySheet> {
     setState(() {
       var expectedCrt = widget.item.expectedCrt;
       var expectedPcs = widget.item.expectedPcs;
-      _qtyCrt.text = expectedCrt != null ? _formatQty(expectedCrt) : '';
-      _qtyPcs.text = expectedPcs != null ? _formatQty(expectedPcs) : '';
+      _qtyCrt.text = expectedCrt != null ? _inputQty(expectedCrt) : '';
+      _qtyPcs.text = expectedPcs != null ? _inputQty(expectedPcs) : '';
       _errorMessage = null;
     });
   }
@@ -1433,6 +1513,8 @@ class _VerifySheetState extends State<_VerifySheet> {
     var colors = context.colors;
     var delta = _delta;
     var item = widget.item;
+    var hasInput = _qtyCrt.text.trim().isNotEmpty;
+    var expiryTone = _expiryToneForItem(colors, item);
 
     Color feedbackColor = _isMarkedEmpty
         ? colors.warning
@@ -1443,6 +1525,14 @@ class _VerifySheetState extends State<_VerifySheet> {
         : delta > 0
         ? colors.warning
         : colors.danger;
+
+    String feedbackText = _isMarkedEmpty
+        ? 'Tandai habis — fisik 0; koreksi (retur/disposal) dilakukan saat web memvalidasi sesi ini.'
+        : delta == null
+        ? 'Isi qty fisik untuk melihat selisih terhadap acuan.'
+        : delta == 0
+        ? 'Sesuai acuan'
+        : 'Selisih ${delta > 0 ? '+' : ''}${_formatQty(delta)} CRT dari acuan';
 
     return Padding(
       padding: EdgeInsets.only(
@@ -1459,297 +1549,347 @@ class _VerifySheetState extends State<_VerifySheet> {
         ),
         child: SafeArea(
           top: false,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colors.border,
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header tetap terlihat; isi bisa digulir saat keyboard muncul.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.primary600.withValues(alpha: 0.9),
-                            AppTheme.primary600.withValues(alpha: 0.55),
-                          ],
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colors.border,
+                          borderRadius: BorderRadius.circular(99),
                         ),
-                        borderRadius: AppTheme.radiusXl,
-                      ),
-                      child: const Icon(
-                        Icons.fact_check_rounded,
-                        size: 22,
-                        color: Colors.white,
                       ),
                     ),
-                    const SizedBox(width: AppTheme.space3),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppTheme.primary600.withValues(alpha: 0.9),
+                                AppTheme.primary600.withValues(alpha: 0.55),
+                              ],
+                            ),
+                            borderRadius: AppTheme.radiusXl,
+                          ),
+                          child: const Icon(
+                            Icons.fact_check_rounded,
+                            size: 22,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.space3),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Hitung Fisik',
+                                style: GoogleFonts.roboto(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w800,
+                                  color: colors.foreground,
+                                ),
+                              ),
+                              Text(
+                                item.namaBarang ??
+                                    item.kodeBarang ??
+                                    'Batch tanpa nama',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.roboto(
+                                  fontSize: 11,
+                                  color: colors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close_rounded, size: 22),
+                          tooltip: 'Tutup',
+                          color: colors.textMuted,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildTargetCard(colors, item, expiryTone),
+                      const SizedBox(height: 16),
+                      Text(
+                        'AKSI CEPAT',
+                        style: GoogleFonts.roboto(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: colors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
                         children: [
-                          Text(
-                            'Hitung Fisik',
-                            style: GoogleFonts.roboto(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w800,
-                              color: colors.foreground,
+                          Expanded(
+                            child: _QuickActionButton(
+                              label:
+                                  'Sesuai acuan (${_formatQty(item.expectedCrt)} CRT)',
+                              icon: Icons.done_all_rounded,
+                              onTap: _applyAcuan,
                             ),
                           ),
-                          Text(
-                            'Identifikasi manual · acuan sistem sebagai pembanding',
-                            style: GoogleFonts.roboto(
-                              fontSize: 10.5,
-                              color: colors.textMuted,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _QuickActionButton(
+                              label: 'Habis (0)',
+                              icon: Icons.inventory_2_outlined,
+                              onTap: _applyHabis,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close_rounded, size: 22),
-                      tooltip: 'Tutup',
-                      color: colors.textMuted,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildTargetCard(colors, item),
-                const SizedBox(height: 16),
-                Text(
-                  'PINDUK CEPAT',
-                  style: GoogleFonts.roboto(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
-                    color: colors.textMuted,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    _QuickChip(
-                      label:
-                          'Sesuai acuan (${_formatQty(item.expectedCrt)} CRT)',
-                      icon: Icons.done_all_rounded,
-                      onTap: _applyAcuan,
-                    ),
-                    _QuickChip(
-                      label: 'Habis (0)',
-                      icon: Icons.inventory_2_outlined,
-                      onTap: _applyHabis,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'HASIL HITUNG',
-                  style: GoogleFonts.roboto(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
-                    color: colors.textMuted,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: AppTextField(
-                        controller: _qtyCrt,
-                        key: const Key('verify_qty_crt'),
-                        label: 'Qty Fisik (CRT)',
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: AppTextField(
-                        controller: _qtyPcs,
-                        key: const Key('verify_qty_pcs'),
-                        label: 'Qty PCS',
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: feedbackColor.withValues(alpha: 0.10),
-                    borderRadius: AppTheme.radiusLg,
-                    border: Border.all(
-                      color: feedbackColor.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _isMarkedEmpty
-                            ? Icons.inventory_2_outlined
-                            : delta == null
-                            ? Icons.info_outline_rounded
-                            : delta == 0
-                            ? Icons.check_circle_outline_rounded
-                            : delta > 0
-                            ? Icons.trending_up_rounded
-                            : Icons.trending_down_rounded,
-                        size: 18,
-                        color: feedbackColor,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _isMarkedEmpty
-                              ? 'Tandai habis — fisik 0; koreksi (retur/disposal) '
-                                    'dilakukan saat web memvalidasi sesi ini.'
-                              : delta == null
-                              ? 'Isi qty fisik untuk melihat selisih terhadap acuan.'
-                              : delta == 0
-                              ? 'Sesuai acuan'
-                              : 'Selisih ${delta > 0 ? '+' : ''}${_formatQty(delta)} CRT dari acuan',
-                          style: GoogleFonts.roboto(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            height: 1.35,
-                            color: feedbackColor,
-                          ),
+                      const SizedBox(height: 18),
+                      Text(
+                        'HASIL HITUNG',
+                        style: GoogleFonts.roboto(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: colors.textMuted,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                AppTextField(
-                  controller: _notes,
-                  label: 'Catatan (opsional)',
-                  maxLines: 2,
-                ),
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: colors.dangerWell,
-                      borderRadius: AppTheme.radiusLg,
-                      border: Border.all(
-                        color: colors.danger.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.error_outline_rounded,
-                          size: 18,
-                          color: colors.dangerText,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _errorMessage!,
-                            style: GoogleFonts.roboto(
-                              fontSize: 12,
-                              height: 1.4,
-                              color: colors.dangerText,
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: _QtyStepper(
+                              fieldKey: const Key('verify_qty_crt'),
+                              label: 'Qty Fisik (CRT)',
+                              controller: _qtyCrt,
+                              onChanged: (_) => setState(() {}),
+                              onStep: (step) => _stepQty(_qtyCrt, step),
                             ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child: _QtyStepper(
+                              fieldKey: const Key('verify_qty_pcs'),
+                              label: 'Qty (PCS)',
+                              controller: _qtyPcs,
+                              onChanged: (_) => setState(() {}),
+                              onStep: (step) => _stepQty(_qtyPcs, step),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _buildComparisonCard(
+                        colors,
+                        item,
+                        delta,
+                        feedbackColor,
+                        feedbackText,
+                        hasInput,
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        controller: _notes,
+                        label: 'Catatan (opsional)',
+                        maxLines: 2,
+                      ),
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: colors.dangerWell,
+                            borderRadius: AppTheme.radiusLg,
+                            border: Border.all(
+                              color: colors.danger.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline_rounded,
+                                size: 18,
+                                color: colors.dangerText,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 12,
+                                    height: 1.4,
+                                    color: colors.dangerText,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                ],
-                const SizedBox(height: 20),
-                AppPrimaryButton(
-                  text: 'Simpan Hasil Hitung',
-                  onPressed: _save,
-                  isLoading: _saving,
-                  height: 48,
                 ),
-                const SizedBox(height: AppTheme.space2),
-                AppSecondaryButton(
-                  text: widget.draft == null
-                      ? 'Simpan Draf di Perangkat'
-                      : 'Perbarui Draf',
-                  onPressed: _saving ? null : _saveDraftLocal,
-                  height: 44,
+              ),
+              // Aksi utama selalu di zona jempol — tidak ikut tergulir.
+              Container(
+                decoration: BoxDecoration(
+                  color: colors.background,
+                  border: Border(top: BorderSide(color: colors.border)),
                 ),
-              ],
-            ),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    AppPrimaryButton(
+                      text: 'Simpan Hasil Hitung',
+                      onPressed: _saving ? null : _save,
+                      isLoading: _saving,
+                      height: 50,
+                    ),
+                    const SizedBox(height: AppTheme.space2),
+                    AppSecondaryButton(
+                      text: widget.draft == null
+                          ? 'Simpan Draf di Perangkat'
+                          : 'Perbarui Draf',
+                      onPressed: _saving ? null : _saveDraftLocal,
+                      height: 44,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  /// Informasi kunci yang pertama dicari petugas sebelum mengisi hitungan.
-  Widget _targetInfo(String label, String value, Color color) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: AppTheme.radiusLg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.roboto(
-              fontSize: 8.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.4,
-              color: context.colors.textMuted,
+  /// Satu langkah +/- pada kolom qty. Nilai kosong dianggap 0 sehingga
+  /// tombol tambah langsung memberi angka 1, dan tombol kurang tidak pernah
+  /// membuat angka negatif.
+  void _stepQty(TextEditingController controller, double step) {
+    var current = double.tryParse(controller.text.replaceAll(',', '.')) ?? 0;
+    if (current == 0 && step < 0) {
+      return;
+    }
+    var next = (current + step).clamp(0, double.infinity).toDouble();
+    var text = _inputQty(next);
+    controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    setState(() {});
+  }
+
+  /// Pembanding tiga kolom — pola "expected vs counted vs variance" yang
+  /// dipakai aplikasi stock opname modern: acuan, hasil fisik, selisih.
+  Widget _buildComparisonCard(
+    ThemeColors colors,
+    OpnameExpiredSessionItem item,
+    double? delta,
+    Color feedbackColor,
+    String feedbackText,
+    bool hasInput,
+  ) => AnimatedContainer(
+    duration: const Duration(milliseconds: 200),
+    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+    decoration: BoxDecoration(
+      color: feedbackColor.withValues(alpha: 0.08),
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: feedbackColor.withValues(alpha: 0.35)),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            _SheetMetric(
+              label: 'ACUAN',
+              value: '${_formatQty(item.expectedCrt)} CRT',
+              color: colors.textSecondary,
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.roboto(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: color,
+            _SheetMetric(
+              label: 'FISIK',
+              value: hasInput ? '${_formatQty(_qtyCrtValue)} CRT' : '—',
+              color: colors.foreground,
             ),
-          ),
-        ],
-      ),
+            _SheetMetric(
+              label: 'SELISIH',
+              value: delta == null
+                  ? '—'
+                  : '${delta > 0 ? '+' : ''}${_formatQty(delta)} CRT',
+              color: feedbackColor,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              _isMarkedEmpty
+                  ? Icons.inventory_2_outlined
+                  : delta == null
+                  ? Icons.info_outline_rounded
+                  : delta == 0
+                  ? Icons.check_circle_outline_rounded
+                  : delta > 0
+                  ? Icons.trending_up_rounded
+                  : Icons.trending_down_rounded,
+              size: 16,
+              color: feedbackColor,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                feedbackText,
+                style: GoogleFonts.roboto(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                  color: feedbackColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     ),
   );
 
+  /// Identitas batch + tanggal yang paling sering dicari petugas.
+  /// Tanggal terima dan kedaluwarsa punya blok sendiri dengan angka besar
+  /// dan status relatif ("25 hari lagi"), bukan teks kecil terpotong.
   Widget _buildTargetCard(
     ThemeColors colors,
     OpnameExpiredSessionItem item,
+    Color expiryTone,
   ) => Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
@@ -1757,7 +1897,7 @@ class _VerifySheetState extends State<_VerifySheet> {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          AppTheme.primary600.withValues(alpha: 0.14),
+          AppTheme.primary600.withValues(alpha: 0.12),
           colors.surfaceCard,
         ],
       ),
@@ -1765,104 +1905,147 @@ class _VerifySheetState extends State<_VerifySheet> {
       border: Border.all(color: AppTheme.primary600.withValues(alpha: 0.25)),
     ),
     child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
             const Icon(
               Icons.qr_code_2_rounded,
-              size: 16,
+              size: 18,
               color: AppTheme.primary600,
             ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.robotoMono(
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: colors.foreground,
                 ),
               ),
             ),
+            if (item.statusIni != null && item.statusIni!.trim().isNotEmpty)
+              AppBadge(
+                text: OpnameStatus.label(item.statusIni),
+                variant: _riskBadgeVariant(item.statusIni!),
+              ),
           ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${item.kodeBarang ?? '-'} · ${item.namaBarang ?? 'Tanpa nama'}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.roboto(
+            fontSize: 12,
+            height: 1.3,
+            color: colors.textSecondary,
+          ),
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            _targetInfo(
-              'QTY EXPIRED',
-              '${_formatQty(item.qtyWaveCrt)} CRT',
-              AppTheme.primary600,
+            Expanded(
+              child: _TargetMetric(
+                icon: Icons.inventory_2_rounded,
+                label: 'QTY EXPIRED',
+                value: '${_formatQty(item.qtyWaveCrt)} CRT',
+                color: AppTheme.primary600,
+              ),
             ),
-            const SizedBox(width: 4),
-            _targetInfo(
-              'TERIMA',
-              _formatDate(item.tanggalPenerimaan),
-              colors.info,
-            ),
-            const SizedBox(width: 4),
-            _targetInfo(
-              'EXPIRED',
-              '${_formatDate(item.expiredDateIni)}'
-                  '${item.sisaHariBatch != null ? ' · ${item.sisaHariBatch}h' : ''}',
-              (item.sisaHariBatch ?? 999) <= 7 ? colors.danger : colors.warning,
+            const SizedBox(width: 6),
+            Expanded(
+              child: _TargetMetric(
+                icon: Icons.my_location_rounded,
+                label: 'ACUAN SISTEM',
+                value:
+                    '${_formatQty(item.expectedCrt)} CRT'
+                    '${item.expectedPcs != null ? ' · ${_formatQty(item.expectedPcs)} PCS' : ''}',
+                color: colors.foreground,
+              ),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        Text(
-          '${item.namaBarang ?? '-'} · Barcode ${item.barcodeLabel ?? '-'}'
-          ' · Terima ${_formatDate(item.tanggalPenerimaan)}'
-          ' · Exp ${_formatDate(item.expiredDateIni)}',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.roboto(
-            fontSize: 11,
-            height: 1.35,
-            color: context.colors.textSecondary,
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _DateFactCard(
+                icon: Icons.event_available_rounded,
+                label: 'DITERIMA',
+                date: _formatDateLong(item.tanggalPenerimaan),
+                tone: colors.info,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: _DateFactCard(
+                icon: Icons.hourglass_bottom_rounded,
+                label: 'KEDALUWARSA',
+                date: _formatDateLong(item.expiredDateIni),
+                tone: expiryTone,
+                helper: _daysLeftLabel(item.sisaHariBatch),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          'Acuan sistem: CRT ${_formatQty(item.expectedCrt)}'
-          ' / PCS ${_formatQty(item.expectedPcs)}'
-          '${item.umurSimpanHari != null ? ' · Umur simpan ${item.umurSimpanHari} hari' : ''}'
-          '${item.sisaHariBatch != null ? ' · Sisa ${item.sisaHariBatch} hari' : ''}',
-          style: GoogleFonts.roboto(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: context.colors.foreground,
+        if (item.barcodeLabel != null && item.barcodeLabel!.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.qr_code_rounded, size: 13, color: colors.textMuted),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Barcode ${item.barcodeLabel}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.robotoMono(
+                    fontSize: 10.5,
+                    color: colors.textMuted,
+                  ),
+                ),
+              ),
+              if (item.umurSimpanHari != null)
+                Text(
+                  'Umur simpan ${item.umurSimpanHari} hari',
+                  style: GoogleFonts.roboto(
+                    fontSize: 10,
+                    color: colors.textMuted,
+                  ),
+                ),
+            ],
           ),
-        ),
-        // Bantuan analisa: batch ini diterima oleh orang yang sama —
-        // ia bisa menyimpulkan kapan masalahnya mulai.
+        ],
+        // Bantuan analisa: masalah yang sudah ada sejak penerimaan.
         if (item.selisihTerima != null && item.selisihTerima != 0)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 8),
             child: Text(
               'Sudah selisih saat terima: '
               '${item.selisihTerima! > 0 ? '+' : ''}'
-              '${_formatQty(item.selisihTerima)} CRT '
-              '(terima ${_formatQty(item.expectedCrt)} CRT)',
+              '${_formatQty(item.selisihTerima)} CRT',
               style: GoogleFonts.roboto(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: context.colors.warning,
+                color: colors.warning,
               ),
             ),
           )
         else if (item.conditionTerima != null &&
             item.conditionTerima!.toUpperCase() != 'FISIK_BAGUS')
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 8),
             child: Text(
-              'Sudah bermasalah saat terima: '
-              '${_conditionLabel(item.conditionTerima)}',
+              'Kondisi saat terima: ${_conditionLabel(item.conditionTerima)}',
               style: GoogleFonts.roboto(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: context.colors.warning,
+                color: colors.warning,
               ),
             ),
           ),
@@ -1875,29 +2058,377 @@ class _VerifySheetState extends State<_VerifySheet> {
 // Elemen kecil
 // ---------------------------------------------------------------------------
 
-class _QuickChip extends StatelessWidget {
-  const _QuickChip({required this.label, required this.icon, this.onTap});
+/// Tombol aksi cepat berukuran sentuh lapangan (>= 44 dp), menggantikan
+/// chip kecil yang sulit ditekan saat memegang barang.
+class _QuickActionButton extends StatelessWidget {
+  const _QuickActionButton({
+    required this.label,
+    required this.icon,
+    this.onTap,
+  });
 
   final String label;
   final IconData icon;
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => ActionChip(
-    label: Text(
-      label,
-      style: GoogleFonts.roboto(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: context.colors.foreground,
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    return SizedBox(
+      height: 46,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 17, color: AppTheme.primary600),
+        label: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.roboto(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: colors.foreground,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          backgroundColor: colors.surfaceCard,
+          side: BorderSide(color: colors.border),
+          shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
+        ),
+      ),
+    );
+  }
+}
+
+/// Blok tanggal yang mudah dipindai: label kecil, tanggal besar, dan status
+/// relatif berwarna. Dipakai di baris batch maupun sheet hitung agar
+/// tanggal terima/kedaluwarsa tidak lagi jadi teks pinggiran yang terpotong.
+class _DateFactCard extends StatelessWidget {
+  const _DateFactCard({
+    required this.icon,
+    required this.label,
+    required this.date,
+    required this.tone,
+    this.helper,
+    this.dense = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String date;
+  final Color tone;
+  final String? helper;
+  final bool dense;
+
+  @override
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: dense ? 8 : 10,
+        vertical: dense ? 7 : 9,
+      ),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.07),
+        borderRadius: AppTheme.radiusLg,
+        border: Border.all(color: tone.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: dense ? 14 : 16, color: tone),
+          SizedBox(width: dense ? 6 : 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.roboto(
+                    fontSize: dense ? 8.5 : 9.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    color: colors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    date,
+                    maxLines: 1,
+                    style: GoogleFonts.roboto(
+                      fontSize: dense ? 13 : 15,
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
+                      color: colors.foreground,
+                    ),
+                  ),
+                ),
+                if (helper != null) ...[
+                  const SizedBox(height: 1),
+                  Text(
+                    helper!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.roboto(
+                      fontSize: dense ? 9.5 : 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: tone,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Metrik ringkas pada kartu target sheet hitung (qty expired / acuan).
+class _TargetMetric extends StatelessWidget {
+  const _TargetMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: AppTheme.radiusLg,
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.roboto(
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.4,
+                    color: colors.textMuted,
+                  ),
+                ),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.roboto(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kolom pembanding acuan / fisik / selisih di sheet hitung.
+class _SheetMetric extends StatelessWidget {
+  const _SheetMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.roboto(
+              fontSize: 8.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.4,
+              color: colors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: GoogleFonts.roboto(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kolom angka dengan tombol +/- besar — input lapangan tanpa harus
+/// memanggil keyboard untuk koreksi satu-dua unit.
+class _QtyStepper extends StatelessWidget {
+  const _QtyStepper({
+    required this.label,
+    required this.controller,
+    required this.onChanged,
+    required this.onStep,
+    this.fieldKey,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<double> onStep;
+  final Key? fieldKey;
+
+  @override
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.roboto(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: colors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          height: 54,
+          decoration: BoxDecoration(
+            color: colors.surfaceCard,
+            borderRadius: AppTheme.radiusXl,
+            border: Border.all(color: colors.border),
+          ),
+          child: Row(
+            children: [
+              _StepButton(
+                icon: Icons.remove_rounded,
+                tooltip: 'Kurangi',
+                onTap: () => onStep(-1),
+              ),
+              Expanded(
+                child: TextField(
+                  key: fieldKey,
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  textAlign: TextAlign.center,
+                  onChanged: onChanged,
+                  style: GoogleFonts.roboto(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: colors.foreground,
+                  ),
+                  decoration: InputDecoration(
+                    isCollapsed: true,
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                    hintText: '0',
+                    hintStyle: GoogleFonts.roboto(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+              _StepButton(
+                icon: Icons.add_rounded,
+                tooltip: 'Tambah',
+                onTap: () => onStep(1),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StepButton extends StatelessWidget {
+  const _StepButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: AppTheme.radiusLg,
+      child: SizedBox(
+        width: 40,
+        height: 54,
+        child: Icon(icon, size: 20, color: AppTheme.primary600),
       ),
     ),
-    avatar: Icon(icon, size: 16, color: AppTheme.primary600),
-    backgroundColor: context.colors.surfaceCard,
-    side: BorderSide(color: context.colors.border),
-    onPressed: onTap,
   );
 }
+
+/// Angka polos untuk isi kolom input: tanpa pemisah ribuan agar bisa
+/// di-parse balik saat disimpan ("1.000" tidak boleh terbaca 1,0).
+String _inputQty(double value) => value == value.truncateToDouble()
+    ? value.toInt().toString()
+    : value.toString();
 
 /// Strip durasi opname di header sesi: dari "Mulai Sesi" sampai penghitungan
 /// selesai (saat semua baris dalam grup produk siap, petugas tekan Submit).
@@ -2819,9 +3350,9 @@ class _OpnameBatchRow extends StatelessWidget {
     var colors = context.colors;
     var deltaInfo = _deltaInfo(context);
     var verified = item.isVerified;
-
-    Color statusColor = verified ? colors.success : colors.warning;
-    String statusText = draft != null
+    var expiryTone = _expiryToneForItem(colors, item);
+    var statusColor = verified ? colors.success : colors.warning;
+    var statusText = draft != null
         ? 'Draf'
         : verified
         ? 'Sudah dihitung'
@@ -2853,21 +3384,21 @@ class _OpnameBatchRow extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(9, 7, 9, 8),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
       decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: verified ? 0.08 : 0.05),
+        color: colors.surfaceCard,
         borderRadius: AppTheme.radiusLg,
         border: Border(left: BorderSide(color: statusColor, width: 3)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
               if (verified)
                 Icon(
                   Icons.check_circle_rounded,
-                  size: 17,
+                  size: 18,
                   color: colors.success,
                 )
               else
@@ -2880,150 +3411,117 @@ class _OpnameBatchRow extends StatelessWidget {
                   ),
                 ),
               const SizedBox(width: 6),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'BATCH $index/$total',
-                          style: GoogleFonts.roboto(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.3,
-                            color: colors.textMuted,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            item.batchNumber ??
-                                item.kodeBarang ??
-                                'Item ${item.id}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                              color: colors.foreground,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      item.namaBarang ?? item.kodeBarang ?? 'Tanpa nama',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.roboto(
-                        fontSize: 10.5,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ],
+              Text(
+                'BATCH $index/$total',
+                style: GoogleFonts.roboto(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                  color: colors.textMuted,
                 ),
               ),
-              if (onCount != null) ...[
-                const SizedBox(width: 6),
-                SizedBox(
-                  width: 104,
-                  height: 32,
-                  child: OutlinedButton(
-                    onPressed: onCount,
-                    style: OutlinedButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      side: const BorderSide(color: AppTheme.primary600),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: AppTheme.radiusLg,
-                      ),
-                    ),
-                    child: Text(
-                      verified ? 'Hitung Ulang' : 'Hitung Fisik',
-                      style: GoogleFonts.roboto(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.primary600,
-                      ),
-                    ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.robotoMono(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: colors.foreground,
                   ),
                 ),
-              ],
+              ),
             ],
           ),
-          const SizedBox(height: 5),
-          // Tanggal terima & expired adalah informasi pertama yang dicari
-          // petugas — tampilkan sebagai blok tersendiri, bukan teks pinggiran.
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-            decoration: BoxDecoration(
-              color: colors.surfaceHover,
-              borderRadius: AppTheme.radiusLg,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.calendar_month_rounded,
-                  size: 12,
-                  color: colors.textSecondary,
-                ),
-                const SizedBox(width: 5),
-                Expanded(
-                  child: Text(
-                    'Barcode ${item.barcodeLabel ?? '—'}'
-                    '${item.tanggalPenerimaan != null ? ' · Terima ${_formatDate(item.tanggalPenerimaan)}' : ''}'
-                    ' · Exp ${_formatDate(item.expiredDateIni)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.roboto(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 2),
+          Text(
+            item.namaBarang ?? item.kodeBarang ?? 'Tanpa nama',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.roboto(
+              fontSize: 10.5,
+              color: colors.textSecondary,
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 8),
+          // Tanggal terima & kedaluwarsa: dua blok besar yang bisa dipindai
+          // sekilas, bukan satu baris kecil yang mudah terpotong.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _DateFactCard(
+                  icon: Icons.event_available_rounded,
+                  label: 'DITERIMA',
+                  date: _formatDateLong(item.tanggalPenerimaan),
+                  tone: colors.info,
+                  dense: true,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _DateFactCard(
+                  icon: Icons.hourglass_bottom_rounded,
+                  label: 'KEDALUWARSA',
+                  date: _formatDateLong(item.expiredDateIni),
+                  tone: expiryTone,
+                  helper: _daysLeftLabel(item.sisaHariBatch),
+                  dense: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Acuan vs fisik vs selisih — pola stock opname modern.
+          Row(
+            children: [
+              _MiniFact(
+                label: 'ACUAN',
+                value: '${_formatQty(item.expectedCrt)} CRT',
+                color: colors.textSecondary,
+              ),
+              _MiniFact(
+                label: 'FISIK',
+                value: verified ? '${_formatQty(item.qtyFisikCrt)} CRT' : '—',
+                color: colors.foreground,
+              ),
+              _MiniFact(
+                label: 'SELISIH',
+                value: deltaInfo?.$1 ?? '—',
+                color: deltaInfo?.$2 ?? colors.textMuted,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 4,
             runSpacing: 4,
             children: [
               chip(
-                'Qty expired ${_formatQty(item.qtyWaveCrt)} CRT',
-                color: colors.warning,
-                icon: Icons.inventory_2_rounded,
+                statusText,
+                color: draft != null
+                    ? colors.info
+                    : verified
+                    ? colors.success
+                    : colors.warning,
               ),
-              if (deltaInfo != null)
-                chip(deltaInfo.$1, color: deltaInfo.$2)
-              else
+              if (draft != null)
                 chip(
-                  statusText,
-                  color: draft != null
-                      ? colors.info
-                      : verified
-                      ? colors.success
-                      : colors.warning,
+                  'Draf CRT ${_formatQty(_draftQty(draft!['qty_fisik_crt']))} · '
+                  'PCS ${_formatQty(_draftQty(draft!['qty_fisik_pcs']))} — belum dikirim',
+                  color: colors.info,
+                  icon: Icons.save_rounded,
                 ),
               chip(
-                'Acuan batch CRT ${_formatQty(item.expectedCrt)} · PCS '
-                '${item.expectedPcs == null ? 'tanpa acuan' : _formatQty(item.expectedPcs)}',
-                icon: Icons.my_location_rounded,
+                'Barcode ${item.barcodeLabel ?? '—'}',
+                icon: Icons.qr_code_rounded,
               ),
-              if (item.umurSimpanHari != null || item.sisaHariBatch != null)
+              if (item.umurSimpanHari != null)
                 chip(
-                  [
-                    if (item.umurSimpanHari != null)
-                      'Umur simpan ${item.umurSimpanHari} hari',
-                    if (item.sisaHariBatch != null)
-                      'Sisa ${item.sisaHariBatch} hari',
-                  ].join(' · '),
-                  color: (item.sisaHariBatch ?? 999) <= 7
-                      ? colors.danger
-                      : null,
-                  icon: Icons.hourglass_bottom_rounded,
+                  'Umur simpan ${item.umurSimpanHari} hari',
+                  icon: Icons.hourglass_empty_rounded,
                 ),
               if (item.diterimaMingguIni)
                 chip(
@@ -3031,40 +3529,118 @@ class _OpnameBatchRow extends StatelessWidget {
                   color: colors.primaryWellText,
                   icon: Icons.local_shipping_rounded,
                 ),
-              if (draft != null)
-                chip(
-                  'Draf CRT ${_formatQty(_draftQty(draft!['qty_fisik_crt']))} · '
-                  'PCS ${_formatQty(_draftQty(draft!['qty_fisik_pcs']))} — belum dikirim',
-                  color: colors.info,
-                ),
               if (item.selisihTerima != null && item.selisihTerima != 0)
                 chip(
-                  'Sudah selisih saat terima: '
+                  'Selisih saat terima '
                   '${item.selisihTerima! > 0 ? '+' : ''}'
-                  '${_formatQty(item.selisihTerima)} CRT dari rencana terima',
+                  '${_formatQty(item.selisihTerima)} CRT',
                   color: colors.warning,
+                  icon: Icons.warning_amber_rounded,
                 )
               else if (item.conditionTerima != null &&
                   item.conditionTerima!.toUpperCase() != 'FISIK_BAGUS')
                 chip(
-                  'Kondisi saat terima: ${_conditionLabel(item.conditionTerima)}',
+                  'Kondisi terima: ${_conditionLabel(item.conditionTerima)}',
                   color: colors.warning,
+                  icon: Icons.warning_amber_rounded,
                 ),
-              if (verified) ...[
+              if (item.notes != null && item.notes!.isNotEmpty)
+                chip('Catatan: ${item.notes}', color: colors.textMuted),
+              if (verified && item.disposition != null)
                 chip(
-                  'Fisik CRT ${_formatQty(item.qtyFisikCrt)} · PCS ${_formatQty(item.qtyFisikPcs)}',
-                  color: colors.foreground,
+                  'Disposisi ${_dispositionLabel(item.disposition)}',
+                  color: colors.textMuted,
+                  icon: Icons.alt_route_rounded,
                 ),
-                if (item.condition != null && item.condition!.isNotEmpty)
-                  chip(_conditionLabel(item.condition)),
-                if (item.disposition != null)
-                  chip('Disposisi ${_dispositionLabel(item.disposition)}'),
-                if (item.notes != null && item.notes!.isNotEmpty)
-                  chip('Catatan: ${item.notes}', color: colors.textMuted),
-              ],
             ],
           ),
+          if (onCount != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              child: OutlinedButton.icon(
+                onPressed: onCount,
+                icon: Icon(
+                  verified ? Icons.refresh_rounded : Icons.edit_note_rounded,
+                  size: 18,
+                ),
+                label: Text(
+                  verified ? 'Hitung Ulang' : 'Hitung Fisik',
+                  style: GoogleFonts.roboto(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primary600,
+                  side: const BorderSide(color: AppTheme.primary600),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppTheme.radiusLg,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// Metrik kecil acuan/fisik/selisih di baris batch.
+class _MiniFact extends StatelessWidget {
+  const _MiniFact({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.only(right: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+        decoration: BoxDecoration(
+          color: colors.surfaceHover,
+          borderRadius: AppTheme.radiusLg,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.roboto(
+                fontSize: 8,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
+                color: colors.textMuted,
+              ),
+            ),
+            const SizedBox(height: 1),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: GoogleFonts.roboto(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

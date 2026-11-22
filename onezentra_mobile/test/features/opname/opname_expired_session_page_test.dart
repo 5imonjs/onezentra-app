@@ -463,21 +463,17 @@ void main() {
       // Kode batch tiap baris tampil mencocokkan label fisik.
       expect(find.text('BATCH-11'), findsOneWidget);
       expect(find.text('BATCH-12'), findsOneWidget);
-      // Qty acuan baris (qty wave ada di header cluster).
-      expect(find.text('Acuan batch CRT 6 · PCS tanpa acuan'), findsOneWidget);
-      // Konteks penerimaan per baris + petunjuk analisa selisih terima.
-      expect(
-        find.text('Barcode LBL-11 · Terima 09/09/2026 · Exp 01/12/2026'),
-        findsOneWidget,
-      );
+      // Qty acuan baris tampil sebagai metrik "ACUAN" (bukan chip panjang).
+      expect(find.text('6 CRT'), findsOneWidget);
+      // Tanggal terima & kedaluwarsa kini blok besar dengan nama bulan.
+      expect(find.text('9 Sep 2026'), findsOneWidget);
+      expect(find.text('1 Des 2026'), findsOneWidget);
+      expect(find.text('25 hari lagi'), findsOneWidget);
       // Sisa umur simpan — informasi "ngeh" barang yang dikelola.
-      expect(find.text('Umur simpan 83 hari · Sisa 25 hari'), findsOneWidget);
+      expect(find.text('Umur simpan 83 hari'), findsOneWidget);
       // Penanda barang baru diterima minggu sesi — warna khusus.
       expect(find.text('Terima minggu ini'), findsOneWidget);
-      expect(
-        find.text('Sudah selisih saat terima: -2 CRT dari rencana terima'),
-        findsOneWidget,
-      );
+      expect(find.text('Selisih saat terima -2 CRT'), findsOneWidget);
 
       // Daftar lambat (lazy): baris di luar layar terbentuk saat digulir.
       await tester.drag(find.byType(ListView).first, const Offset(0, -400));
@@ -1377,12 +1373,13 @@ void main() {
     await _pumpOpnameExpiredSessionPage(tester, auth, repository);
     await openVerifySheet(tester);
 
-    expect(find.text('PINDUK CEPAT'), findsOneWidget);
+    expect(find.text('AKSI CEPAT'), findsOneWidget);
     expect(find.text('HASIL HITUNG'), findsOneWidget);
-    // Qty expired + tanggal terima jadi informasi pertama di form hitung.
+    // Qty expired + tanggal terima/kedaluwarsa jadi informasi pertama di
+    // form hitung, dengan label yang tidak ambigu.
     expect(find.text('QTY EXPIRED'), findsOneWidget);
-    expect(find.text('TERIMA'), findsOneWidget);
-    expect(find.text('EXPIRED'), findsOneWidget);
+    expect(find.text('DITERIMA'), findsWidgets);
+    expect(find.text('KEDALUWARSA'), findsWidgets);
     expect(
       find.text('Isi qty fisik untuk melihat selisih terhadap acuan.'),
       findsOneWidget,
@@ -1592,7 +1589,7 @@ void main() {
 
       // Data tampilan dari detail tetap utuh setelah baris di-patch.
       expect(find.text('BATCH-31'), findsOneWidget);
-      expect(find.textContaining('Acuan batch CRT 10'), findsOneWidget);
+      expect(find.text('10 CRT'), findsOneWidget);
       expect(find.text('Selisih -4'), findsOneWidget);
       // Status sesi di response verify mengganti petunjuk REVISI.
       expect(
