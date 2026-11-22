@@ -97,6 +97,11 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          # Pin ke SDK yang dipakai build APK produksi (3.41.2 / Dart 3.11.0).
+          # "stable" mengikuti rilis terbaru dan memasukkan assertion framework
+          # baru (mis. ListTile background) + perilaku teardown font yang
+          # menggagalkan 28 test yang lolos di SDK produksi.
+          flutter-version: '3.41.2'
           channel: stable
           cache: true
 

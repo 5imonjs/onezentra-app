@@ -31,10 +31,10 @@ class RegionDepoValidationController
 
         // Konteks region diambil langsung dari database (code PK).
         // Session store tidak selalu tersedia di semua deployment (misal:
-        #  production nginx proxy + Sanctum EnsureFrontendRequestsAreStateful).
+        //  production nginx proxy + Sanctum EnsureFrontendRequestsAreStateful).
         // Nilai region dikirim dalam respons JSON; frontend harus menyimpannya
-        # dari respons ini jika butuh untuk request selanjutnya (depo-options,
-        # depo-validate, login).
+        // dari respons ini jika butuh untuk request selanjutnya (depo-options,
+        // depo-validate, login).
         return response()->json([
             'valid' => true,
             'region_id' => $region->code,

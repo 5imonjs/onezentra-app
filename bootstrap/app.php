@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Middleware\ScopeRegionDepo;
 use App\Http\Middleware\CheckPermission;
+use App\Http\Middleware\ScopeRegionDepo;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackUserActivity;
 use Illuminate\Auth\AuthenticationException;
