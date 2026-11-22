@@ -232,8 +232,11 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
           _patchSessionList(updated);
         }
         _notify();
+        return null;
       }
-      return null;
+      // Sesi berubah/di-hapus di tengah input — kembalikan error biar sheet
+      // tetap tampil di layar, bukan silent no-op seperti sebelumnya.
+      return 'Sesi tidak terpilih — coba ulangi penghitungan.';
     } on ApiException catch (e) {
       return e.message;
     } catch (e, stack) {
