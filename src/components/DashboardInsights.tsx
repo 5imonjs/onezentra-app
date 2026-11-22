@@ -9,7 +9,17 @@ import DashboardPanel from '@/components/DashboardPanel';
 
 type Daily = { date: string; requests: number };
 type StatusCount = { key: string; label: string; count: number; color: string };
-type DepotProgress = { kode_depo: string; nama_depo: string | null; total: number; validated: number; submitted?: boolean };
+type DepotProgress = {
+  kode_depo: string;
+  nama_depo: string | null;
+  total: number;
+  validated: number;
+  submitted?: boolean;
+  /** Progres hitungan lapangan dari item sesi (berubah saat mobile input). */
+  item_total?: number;
+  item_counted?: number;
+  item_pct?: number;
+};
 
 const ICON_ACTIVITY = <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />;
 const ICON_TRUCK = <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25M20.625 18.75a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.9 17.9 0 00-3.213-9.193 2.06 2.06 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.6 48.6 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677" />;
@@ -178,9 +188,11 @@ function ExceptionBars({ rows, onOpen }: {
 /** Progress ring — klik membuka modul monitoring. */
 function ProgressRing({ depots, onOpen }: { depots: DepotProgress[]; onOpen: () => void }) {
   const [hovered, setHovered] = useState(false);
-  const total = depots.reduce((a, d) => a + d.total, 0);
-  const validated = depots.reduce((a, d) => a + d.validated, 0);
-  const pct = total > 0 ? Math.round((validated / total) * 100) : 0;
+  // Pakai hitungan item sesi (berubah saat petugas input), bukan wave
+  // tervalidasi yang hanya berubah setelah approval web.
+  const total = depots.reduce((a, d) => a + (d.item_total ?? d.total), 0);
+  const counted = depots.reduce((a, d) => a + (d.item_counted ?? d.validated), 0);
+  const pct = total > 0 ? Math.round((counted / total) * 100) : 0;
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
 
@@ -195,17 +207,17 @@ function ProgressRing({ depots, onOpen }: { depots: DepotProgress[]; onOpen: () 
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-2xl font-black tabular-nums text-foreground">{pct}%</span>
-          <span className="text-[9px] uppercase tracking-wider text-muted-foreground">tervalidasi</span>
+          <span className="text-[9px] uppercase tracking-wider text-muted-foreground">terhitung</span>
         </div>
       </div>
       <div className="flex-1">
-        <p className="text-sm font-bold tabular-nums text-foreground">{validated} / {total} item</p>
-        <p className="text-[11px] text-muted-foreground">{depots.filter((d) => d.validated >= d.total && d.total > 0).length} dari {depots.length} depo selesai</p>
+        <p className="text-sm font-bold tabular-nums text-foreground">{counted} / {total} batch dihitung</p>
+        <p className="text-[11px] text-muted-foreground">{depots.filter((d) => (d.item_total ?? d.total) > 0 && (d.item_counted ?? d.validated) >= (d.item_total ?? d.total)).length} dari {depots.length} depo tuntas hitung</p>
         <ul className="mt-2 space-y-1">
           {depots.slice(0, 3).map((d) => (
             <li key={d.kode_depo} className="flex justify-between text-[11px]">
               <span className="truncate text-muted-foreground">{d.nama_depo || d.kode_depo}</span>
-              <span className="font-bold tabular-nums text-foreground">{d.validated}/{d.total}</span>
+              <span className="font-bold tabular-nums text-foreground">{d.item_counted ?? d.validated}/{d.item_total ?? d.total}</span>
             </li>
           ))}
         </ul>
@@ -227,6 +239,16 @@ export default function DashboardInsights({ kodeDepo }: { kodeDepo?: string }) {
   const canRencana = hasPermission('rencana_kirim.view');
   const canOpname = hasPermission('opname.view');
 
+  const loadProgress = useCallback(async () => {
+    if (!canOpname) return;
+    try {
+      const res = await opnameExpired.progress();
+      setDepots((res.data?.data?.depots ?? []) as DepotProgress[]);
+    } catch {
+      setDepots([]);
+    }
+  }, [canOpname]);
+
   const load = useCallback(async () => {
     const requests: Promise<void>[] = [];
     if (canActivity) {
@@ -244,15 +266,31 @@ export default function DashboardInsights({ kodeDepo }: { kodeDepo?: string }) {
         })
         .catch(() => setStatuses([])));
     }
-    if (canOpname) {
-      requests.push(opnameExpired.progress()
-        .then((res) => setDepots((res.data?.data?.depots ?? []) as DepotProgress[]))
-        .catch(() => setDepots([])));
-    }
+    requests.push(loadProgress());
     await Promise.all(requests);
-  }, [canActivity, canRencana, canOpname, kodeDepo]);
+  }, [canActivity, canRencana, kodeDepo, loadProgress]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // "Real-time" yang dapat diandalkan tanpa WebSocket: tarik ulang progres
+  // secara berkala HANYA saat tab terlihat, plus langsung saat tab difokuskan.
+  // Permintaan lain di dashboard tidak ikut di-poll supaya ringan.
+  useEffect(() => {
+    if (!canOpname) return;
+    const refresh = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void loadProgress();
+      }
+    };
+    const timer = window.setInterval(refresh, 15_000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [canOpname, loadProgress]);
 
   const alerts = summary.alerts ?? { standarisasi_pending: 0, extra_item_pending: 0, expired_kritis: 0, expired_total: 0 };
   const incoming = summary.incoming ?? { today: 0, tomorrow: 0, overdue: 0 };

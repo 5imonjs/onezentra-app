@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardInsights from './DashboardInsights';
 
@@ -60,6 +60,32 @@ describe('DashboardInsights', () => {
     expect(activity).toHaveBeenCalledWith(7, undefined);
     expect(stats).toHaveBeenCalled();
     expect(progress).toHaveBeenCalled();
+  });
+
+  it('progres mengikuti hitungan item mobile, bukan wave tervalidasi', async () => {
+    progress.mockResolvedValue({ data: { data: { week_start: '2026-11-16', depots: [
+      { kode_depo: '0127', nama_depo: 'Singkawang', total: 10, validated: 10, item_total: 20, item_counted: 5 },
+    ] } } });
+
+    render(<DashboardInsights />);
+
+    expect(await screen.findByText('25%')).toBeInTheDocument();
+    expect(screen.getByText('5 / 20 batch dihitung')).toBeInTheDocument();
+  });
+
+  it('menarik ulang progres otomatis supaya dashboard hidup', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<DashboardInsights />);
+      await act(async () => {});
+      const before = progress.mock.calls.length;
+
+      await act(async () => { vi.advanceTimersByTime(15_000); });
+
+      expect(progress.mock.calls.length).toBeGreaterThan(before);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('tidak menampilkan chart tanpa izin modul terkait', () => {
