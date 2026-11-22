@@ -299,17 +299,42 @@ class OpnameExpiredController extends Controller
             ->get(['id', 'kode_depo'])
             ->keyBy('kode_depo');
 
+        // Progres hitung fisik diambil dari ITEM SESI (verified_at), bukan dari
+        // wave tervalidasi. Wave hanya berubah saat approver menyetujui di web,
+        // sehingga dashboard lama diam meski petugas sudah menginput di mobile.
+        // Satu query agregat per depo, bukan satu query per item.
+        $itemStats = OpnameExpiredSessionItem::query()
+            ->join('opname_expired_sessions as ses', 'ses.id', '=', 'opname_expired_session_items.session_id')
+            ->where('ses.week_start', $weekStart)
+            ->when($scoped, fn ($q) => $user->applyDepotFilter($q, 'ses.kode_depo'))
+            ->selectRaw(
+                'ses.kode_depo as kode_depo, '
+                .'COUNT(*) as item_total, '
+                .'SUM(CASE WHEN opname_expired_session_items.verified_at IS NOT NULL THEN 1 ELSE 0 END) as item_counted'
+            )
+            ->groupBy('ses.kode_depo')
+            ->get()
+            ->keyBy('kode_depo');
+
         $depots = [];
         foreach ($waves->groupBy('kode_depo') as $depo => $rows) {
             $total = $rows->count();
             $validated = $rows->whereNotNull('validated_by')->count();
             $openSession = $openSessions->get($depo);
             $completedSession = $completedSessions->get($depo);
+            $itemStat = $itemStats->get($depo);
+            $itemTotal = (int) ($itemStat->item_total ?? 0);
+            $itemCounted = (int) ($itemStat->item_counted ?? 0);
             $depots[] = [
                 'kode_depo' => $depo,
                 'nama_depo' => $rows->first()->nama_depo ?: $depo,
                 'total' => $total,
                 'validated' => $validated,
+                // Metrik hitungan lapangan — sumber kebenaran untuk dashboard
+                // saat input mobile masuk (waktu nyata).
+                'item_total' => $itemTotal,
+                'item_counted' => $itemCounted,
+                'item_pct' => $itemTotal > 0 ? (int) round($itemCounted / $itemTotal * 100) : 0,
                 // has_session dipertahankan untuk konsumen lama (chart).
                 'has_session' => $openSession !== null || $completedSession !== null,
                 'has_open_session' => $openSession !== null,
@@ -320,12 +345,20 @@ class OpnameExpiredController extends Controller
             ];
         }
 
+        $itemTotalAll = collect($depots)->sum('item_total');
+        $itemCountedAll = collect($depots)->sum('item_counted');
+
         return response()->json([
             'data' => [
                 'week_start' => $weekStart,
                 'depots' => $depots,
                 'submitted_count' => collect($depots)->where('submitted', true)->count(),
                 'pending_count' => collect($depots)->where('submitted', false)->count(),
+                'item_total' => $itemTotalAll,
+                'item_counted' => $itemCountedAll,
+                'item_pct' => $itemTotalAll > 0
+                    ? (int) round($itemCountedAll / $itemTotalAll * 100)
+                    : 0,
             ],
         ]);
     }

@@ -627,9 +627,9 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
-          AppTheme.space4,
-          AppTheme.space4,
-          AppTheme.space4,
+          AppTheme.space3,
+          AppTheme.space2,
+          AppTheme.space3,
           AppTheme.space8,
         ),
         children: [
@@ -854,22 +854,11 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     // tinggi yang menyisakan sedikit ruang untuk daftar barang.
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.space3),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [colors.surfaceCard, colors.surface, colors.surfaceHover],
-        ),
-        borderRadius: AppTheme.radius2xl,
-        border: Border.all(color: colors.foreground.withValues(alpha: 0.08)),
-        boxShadow: [
-          BoxShadow(
-            color: colors.surfaceHover,
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        color: colors.surfaceCard,
+        borderRadius: AppTheme.radiusXl,
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2033,7 +2022,7 @@ class _OpnameStatTile extends StatelessWidget {
     return Expanded(
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.10),
           borderRadius: AppTheme.radiusLg,
@@ -2042,12 +2031,12 @@ class _OpnameStatTile extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(height: 2),
+            Icon(icon, size: 14, color: color),
+            const SizedBox(height: 1),
             Text(
               value,
               style: GoogleFonts.roboto(
-                fontSize: 15,
+                fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: color,
               ),
@@ -2361,8 +2350,8 @@ class _ExpandablePrincipalGroupState extends State<_ExpandablePrincipalGroup> {
             borderRadius: AppTheme.radiusXl,
             child: Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.space3,
-                vertical: 10,
+                horizontal: AppTheme.space2,
+                vertical: 6,
               ),
               decoration: BoxDecoration(
                 borderRadius: AppTheme.radiusXl,
@@ -2371,19 +2360,19 @@ class _ExpandablePrincipalGroupState extends State<_ExpandablePrincipalGroup> {
               child: Row(
                 children: [
                   Container(
-                    width: 34,
-                    height: 34,
+                    width: 28,
+                    height: 28,
                     decoration: BoxDecoration(
                       color: colors.primaryWell,
                       borderRadius: AppTheme.radiusLg,
                     ),
                     child: Icon(
                       Icons.business_rounded,
-                      size: 17,
+                      size: 15,
                       color: colors.primaryWellText,
                     ),
                   ),
-                  const SizedBox(width: AppTheme.space3),
+                  const SizedBox(width: AppTheme.space2),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2488,7 +2477,7 @@ class _OpnameProductCard extends StatelessWidget {
         : '';
 
     return AppCard(
-      padding: const EdgeInsets.all(AppTheme.space4),
+      padding: const EdgeInsets.all(10),
       color: complete ? colors.success.withValues(alpha: 0.05) : null,
       border: complete
           ? Border.all(color: colors.success.withValues(alpha: 0.45))
@@ -2509,7 +2498,7 @@ class _OpnameProductCard extends StatelessWidget {
           ),
           const SizedBox(height: AppTheme.space2),
           for (var i = 0; i < items.length; i++) ...[
-            if (i > 0) const SizedBox(height: AppTheme.space2),
+            if (i > 0) const SizedBox(height: 4),
             _OpnameBatchRow(
               item: items[i],
               // Posisi stabil dari seluruh batch, bukan urutan hasil filter —
@@ -2539,12 +2528,7 @@ class _OpnameProductCard extends StatelessWidget {
     var colors = context.colors;
     var mixed = status == 'CAMPURAN';
     return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppTheme.space2,
-        AppTheme.space2,
-        AppTheme.space3,
-        AppTheme.space2,
-      ),
+      padding: const EdgeInsets.fromLTRB(6, 5, 6, 5),
       decoration: BoxDecoration(
         color: colors.foreground.withValues(alpha: 0.06),
         borderRadius: AppTheme.radiusLg,
@@ -2552,23 +2536,15 @@ class _OpnameProductCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  accent.withValues(alpha: 0.28),
-                  accent.withValues(alpha: 0.08),
-                ],
-              ),
-              borderRadius: AppTheme.radiusXl,
-              border: Border.all(color: accent.withValues(alpha: 0.3)),
+              color: accent.withValues(alpha: 0.16),
+              borderRadius: AppTheme.radiusLg,
             ),
             child: Icon(
               complete ? Icons.check_rounded : Icons.inventory_2_rounded,
-              size: 20,
+              size: 17,
               color: accent,
             ),
           ),
@@ -2695,24 +2671,44 @@ class _OpnameBatchRow extends StatelessWidget {
     var deltaInfo = _deltaInfo(context);
     var verified = item.isVerified;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppTheme.space3,
-        AppTheme.space3,
-        AppTheme.space2,
-        AppTheme.space2,
-      ),
+    Color statusColor = verified ? colors.success : colors.warning;
+    String statusText = draft != null
+        ? 'Draf'
+        : verified
+        ? 'Sudah dihitung'
+        : 'Belum dihitung';
+
+    Widget chip(String text, {Color? color, IconData? icon}) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: verified
-            ? colors.success.withValues(alpha: 0.10)
-            : colors.warning.withValues(alpha: 0.08),
-        borderRadius: AppTheme.radiusLg,
-        border: Border(
-          left: BorderSide(
-            color: verified ? colors.success : colors.warning,
-            width: 3,
+        color: (color ?? colors.textMuted).withValues(alpha: 0.10),
+        borderRadius: AppTheme.radiusFull,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 11, color: color ?? colors.textMuted),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            text,
+            style: GoogleFonts.roboto(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color ?? colors.textSecondary,
+            ),
           ),
-        ),
+        ],
+      ),
+    );
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(9, 7, 9, 8),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: verified ? 0.08 : 0.05),
+        borderRadius: AppTheme.radiusLg,
+        border: Border(left: BorderSide(color: statusColor, width: 3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2722,7 +2718,7 @@ class _OpnameBatchRow extends StatelessWidget {
               if (verified)
                 Icon(
                   Icons.check_circle_rounded,
-                  size: 18,
+                  size: 17,
                   color: colors.success,
                 )
               else
@@ -2734,304 +2730,161 @@ class _OpnameBatchRow extends StatelessWidget {
                     color: colors.warning,
                   ),
                 ),
-              const SizedBox(width: AppTheme.space2),
+              const SizedBox(width: 6),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'BATCH $index/$total',
-                      style: GoogleFonts.roboto(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.4,
-                        color: colors.textSecondary,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          'BATCH $index/$total',
+                          style: GoogleFonts.roboto(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                            color: colors.textMuted,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            item.batchNumber ??
+                                item.kodeBarang ??
+                                'Item ${item.id}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              color: colors.foreground,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 1),
-                    Text(
-                      item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.robotoMono(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: colors.foreground,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
                     Text(
                       item.namaBarang ?? item.kodeBarang ?? 'Tanpa nama',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.roboto(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 10.5,
                         color: colors.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-              if (deltaInfo != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.space2,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: deltaInfo.$2.withValues(alpha: 0.12),
-                    borderRadius: AppTheme.radiusFull,
-                  ),
-                  child: Text(
-                    deltaInfo.$1,
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: deltaInfo.$2,
+              if (onCount != null) ...[
+                const SizedBox(width: 6),
+                SizedBox(
+                  width: 104,
+                  height: 32,
+                  child: OutlinedButton(
+                    onPressed: onCount,
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      side: const BorderSide(color: AppTheme.primary600),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AppTheme.radiusLg,
+                      ),
                     ),
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.space2,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: draft != null
-                        ? colors.infoWell
-                        : verified
-                        ? colors.success.withValues(alpha: 0.18)
-                        : colors.warning.withValues(alpha: 0.18),
-                    borderRadius: AppTheme.radiusFull,
-                  ),
-                  child: Text(
-                    draft != null
-                        ? 'Draf'
-                        : verified
-                        ? 'Sudah dihitung'
-                        : 'Belum dihitung',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: draft != null
-                          ? colors.info
-                          : verified
-                          ? colors.success
-                          : colors.warning,
+                    child: Text(
+                      verified ? 'Hitung Ulang' : 'Hitung Fisik',
+                      style: GoogleFonts.roboto(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.primary600,
+                      ),
                     ),
                   ),
                 ),
+              ],
             ],
           ),
-          const SizedBox(height: AppTheme.space2),
+          const SizedBox(height: 5),
           Text(
             'Barcode ${item.barcodeLabel ?? '—'}'
             '${item.tanggalPenerimaan != null ? ' · Terima ${_formatDate(item.tanggalPenerimaan)}' : ''}'
             ' · Exp ${_formatDate(item.expiredDateIni)}',
-            style: GoogleFonts.roboto(
-              fontSize: 11,
-              height: 1.35,
-              color: colors.textSecondary,
-            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.roboto(fontSize: 10, color: colors.textMuted),
           ),
-          if (draft != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'Draf CRT ${_formatQty(_draftQty(draft!['qty_fisik_crt']))} · '
-                'PCS ${_formatQty(_draftQty(draft!['qty_fisik_pcs']))} — belum dikirim',
-                style: GoogleFonts.roboto(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+          const SizedBox(height: 5),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              if (deltaInfo != null)
+                chip(deltaInfo.$1, color: deltaInfo.$2)
+              else
+                chip(
+                  statusText,
+                  color: draft != null
+                      ? colors.info
+                      : verified
+                      ? colors.success
+                      : colors.warning,
+                ),
+              chip(
+                'Acuan batch CRT ${_formatQty(item.expectedCrt)} · PCS '
+                '${item.expectedPcs == null ? 'tanpa acuan' : _formatQty(item.expectedPcs)}',
+                icon: Icons.my_location_rounded,
+              ),
+              if (item.umurSimpanHari != null || item.sisaHariBatch != null)
+                chip(
+                  [
+                    if (item.umurSimpanHari != null)
+                      'Umur simpan ${item.umurSimpanHari} hari',
+                    if (item.sisaHariBatch != null)
+                      'Sisa ${item.sisaHariBatch} hari',
+                  ].join(' · '),
+                  color: (item.sisaHariBatch ?? 999) <= 7
+                      ? colors.danger
+                      : null,
+                  icon: Icons.hourglass_bottom_rounded,
+                ),
+              if (item.diterimaMingguIni)
+                chip(
+                  'Terima minggu ini',
+                  color: colors.primaryWellText,
+                  icon: Icons.local_shipping_rounded,
+                ),
+              if (draft != null)
+                chip(
+                  'Draf CRT ${_formatQty(_draftQty(draft!['qty_fisik_crt']))} · '
+                  'PCS ${_formatQty(_draftQty(draft!['qty_fisik_pcs']))} — belum dikirim',
                   color: colors.info,
                 ),
-              ),
-            ),
-          if (item.diterimaMingguIni)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.space2,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: colors.primaryWell,
-                  borderRadius: AppTheme.radiusFull,
-                  border: Border.all(color: colors.primaryWellBorder),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.local_shipping_rounded,
-                      size: 11,
-                      color: colors.primaryWellText,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Terima minggu ini',
-                      style: GoogleFonts.roboto(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: colors.primaryWellText,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          const SizedBox(height: 2),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: colors.surfaceHover,
-              borderRadius: AppTheme.radiusLg,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.my_location_rounded,
-                  size: 13,
-                  color: colors.textMuted,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Acuan batch CRT ${_formatQty(item.expectedCrt)} · PCS '
-                    '${item.expectedPcs == null ? 'tanpa acuan' : _formatQty(item.expectedPcs)}',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (item.umurSimpanHari != null || item.sisaHariBatch != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.hourglass_bottom_rounded,
-                    size: 12,
-                    color: (item.sisaHariBatch ?? 999) <= 7
-                        ? colors.danger
-                        : colors.textMuted,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      [
-                        if (item.umurSimpanHari != null)
-                          'Umur simpan ${item.umurSimpanHari} hari',
-                        if (item.sisaHariBatch != null)
-                          'Sisa ${item.sisaHariBatch} hari',
-                      ].join(' · '),
-                      style: GoogleFonts.roboto(
-                        fontSize: 11,
-                        fontWeight: (item.sisaHariBatch ?? 999) <= 7
-                            ? FontWeight.w700
-                            : FontWeight.w400,
-                        color: (item.sisaHariBatch ?? 999) <= 7
-                            ? colors.danger
-                            : colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (item.selisihTerima != null && item.selisihTerima != 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'Sudah selisih saat terima: '
-                '${item.selisihTerima! > 0 ? '+' : ''}'
-                '${_formatQty(item.selisihTerima)} CRT dari rencana terima',
-                style: GoogleFonts.roboto(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
+              if (item.selisihTerima != null && item.selisihTerima != 0)
+                chip(
+                  'Sudah selisih saat terima: '
+                  '${item.selisihTerima! > 0 ? '+' : ''}'
+                  '${_formatQty(item.selisihTerima)} CRT dari rencana terima',
+                  color: colors.warning,
+                )
+              else if (item.conditionTerima != null &&
+                  item.conditionTerima!.toUpperCase() != 'FISIK_BAGUS')
+                chip(
+                  'Kondisi saat terima: ${_conditionLabel(item.conditionTerima)}',
                   color: colors.warning,
                 ),
-              ),
-            )
-          else if (item.conditionTerima != null &&
-              item.conditionTerima!.toUpperCase() != 'FISIK_BAGUS')
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'Kondisi saat terima: ${_conditionLabel(item.conditionTerima)}',
-                style: GoogleFonts.roboto(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: colors.warning,
+              if (verified) ...[
+                chip(
+                  'Fisik CRT ${_formatQty(item.qtyFisikCrt)} · PCS ${_formatQty(item.qtyFisikPcs)}',
+                  color: colors.foreground,
                 ),
-              ),
-            ),
-          if (verified) ...[
-            const SizedBox(height: 2),
-            Text(
-              'Fisik CRT ${_formatQty(item.qtyFisikCrt)} · PCS ${_formatQty(item.qtyFisikPcs)}',
-              style: GoogleFonts.roboto(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: colors.foreground,
-              ),
-            ),
-            const SizedBox(height: AppTheme.space2),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
                 if (item.condition != null && item.condition!.isNotEmpty)
-                  Text(
-                    _conditionLabel(item.condition),
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      color: colors.textSecondary,
-                    ),
-                  ),
+                  chip(_conditionLabel(item.condition)),
                 if (item.disposition != null)
-                  Text(
-                    'Disposisi ${_dispositionLabel(item.disposition)}',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textSecondary,
-                    ),
-                  ),
+                  chip('Disposisi ${_dispositionLabel(item.disposition)}'),
+                if (item.notes != null && item.notes!.isNotEmpty)
+                  chip('Catatan: ${item.notes}', color: colors.textMuted),
               ],
-            ),
-            if (item.notes != null && item.notes!.isNotEmpty) ...[
-              const SizedBox(height: AppTheme.space2),
-              Text(
-                'Catatan: ${item.notes}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.roboto(
-                  fontSize: 11,
-                  color: colors.textSecondary,
-                ),
-              ),
             ],
-          ],
-          if (onCount != null) ...[
-            const SizedBox(height: AppTheme.space3),
-            AppSecondaryButton(
-              text: verified ? 'Hitung Ulang' : 'Hitung Fisik',
-              leadingIcon: verified
-                  ? Icons.edit_rounded
-                  : Icons.fact_check_rounded,
-              onPressed: onCount,
-              height: 46,
-            ),
-          ],
+          ),
         ],
       ),
     );

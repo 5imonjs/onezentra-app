@@ -1304,4 +1304,29 @@ class OpnameExpiredSessionTest extends TestCase
         // Status di response dipakai mobile untuk mengganti hint REVISI.
         $this->assertSame('IN_PROGRESS', $res->json('data.session.status'));
     }
+
+    public function test_progress_endpoint_tracks_items_counted_from_mobile(): void
+    {
+        $session = $this->makeSession();
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+        $item = $session->items()->first();
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
+            'qty_fisik_crt' => 5,
+            'identified_via' => 'scan',
+        ])->assertOk();
+
+        Sanctum::actingAs($this->supervisor);
+        $res = $this->getJson('/api/v1/opname-expired/progress?week_start=2026-09-07')->assertOk();
+        $depot = collect($res->json('data.depots'))->firstWhere('kode_depo', 'DPO');
+
+        // Dashboard bergerak setelah input mobile, tanpa menunggu approval web.
+        $this->assertSame(2, $depot['item_total']);
+        $this->assertSame(1, $depot['item_counted']);
+        $this->assertSame(50, $depot['item_pct']);
+        $this->assertSame(2, $res->json('data.item_total'));
+        $this->assertSame(1, $res->json('data.item_counted'));
+        $this->assertSame(50, $res->json('data.item_pct'));
+    }
 }
