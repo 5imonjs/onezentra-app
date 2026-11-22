@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { emailSettings, getErrorMessage } from '@/lib/api';
 import { formatDateId } from '@/lib/dates';
@@ -108,9 +108,11 @@ export default function EmailSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [testEmail, setTestEmail] = useState('');
-  const setToast = (payload: { message: string; type: 'success' | 'error' }) => notifyGlobal(payload.message, payload.type);
+  const setToast = useCallback((payload: { message: string; type: 'success' | 'error' }) => {
+    notifyGlobal(payload.message, payload.type);
+  }, []);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const res = await emailSettings.get();
       const data = (res.data?.data ?? {}) as Partial<EmailSetting>;
@@ -134,9 +136,9 @@ export default function EmailSettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setToast]);
 
-  useEffect(() => { if (canView) load(); }, [canView]);
+  useEffect(() => { if (canView) load(); }, [canView, load]);
 
   // Halaman ini hanya untuk pengguna dengan izin `emails.view`; tanpa itu
   // jangan menembak API (403) dan tampilkan pesan sejelas halaman lain.
