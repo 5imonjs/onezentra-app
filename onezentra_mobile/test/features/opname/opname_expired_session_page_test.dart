@@ -1472,14 +1472,13 @@ void main() {
     await _pumpOpnameExpiredSessionPage(tester, auth, repository);
     await tester.tap(find.text('Sesi minggu 02/11/2026'));
     await tester.pumpAndSettle();
-    expect(find.text('Draf lokal'), findsOneWidget);
+    expect(find.text('Sesi minggu 02/11/2026'), findsOneWidget);
 
     var callsBeforeBack = repository.listCalls;
     await tester.tap(find.byTooltip('Kembali ke daftar'));
     await tester.pumpAndSettle();
 
     expect(find.text('Sesi minggu 02/11/2026'), findsOneWidget);
-    expect(find.text('Draf lokal'), findsNothing);
     expect(repository.listCalls, callsBeforeBack);
   });
 
@@ -1505,7 +1504,7 @@ void main() {
     );
   });
 
-  testWidgets('detail sesi: ringkasan metrik modern tampil sekilas', (
+  testWidgets('detail sesi: header pudar — Fisik & sesi tampil', (
     tester,
   ) async {
     const counted = OpnameExpiredSessionItem(
@@ -1547,12 +1546,16 @@ void main() {
     await tester.tap(find.text('Sesi minggu 02/11/2026'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Batch'), findsOneWidget);
-    expect(find.text('Selesai'), findsOneWidget);
-    expect(find.text('Sisa'), findsOneWidget);
-    expect(find.text('Draf lokal'), findsOneWidget);
-    expect(find.text('Progres hitung'), findsOneWidget);
-    expect(find.text('1/2 dihitung'), findsOneWidget);
+    // Header pudar: identitas sesi (hanya) + Fisik & progres; stat
+    // penumpuk dari header sebelumnya tidak ada lagi — kartu produk
+    // sekarang yang membawa Total/Dihitung/Fisik/Habis/Sisa.
+    expect(find.text('Sesi minggu 02/11/2026'), findsOneWidget);
+    expect(find.text('Fisik'), findsOneWidget);
+    expect(find.text('Batch'), findsNothing);
+    expect(find.text('Selesai'), findsNothing);
+    expect(find.text('Sisa'), findsNothing);
+    expect(find.text('Draf lokal'), findsNothing);
+    expect(find.text('Progres hitung'), findsNothing);
   });
 
   testWidgets('kartu produk merangkum total, dihitung, habis, dan sisa', (

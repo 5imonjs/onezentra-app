@@ -278,18 +278,6 @@ String _productKey(OpnameExpiredSessionItem item) {
   return 'wave-${item.waveId}';
 }
 
-/// Kunci kelompokan principal di halaman detail sesi. Sumber utama
-/// `clusterLabel` (principal_1, dari backend — sama seperti
-/// monitoring kadaluarsa di web); fallback = kode produk, agar tetap
-/// tertata bila data wave lama tidak punya principal.
-String _principalKey(OpnameExpiredSessionItem item) {
-  var principal = item.clusterLabel?.trim().toUpperCase();
-  if (principal != null && principal.isNotEmpty) {
-    return principal;
-  }
-  return _productKey(item);
-}
-
 /// Panduan langkah sesuai status — petugas tidak perlu menebak yang mana
 /// berikutnya (pemisahan tugas: counter tidak bisa menyetujui dirinya).
 String _statusHint(String status) => switch (status) {
@@ -707,14 +695,6 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     for (var item in items) {
       products.putIfAbsent(_productKey(item), () => []).add(item);
     }
-    // Crossref: produk disatukan di bawah header principal — mirip
-    // monitoring kadaluarsa di web (`clusterLabel`), agar setiap principal
-    // (mis. P3-BLC) memiliki satu kelompok yang rapi.
-    var principalGroups = <String, List<String>>{};
-    for (var key in products.keys) {
-      var principal = _principalKey(products[key]!.first);
-      principalGroups.putIfAbsent(principal, () => []).add(key);
-    }
     // Progres kartu dihitung dari seluruh batch produk (tanpa filter), supaya
     // filter tidak membuat kartu tampak "0/2 padahal 3 batch masih menunggu".
     var allProducts = <String, List<OpnameExpiredSessionItem>>{};
@@ -750,31 +730,21 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
         ),
       );
     } else {
+      // Flat structure: kartu produk langsung tumpuk — satu kartu per
+      // produk, rapat, fokus penuh pada kartu (aturan A2).
       listContent = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (var group in principalGroups.entries) ...[
-            _ExpandablePrincipalGroup(
-              label: group.key,
-              productCount: group.value.length,
-              batchCount: group.value.fold(
-                0,
-                (sum, key) => sum + (products[key]?.length ?? 0),
-              ),
-              cards: [
-                for (var productKey in group.value)
-                  _OpnameProductCard(
-                    items: products[productKey]!,
-                    allItems: allProducts[productKey] ?? products[productKey]!,
-                    drafts: _drafts,
-                    onCount: session.acceptsCounting
-                        ? (item) => _showVerifySheet(context, session, item)
-                        : null,
-                  ),
-                const SizedBox(height: AppTheme.space3),
-              ],
+          for (var productKey in products.keys) ...[
+            _OpnameProductCard(
+              items: products[productKey]!,
+              allItems: allProducts[productKey] ?? products[productKey]!,
+              drafts: _drafts,
+              onCount: session.acceptsCounting
+                  ? (item) => _showVerifySheet(context, session, item)
+                  : null,
             ),
-            const SizedBox(height: AppTheme.space3),
+            const SizedBox(height: AppTheme.space2),
           ],
         ],
       );
@@ -1001,93 +971,53 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     );
   }
 
+  /// Header sesi — tampil pudar (font kecil, warna mati), satu baris
+  /// identitas + fisik total. Petugas fokus ke kartu produk di bawah;
+  /// header ini identitas sesi & progres saja. Awari: setiap teks di sini
+  /// di layar ponsel sempit tetap terbaca penuh, tanpa overflow.
   Widget _buildSessionHeaderCard(
     OpnameExpiredSession session,
     int countedTotal,
   ) {
     var total = session.items.length;
     var productCount = session.items.map(_productKey).toSet().length;
-    var progress = total == 0 ? 0.0 : countedTotal / total;
     var totalFisik = _sessionTotalFisik(session);
     var sessionCompUnit = _firstCompUnit(session.items);
     var hint = _statusHint(session.status);
     var colors = context.colors;
 
-    // Header ringkas: identitas + progres + aksi utama, dibedakan dengan
-    // gradient jelemaan agar terasa modern & profesional.
+    // Column di sini di dalam ListView (tinggi tidak terbatas) — jadi tidak
+    // boleh pakai Expanded di anak-anaknya; flex semua pakai Flexible.
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+      padding: const EdgeInsets.fromLTRB(10, 6, 10, 7),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.primary600.withValues(alpha: 0.12),
-            colors.surfaceCard,
-          ],
-        ),
-        borderRadius: AppTheme.radius2xl,
+        color: colors.surfaceCard,
+        borderRadius: AppTheme.radiusXl,
         border: Border.all(color: colors.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary600.withValues(alpha: 0.08),
-            offset: const Offset(0, 2),
-            blurRadius: 8,
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppTheme.primary600.withValues(alpha: 0.9),
-                      AppTheme.primary600,
-                    ],
-                  ),
-                  borderRadius: AppTheme.radiusLg,
-                ),
-                child: const Icon(
-                  Icons.inventory_2_rounded,
-                  size: 18,
-                  color: Colors.white,
-                ),
+              const Icon(
+                Icons.inventory_2_rounded,
+                size: 15,
+                color: AppTheme.primary600,
               ),
               const SizedBox(width: AppTheme.space2),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'SESI OPNAME EXPIRED',
-                      style: GoogleFonts.roboto(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.7,
-                        color: colors.textMuted,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      'Sesi minggu ${_formatDate(session.weekStart)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.roboto(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: colors.foreground,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Sesi minggu ${_formatDate(session.weekStart)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.roboto(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: colors.foreground,
+                  ),
                 ),
               ),
               const SizedBox(width: AppTheme.space2),
@@ -1106,7 +1036,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                   _headerCompact
                       ? Icons.expand_more_rounded
                       : Icons.expand_less_rounded,
-                  size: 20,
+                  size: 19,
                   color: colors.textMuted,
                 ),
                 padding: EdgeInsets.zero,
@@ -1115,180 +1045,76 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.space2),
+          const SizedBox(height: AppTheme.space1),
           Row(
             children: [
-              Icon(Icons.warehouse_rounded, size: 12, color: colors.textMuted),
-              const SizedBox(width: 4),
-              Expanded(
+              Flexible(
                 child: Text(
-                  session.namaDepo ?? session.kodeDepo ?? '-',
+                  'Depo ${session.namaDepo ?? session.kodeDepo ?? '-'}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 11,
+                    fontSize: 10.5,
                     color: colors.textSecondary,
                   ),
                 ),
               ),
-              const SizedBox(width: AppTheme.space2),
+              const SizedBox(width: 2),
               Text(
                 '$productCount produk · $total batch',
                 style: GoogleFonts.roboto(
-                  fontSize: 10,
+                  fontSize: 10.5,
                   color: colors.textMuted,
                 ),
               ),
             ],
           ),
-          // Ringkasan lima metrik — pembacaan sekilas tanpa menggulir.
-          const SizedBox(height: AppTheme.space2),
-          Row(
-            children: [
-              _OpnameStatTile(
-                icon: Icons.layers_rounded,
-                value: '$total',
-                label: 'Batch',
-                color: AppTheme.primary600,
-              ),
-              const SizedBox(width: 6),
-              _OpnameStatTile(
-                icon: Icons.task_alt_rounded,
-                value: '$countedTotal',
-                label: 'Selesai',
-                color: colors.success,
-              ),
-              const SizedBox(width: 6),
-              _OpnameStatTile(
-                icon: Icons.fact_check_rounded,
+          if (!_headerCompact) ...[
+            if (total > 0) ...[
+              const SizedBox(height: AppTheme.space2),
+              _FisikTile(
                 value: _compositeFisikValue(
                   sessionCompUnit,
                   totalFisik.$2,
                   totalFisik.$1,
                 ),
-                label: 'Fisik',
-                color: AppTheme.primary600,
-                tooltip:
-                    'Total hasil inputan fisik — jumlah seluruh baris yang '
-                    'terverifikasi (CRT + BALL).',
               ),
-              const SizedBox(width: 6),
-              _OpnameStatTile(
-                icon: Icons.pending_actions_rounded,
-                value: '${total - countedTotal}',
-                label: 'Sisa',
-                color: colors.warning,
-              ),
-              const SizedBox(width: 6),
-              _OpnameStatTile(
-                icon: Icons.edit_note_rounded,
-                value: '${_drafts.length}',
-                label: 'Draf lokal',
-                color: colors.info,
-              ),
+              const SizedBox(height: AppTheme.space1),
             ],
-          ),
-          if (!_headerCompact && hint.isNotEmpty) ...[
-            const SizedBox(height: AppTheme.space2),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.space2,
-                vertical: 6,
-              ),
-              decoration: BoxDecoration(
-                color: colors.infoWell,
-                borderRadius: AppTheme.radiusLg,
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 13,
-                    color: colors.info,
-                  ),
-                  const SizedBox(width: AppTheme.space2),
-                  Expanded(
-                    child: Tooltip(
-                      message: hint,
-                      child: Text(
-                        hint,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.roboto(
-                          fontSize: 10.5,
-                          color: colors.info,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            if (hint.isNotEmpty) ...[
+              _HintLine(hint: hint),
+              const SizedBox(height: AppTheme.space1),
+            ],
+            _SessionDuration(session: session),
           ],
           if (total > 0) ...[
-            if (!_headerCompact) ...[
-              const SizedBox(height: AppTheme.space2),
-              _SessionDuration(session: session),
-            ],
-            const SizedBox(height: AppTheme.space2),
-            Row(
-              children: [
-                Text(
-                  'Progres hitung',
-                  style: GoogleFonts.roboto(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '$countedTotal/$total dihitung',
-                  style: GoogleFonts.roboto(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: countedTotal == total
-                        ? colors.success
-                        : colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: AppTheme.radiusFull,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                height: 9,
-                decoration: BoxDecoration(color: colors.border),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 9,
-                  backgroundColor: Colors.transparent,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    progress == 1 ? colors.success : AppTheme.primary600,
-                  ),
-                ),
+            const SizedBox(height: AppTheme.space1),
+            Text(
+              '$countedTotal/$total dihitung',
+              style: GoogleFonts.roboto(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: countedTotal == total
+                    ? colors.success
+                    : colors.textSecondary,
               ),
             ),
           ],
           if (session.inputCompletedAt != null) ...[
-            const SizedBox(height: AppTheme.space2),
+            const SizedBox(height: AppTheme.space1),
             Row(
               children: [
                 Icon(
                   Icons.check_circle_outline_rounded,
-                  size: 14,
+                  size: 12,
                   color: colors.success,
                 ),
                 const SizedBox(width: AppTheme.space2),
-                Expanded(
-                  child: Text(
-                    'Input selesai — validasi dilakukan dari web.',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      color: colors.success,
-                    ),
+                Text(
+                  'Input selesai — validasi dilakukan dari web.',
+                  style: GoogleFonts.roboto(
+                    fontSize: 10.5,
+                    color: colors.success,
                   ),
                 ),
               ],
@@ -2242,7 +2068,7 @@ class _DateFactCard extends StatelessWidget {
       // Mode ringkas (baris batch/produk): satu baris — label + tanggal +
       // helper, menyisakkan ruang untuk metrik & chip di bawahnya.
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: tone.withValues(alpha: 0.07),
           borderRadius: AppTheme.radiusLg,
@@ -2685,7 +2511,7 @@ class _SessionDurationState extends State<_SessionDuration> {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppTheme.space2,
-        vertical: 6,
+        vertical: 4,
       ),
       decoration: BoxDecoration(
         color: colors.foreground.withValues(alpha: 0.04),
@@ -2696,10 +2522,10 @@ class _SessionDurationState extends State<_SessionDuration> {
         children: [
           Icon(
             isRunning ? Icons.timer_rounded : Icons.timer_outlined,
-            size: 14,
+            size: 13,
             color: isRunning ? AppTheme.primary600 : colors.textMuted,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           // Label boleh dipangkas, angka durasi tetap terbaca penuh.
           Flexible(
             child: Text(
@@ -2709,6 +2535,7 @@ class _SessionDurationState extends State<_SessionDuration> {
               style: GoogleFonts.roboto(fontSize: 10, color: colors.textMuted),
             ),
           ),
+          const SizedBox(width: 2),
           const SizedBox(width: AppTheme.space2),
           Text(
             _formatDuration(duration),
@@ -2773,64 +2600,87 @@ class _OverviewMetric extends StatelessWidget {
   }
 }
 
-/// Satu metrik ringkas di header detail (Material 3 metric card).
-/// Dipakai untuk memberi pembacaan instan: total, selesai, sisa, dan draf.
-class _OpnameStatTile extends StatelessWidget {
-  const _OpnameStatTile({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-    this.tooltip,
-  });
+/// Tile Fisik total di header sesi — tampil pudar (warna mati, font kecil):
+/// identitas sesi diprioritaskan di kartu produk.
+class _FisikTile extends StatelessWidget {
+  const _FisikTile({required this.value});
 
-  final IconData icon;
   final String value;
-  final String label;
-  final Color color;
-  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     var colors = context.colors;
-    return Expanded(
-      child: Tooltip(
-        message: tooltip ?? '',
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.10),
-            borderRadius: AppTheme.radiusLg,
-            border: Border.all(color: color.withValues(alpha: 0.22)),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppTheme.primary600.withValues(alpha: 0.10),
+        borderRadius: AppTheme.radiusLg,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.fact_check_rounded,
+            size: 13,
+            color: AppTheme.primary600,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 17, color: color),
-              const SizedBox(height: 3),
-              Text(
-                value,
-                style: GoogleFonts.roboto(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: color,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                label,
+          const SizedBox(width: 4),
+          Text(
+            value,
+            style: GoogleFonts.roboto(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.primary600,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Fisik',
+            style: GoogleFonts.roboto(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w600,
+              color: colors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Petunjuk singkat per status (mis. "Hitung semua baris sampai 0 sisa"),
+/// tampil pudar dan satu baris — informasi pelengkap, bukan sesuatu yang
+/// harus dibaca sebelum memulai.
+class _HintLine extends StatelessWidget {
+  const _HintLine({required this.hint});
+
+  final String hint;
+
+  @override
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: colors.infoWell,
+        borderRadius: AppTheme.radiusLg,
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline_rounded, size: 11, color: colors.info),
+          const SizedBox(width: 3),
+          Expanded(
+            child: Tooltip(
+              message: hint,
+              child: Text(
+                hint,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.roboto(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textMuted,
-                ),
+                style: GoogleFonts.roboto(fontSize: 10, color: colors.info),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -3089,119 +2939,6 @@ class _OpnameSessionTile extends StatelessWidget {
 // Kartu produk — satu produk, semua batch-nya
 // ---------------------------------------------------------------------------
 
-/// Header kelompokan principal: mirik monitoring kadaluarsa di web
-/// (3px rail berwarna, nama principal, jumlah produk & batch di dalamnya).
-/// Group collapsible per principal — petugas bisa buka/tutup; maksudnya:
-/// fokus ke satu principal kalau lagi mengerjakan satu jenis produk.
-class _ExpandablePrincipalGroup extends StatefulWidget {
-  const _ExpandablePrincipalGroup({
-    required this.label,
-    required this.productCount,
-    required this.batchCount,
-    required this.cards,
-  });
-
-  final String label;
-  final int productCount;
-  final int batchCount;
-  final List<Widget> cards;
-
-  @override
-  State<_ExpandablePrincipalGroup> createState() =>
-      _ExpandablePrincipalGroupState();
-}
-
-class _ExpandablePrincipalGroupState extends State<_ExpandablePrincipalGroup> {
-  bool _expanded = true;
-
-  @override
-  Widget build(BuildContext context) {
-    var colors = context.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Material(
-          color: colors.surfaceCard,
-          borderRadius: AppTheme.radiusXl,
-          child: InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: AppTheme.radiusXl,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.space2,
-                vertical: 6,
-              ),
-              decoration: BoxDecoration(
-                borderRadius: AppTheme.radiusXl,
-                border: Border.all(color: colors.border),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: colors.primaryWell,
-                      borderRadius: AppTheme.radiusLg,
-                    ),
-                    child: Icon(
-                      Icons.business_rounded,
-                      size: 15,
-                      color: colors.primaryWellText,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.space2),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.roboto(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: colors.foreground,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${widget.productCount} produk · ${widget.batchCount} batch',
-                          style: GoogleFonts.roboto(
-                            fontSize: 10.5,
-                            color: colors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: _expanded ? 0 : 0.5,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.expand_less_rounded,
-                      size: 20,
-                      color: colors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: AppTheme.space2),
-        if (_expanded)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: widget.cards,
-          ),
-      ],
-    );
-  }
-}
-
 /// Ringkasan kecil per produk: total, sudah dihitung, habis/kosong, dan sisa.
 /// Ditempatkan di dalam kartu supaya petugas melihat komposisi batch produk
 /// yang sama tanpa membuka satu per satu (beberapa batch bisa berisi habis,
@@ -3222,7 +2959,7 @@ class _ProductMiniStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
     child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+      padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: AppTheme.radiusLg,
@@ -3231,16 +2968,16 @@ class _ProductMiniStat extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 3),
           Expanded(
             child: Text(
               '$label $value',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.roboto(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
                 color: color,
               ),
             ),
@@ -3323,7 +3060,7 @@ class _OpnameProductCard extends StatelessWidget {
         : '';
 
     return AppCard(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(8),
       color: complete ? colors.success.withValues(alpha: 0.05) : null,
       border: complete
           ? Border.all(color: colors.success.withValues(alpha: 0.45))
@@ -3342,7 +3079,7 @@ class _OpnameProductCard extends StatelessWidget {
             complete,
             accent,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Row(
             children: [
               _ProductMiniStat(
@@ -3351,14 +3088,14 @@ class _OpnameProductCard extends StatelessWidget {
                 value: total,
                 color: AppTheme.primary600,
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               _ProductMiniStat(
                 icon: Icons.task_alt_rounded,
                 label: 'Dihitung',
                 value: counted,
                 color: colors.success,
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               _ProductMiniStat(
                 icon: Icons.fact_check_rounded,
                 label: 'Fisik',
@@ -3369,14 +3106,14 @@ class _OpnameProductCard extends StatelessWidget {
                 ),
                 color: AppTheme.primary600,
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               _ProductMiniStat(
                 icon: Icons.inventory_2_rounded,
                 label: 'Habis',
                 value: emptyCount,
                 color: colors.warning,
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               _ProductMiniStat(
                 icon: Icons.pending_actions_rounded,
                 label: 'Sisa',
@@ -3387,7 +3124,7 @@ class _OpnameProductCard extends StatelessWidget {
           ),
           const SizedBox(height: AppTheme.space2),
           for (var i = 0; i < items.length; i++) ...[
-            if (i > 0) const SizedBox(height: 4),
+            if (i > 0) const SizedBox(height: 2),
             _OpnameBatchRow(
               item: items[i],
               // Posisi stabil dari seluruh batch, bukan urutan hasil filter —
@@ -3417,7 +3154,7 @@ class _OpnameProductCard extends StatelessWidget {
     var colors = context.colors;
     var mixed = status == 'CAMPURAN';
     return Container(
-      padding: const EdgeInsets.fromLTRB(6, 5, 6, 5),
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
       decoration: BoxDecoration(
         color: colors.foreground.withValues(alpha: 0.06),
         borderRadius: AppTheme.radiusLg,
@@ -3425,15 +3162,15 @@ class _OpnameProductCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 20,
+            height: 20,
             decoration: BoxDecoration(
               color: accent.withValues(alpha: 0.16),
               borderRadius: AppTheme.radiusLg,
             ),
             child: Icon(
               complete ? Icons.check_rounded : Icons.inventory_2_rounded,
-              size: 17,
+              size: 13,
               color: accent,
             ),
           ),
@@ -3447,13 +3184,13 @@ class _OpnameProductCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 15.5,
+                    fontSize: 14.5,
                     fontWeight: FontWeight.w800,
                     height: 1.3,
                     color: colors.foreground,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Row(
                   children: [
                     Flexible(
@@ -3595,7 +3332,7 @@ class _OpnameBatchRow extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 9, 10, 12),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       decoration: BoxDecoration(
         color: colors.surfaceCard,
         borderRadius: AppTheme.radiusLg,
@@ -3713,8 +3450,8 @@ class _OpnameBatchRow extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 4,
-            runSpacing: 4,
+            spacing: 2,
+            runSpacing: 2,
             children: [
               chip(
                 statusText,
@@ -3772,9 +3509,9 @@ class _OpnameBatchRow extends StatelessWidget {
             ],
           ),
           if (onCount != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             SizedBox(
-              height: 44,
+              height: 42,
               child: OutlinedButton.icon(
                 onPressed: onCount,
                 icon: Icon(
