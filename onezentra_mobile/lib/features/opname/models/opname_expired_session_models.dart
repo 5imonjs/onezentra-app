@@ -174,6 +174,47 @@ class OpnameExpiredSessionItem {
   final double? expectedCrt;
   final double? expectedPcs;
 
+  /// Patch hasil hitung ke baris yang sudah termuat dari endpoint detail.
+  /// Field tampilan (label batch, barcode, acuan, konteks terima, umur simpan)
+  /// sengaja diambil dari `this` — response verify hanya menjamin field hasil
+  /// hitung, jadi mengganti seluruh objek membuat label batch hilang di layar.
+  OpnameExpiredSessionItem withVerification(
+    OpnameExpiredSessionItem verified,
+  ) => OpnameExpiredSessionItem(
+    id: id,
+    sessionId: sessionId,
+    waveId: waveId,
+    batchId: verified.batchId ?? batchId,
+    kodeBarang: verified.kodeBarang ?? kodeBarang,
+    namaBarang: verified.namaBarang ?? namaBarang,
+    kodeDepo: verified.kodeDepo ?? kodeDepo,
+    namaDepo: verified.namaDepo ?? namaDepo,
+    expiredDateIni: verified.expiredDateIni ?? expiredDateIni,
+    sisaHari: verified.sisaHari ?? sisaHari,
+    batchNumber: verified.batchNumber ?? batchNumber,
+    barcodeLabel: verified.barcodeLabel ?? barcodeLabel,
+    clusterLabel: verified.clusterLabel ?? clusterLabel,
+    qtyWaveCrt: verified.qtyWaveCrt ?? qtyWaveCrt,
+    qtyWavePcs: verified.qtyWavePcs ?? qtyWavePcs,
+    statusIni: verified.statusIni ?? statusIni,
+    tanggalPenerimaan: verified.tanggalPenerimaan ?? tanggalPenerimaan,
+    conditionTerima: verified.conditionTerima ?? conditionTerima,
+    selisihTerima: verified.selisihTerima ?? selisihTerima,
+    umurSimpanHari: verified.umurSimpanHari ?? umurSimpanHari,
+    sisaHariBatch: verified.sisaHariBatch ?? sisaHariBatch,
+    diterimaMingguIni: diterimaMingguIni || verified.diterimaMingguIni,
+    qtyFisikCrt: verified.qtyFisikCrt,
+    qtyFisikPcs: verified.qtyFisikPcs,
+    condition: verified.condition,
+    disposition: verified.disposition,
+    notes: verified.notes,
+    verifiedAt: verified.verifiedAt,
+    verifiedBy: verified.verifiedBy,
+    verifiedVia: verified.verifiedVia,
+    expectedCrt: verified.expectedCrt ?? expectedCrt,
+    expectedPcs: verified.expectedPcs ?? expectedPcs,
+  );
+
   bool get isVerified => verifiedAt != null;
 }
 

@@ -29,6 +29,7 @@ class _FakeOpnameExpiredSessionRepository
   bool lastActiveOnly = false;
   final List<Map<String, dynamic>> verifyPayloads = [];
   final Set<int> markedIds = <int>{};
+  String? verifyStatusOverride;
   final List<int> markCompleteCalls = <int>[];
 
   OpnameExpiredSession _withMark(OpnameExpiredSession s) =>
@@ -105,7 +106,35 @@ class _FakeOpnameExpiredSessionRepository
     String? photoPath,
   }) async {
     verifyPayloads.add({...data, 'photo_path': photoPath, 'item_id': itemId});
-    return <String, dynamic>{'batches_issued': 1};
+    // Bentuk respons API asli: seluruh body HTTP dengan payload di `data`.
+    // Item sengaja tanpa batch/wave/expected seperti endpoint verify lama —
+    // klien wajib mempertahankan field tampilan dari detail.
+    var responseStatus = verifyStatusOverride;
+    if (responseStatus == null) {
+      for (var session in sessions) {
+        if (session.id == sessionId) {
+          responseStatus = session.status;
+          break;
+        }
+      }
+    }
+    return <String, dynamic>{
+      'data': <String, dynamic>{
+        'batches_issued': 1,
+        'item': <String, dynamic>{
+          'id': itemId,
+          'session_id': sessionId,
+          'batch_id': 31,
+          'qty_fisik_crt': data['qty_fisik_crt'],
+          'verified_at': '2026-11-22T02:30:00Z',
+          'verified_via': data['identified_via'],
+        },
+        'session': <String, dynamic>{
+          'id': sessionId,
+          'status': responseStatus ?? 'IN_PROGRESS',
+        },
+      },
+    };
   }
 
   @override
@@ -1287,6 +1316,56 @@ void main() {
     expect(find.text('2/4 dihitung'), findsOneWidget);
   });
 
+  testWidgets('detail sesi: ringkasan metrik modern tampil sekilas', (
+    tester,
+  ) async {
+    const counted = OpnameExpiredSessionItem(
+      id: 71,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-900',
+      namaBarang: 'Produk A',
+      qtyWaveCrt: 5,
+      expectedCrt: 5,
+      qtyFisikCrt: 5,
+      verifiedAt: '2026-11-21T02:30:00Z',
+    );
+    const pending = OpnameExpiredSessionItem(
+      id: 72,
+      sessionId: 1,
+      waveId: 100,
+      kodeBarang: 'KB-901',
+      namaBarang: 'Produk B',
+      qtyWaveCrt: 3,
+      expectedCrt: 3,
+    );
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          weekEnd: '2026-11-08',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: [counted, pending],
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Batch'), findsOneWidget);
+    expect(find.text('Selesai'), findsOneWidget);
+    expect(find.text('Sisa'), findsOneWidget);
+    expect(find.text('Draf lokal'), findsOneWidget);
+    expect(find.text('Progres hitung'), findsOneWidget);
+    expect(find.text('1/2 dihitung'), findsOneWidget);
+  });
+
   testWidgets('hitung fisik tidak mengunduh ulang detail sesi', (tester) async {
     var repository = buildCountingFixture();
     var auth = await _loginAuth();
@@ -1321,4 +1400,72 @@ void main() {
     expect(session.inputCompletedAt, '2026-11-21T12:00:00Z');
     expect(session.items, isEmpty);
   });
+
+  testWidgets(
+    'verify: label batch & acuan tidak hilang, status revisi ikut terpatch',
+    (tester) async {
+      const item = OpnameExpiredSessionItem(
+        id: 31,
+        sessionId: 1,
+        waveId: 200,
+        kodeBarang: 'KB-777',
+        namaBarang: 'Vitamin Sirup 60ml',
+        batchNumber: 'BATCH-31',
+        barcodeLabel: 'LBL-31',
+        expiredDateIni: '2026-12-31',
+        qtyWaveCrt: 10,
+        statusIni: 'AMAN',
+        expectedCrt: 10,
+      );
+      var repository = _FakeOpnameExpiredSessionRepository(
+        sessions: [
+          const OpnameExpiredSession(
+            id: 1,
+            weekStart: '2026-11-02',
+            weekEnd: '2026-11-08',
+            kodeDepo: 'DP01',
+            namaDepo: 'Depo Utama',
+            status: 'REVISI',
+            items: [item],
+          ),
+        ],
+      );
+      repository.verifyStatusOverride = 'IN_PROGRESS';
+      var auth = await _loginAuth();
+
+      await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+      await tester.tap(find.text('Sesi minggu 02/11/2026'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Perbaiki baris yang ditandai, lalu validasi ulang dari web.',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.ensureVisible(find.text('Hitung Fisik'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hitung Fisik'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('verify_qty_crt')), '6');
+      await tester.ensureVisible(find.text('Simpan Hasil Hitung'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Simpan Hasil Hitung'));
+      await tester.pumpAndSettle();
+
+      // Data tampilan dari detail tetap utuh setelah baris di-patch.
+      expect(find.text('BATCH-31'), findsOneWidget);
+      expect(find.textContaining('Acuan batch CRT 10'), findsOneWidget);
+      expect(find.text('Selisih -4'), findsOneWidget);
+      // Status sesi di response verify mengganti petunjuk REVISI.
+      expect(
+        find.text(
+          'Hitung semua baris sampai 0 sisa. Validasi dilakukan dari web.',
+        ),
+        findsOneWidget,
+      );
+      expect(repository.showCalls, 1);
+    },
+  );
 }

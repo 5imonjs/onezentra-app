@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Mail\OpnameExpiredNotification;
 use App\Models\ApprovalHistory;
+use App\Models\Batch;
 use App\Models\OpnameExpiredAdjustment;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
@@ -276,100 +277,14 @@ class OpnameExpiredSessionController extends Controller
         // eager-loaded karena accessor tanggal_penerimaan jatuh ke sana untuk
         // baris tanpa tanggal terima manual — tanpa itu tiap baris memicu
         // query tersendiri (LazyLoadingViolationException di dev/test).
+        // Satu helper payload dipakai show() DAN verifyItem(): klien mobile
+        // men-patch baris dari response verify, jadi bentuknya harus identik
+        // dengan baris di detail (label batch, acuan, konteks terima, dll).
         $batches = $session->items->map->batch->filter()->unique('id')->values();
-        $byReceiving = ReceivingItem::with('receiving')
-            ->whereIn('id', $batches->pluck('receiving_item_id')->filter()->all())
-            ->get()->keyBy('id');
-        $bySj = ReceivingItem::with('receiving')
-            ->whereIn('sj_validation_item_id', $batches->pluck('sj_validation_item_id')->filter()->all())
-            ->get()->keyBy('sj_validation_item_id');
-
-        $adjustments = OpnameExpiredAdjustment::query()
-            ->whereIn('batch_id', $batches->pluck('id')->all())
-            ->whereNotNull('approved_at')
-            ->selectRaw('batch_id, COALESCE(SUM(qty_crt), 0) as crt, COALESCE(SUM(qty_pcs), 0) as pcs')
-            ->groupBy('batch_id')
-            ->get()
-            ->keyBy('batch_id');
-
-        $items = $session->items->map(function (OpnameExpiredSessionItem $item) use ($byReceiving, $bySj, $adjustments, $session): array {
-            $source = $item->batch
-                ? ($item->batch->receiving_item_id
-                    ? ($byReceiving[$item->batch->receiving_item_id] ?? null)
-                    : ($bySj[$item->batch->sj_validation_item_id] ?? null))
-                : null;
-
-            // Data penerimaan untuk analisa petugas (yang juga penerima
-            // barang): apakah selisih sudah terjadi sejak terima. Aksesor
-            // tanggal_penerimaan berupa string (dengan fallback scan-time
-            // untuk baris validasi SJ) — ambil 10 digit pertama.
-            $tanggalTerima = $source?->tanggal_penerimaan;
-            $tanggalTerima = is_string($tanggalTerima)
-                ? substr($tanggalTerima, 0, 10)
-                : $tanggalTerima?->toDateString();
-
-            // Penanda "barang baru diterima minggu ini": tanggal terima
-            // batch berada di rentang minggu sesi — pembawa warna khusus
-            // di mobile/web agar stok baru terbedakan dari barang bawaan.
-            $diterimaMingguIni = false;
-            if ($tanggalTerima !== null && $session->week_start && $session->week_end) {
-                $diterimaMingguIni = Carbon::parse($tanggalTerima)->startOfDay()
-                    ->between(
-                        Carbon::parse($session->week_start)->startOfDay(),
-                        Carbon::parse($session->week_end)->startOfDay(),
-                    );
-            }
-
-            // Sisa umur simpan agar petugas "ngeh" dengan barang yang
-            // dikelolanya: umur simpan dirancang saat terima (expired −
-            // tanggal terima) dan sisa hari yang hidup saat ini (expired −
-            // hari ini) — bukan angka statis saat wave dibuat.
-            $umurSimpan = null;
-            $sisaHariItem = null;
-            $expiredBatch = $source?->expired_date?->toDateString();
-            if ($expiredBatch !== null) {
-                $expiredDay = Carbon::parse($expiredBatch)->startOfDay();
-                if ($tanggalTerima !== null) {
-                    $terimaDay = Carbon::parse($tanggalTerima)->startOfDay();
-                    $umurSimpan =
-                        $expiredDay < $terimaDay
-                            ? -(int) $terimaDay->diffInDays($expiredDay)
-                            : (int) $terimaDay->diffInDays($expiredDay);
-                }
-                $today = Carbon::today();
-                $sisaHariItem =
-                    $expiredDay < $today
-                        ? -(int) $today->diffInDays($expiredDay)
-                        : (int) $today->diffInDays($expiredDay);
-            }
-
-            $adjustment = $item->batch_id ? ($adjustments[$item->batch_id] ?? null) : null;
-            $adjustmentCrt = (float) ($adjustment->crt ?? 0);
-            $adjustmentPcs = (float) ($adjustment->pcs ?? 0);
-
-            $expectedCrt = $item->qty_sistem_crt !== null
-                ? (float) $item->qty_sistem_crt
-                : ($source ? (float) $source->actual_qty + $adjustmentCrt : null);
-            $expectedPcs = $item->qty_sistem_pcs !== null
-                ? (float) $item->qty_sistem_pcs
-                : ($source && $source->qty_pcs !== null
-                    ? (float) $source->qty_pcs + $adjustmentPcs
-                    : ($adjustmentPcs !== 0.0 ? $adjustmentPcs : null));
-
-            return array_merge($item->toArray(), [
-                'expected_crt' => $expectedCrt,
-                'expected_pcs' => $expectedPcs,
-                'snapshot_frozen' => $item->qty_sistem_crt !== null,
-                'tanggal_penerimaan' => $tanggalTerima,
-                'condition_terima' => $source?->condition,
-                'selisih_terima' => $source
-                    ? (float) $source->actual_qty - (float) $source->expected_qty
-                    : null,
-                'umur_simpan_hari' => $umurSimpan,
-                'sisa_hari' => $sisaHariItem,
-                'diterima_minggu_ini' => $diterimaMingguIni,
-            ]);
-        })->all();
+        [$byReceiving, $bySj, $adjustments] = $this->itemLookups($batches);
+        $items = $session->items
+            ->map(fn (OpnameExpiredSessionItem $item): array => $this->itemPayload($item, $session, $byReceiving, $bySj, $adjustments))
+            ->all();
 
         // Bangun envelope dari atribut saja: toArray() akan menyusun ulang
         // seluruh relasi item (mentah) yang lalu ditimpa $items di bawah —
@@ -485,9 +400,21 @@ class OpnameExpiredSessionController extends Controller
             $session->update(['input_completed_at' => null]);
         }
 
+        // Kembalikan bentuk item yang SAMA dengan show() plus ringkasan sesi
+        // terbaru: mobile memakai keduanya untuk patch state tanpa mengunduh
+        // ulang detail (label batch & acuan tidak boleh hilang, status REVISI
+        // harus berubah jadi IN_PROGRESS setelah baris pertama diperbaiki).
+        $session->refresh();
+        $item->refresh()->load(['wave', 'batch']);
+        $batches = collect([$item->batch])->filter()->values();
+        [$byReceiving, $bySj, $adjustments] = $this->itemLookups($batches);
+
         return response()->json([
             'message' => "Baris terhitung ({$result['batches_issued']} label diterbitkan).",
-            'data' => array_merge($result, ['item' => $item->fresh()->load('wave')]),
+            'data' => array_merge($result, [
+                'item' => $this->itemPayload($item, $session, $byReceiving, $bySj, $adjustments),
+                'session' => $this->sessionSummary($session),
+            ]),
         ]);
     }
 
@@ -777,6 +704,121 @@ class OpnameExpiredSessionController extends Controller
             ->get();
 
         return response()->json(['data' => $histories]);
+    }
+
+    /**
+     * Muat sumber qty acuan untuk sekumpulan batch dalam tiga query, bukan
+     * satu query per baris. `receiving` ikut eager-loaded karena accessor
+     * tanggal_penerimaan jatuh ke sana untuk baris validasi SJ tanpa tanggal
+     * terima manual.
+     *
+     * @param  Collection<int, Batch>  $batches
+     * @return array{0: Collection, 1: Collection, 2: Collection}
+     */
+    private function itemLookups(Collection $batches): array
+    {
+        $byReceiving = ReceivingItem::with('receiving')
+            ->whereIn('id', $batches->pluck('receiving_item_id')->filter()->all())
+            ->get()->keyBy('id');
+        $bySj = ReceivingItem::with('receiving')
+            ->whereIn('sj_validation_item_id', $batches->pluck('sj_validation_item_id')->filter()->all())
+            ->get()->keyBy('sj_validation_item_id');
+        $adjustments = OpnameExpiredAdjustment::query()
+            ->whereIn('batch_id', $batches->pluck('id')->all())
+            ->whereNotNull('approved_at')
+            ->selectRaw('batch_id, COALESCE(SUM(qty_crt), 0) as crt, COALESCE(SUM(qty_pcs), 0) as pcs')
+            ->groupBy('batch_id')
+            ->get()
+            ->keyBy('batch_id');
+
+        return [$byReceiving, $bySj, $adjustments];
+    }
+
+    /**
+     * Payload satu baris verifikasi — sumber kebenaran tunggal untuk show()
+     * dan verifyItem(). Field turunan (acuan, umur simpan, konteks terima)
+     * harus sama di kedua endpoint supaya patch state lokal tidak menghilang-
+     * kan label batch atau angka pembanding di layar petugas.
+     *
+     * @param  Collection<int, ReceivingItem>  $byReceiving
+     * @param  Collection<int, ReceivingItem>  $bySj
+     * @param  Collection<int, object>  $adjustments
+     * @return array<string, mixed>
+     */
+    private function itemPayload(
+        OpnameExpiredSessionItem $item,
+        OpnameExpiredSession $session,
+        Collection $byReceiving,
+        Collection $bySj,
+        Collection $adjustments,
+    ): array {
+        $source = $item->batch
+            ? ($item->batch->receiving_item_id
+                ? ($byReceiving[$item->batch->receiving_item_id] ?? null)
+                : ($bySj[$item->batch->sj_validation_item_id] ?? null))
+            : null;
+
+        // Aksesor tanggal_penerimaan berupa string (fallback scan-time untuk
+        // baris validasi SJ) — ambil 10 digit pertama.
+        $tanggalTerima = $source?->tanggal_penerimaan;
+        $tanggalTerima = is_string($tanggalTerima)
+            ? substr($tanggalTerima, 0, 10)
+            : $tanggalTerima?->toDateString();
+
+        $diterimaMingguIni = false;
+        if ($tanggalTerima !== null && $session->week_start && $session->week_end) {
+            $diterimaMingguIni = Carbon::parse($tanggalTerima)->startOfDay()
+                ->between(
+                    Carbon::parse($session->week_start)->startOfDay(),
+                    Carbon::parse($session->week_end)->startOfDay(),
+                );
+        }
+
+        // Umur simpan dirancang saat terima (expired − terima); sisa hari
+        // hidup dihitung terhadap hari ini, bukan angka statis saat generate.
+        $umurSimpan = null;
+        $sisaHariItem = null;
+        $expiredBatch = $source?->expired_date?->toDateString();
+        if ($expiredBatch !== null) {
+            $expiredDay = Carbon::parse($expiredBatch)->startOfDay();
+            if ($tanggalTerima !== null) {
+                $terimaDay = Carbon::parse($tanggalTerima)->startOfDay();
+                $umurSimpan = $expiredDay < $terimaDay
+                    ? -(int) $terimaDay->diffInDays($expiredDay)
+                    : (int) $terimaDay->diffInDays($expiredDay);
+            }
+            $today = Carbon::today();
+            $sisaHariItem = $expiredDay < $today
+                ? -(int) $today->diffInDays($expiredDay)
+                : (int) $today->diffInDays($expiredDay);
+        }
+
+        $adjustment = $item->batch_id ? ($adjustments[$item->batch_id] ?? null) : null;
+        $adjustmentCrt = (float) ($adjustment->crt ?? 0);
+        $adjustmentPcs = (float) ($adjustment->pcs ?? 0);
+
+        $expectedCrt = $item->qty_sistem_crt !== null
+            ? (float) $item->qty_sistem_crt
+            : ($source ? (float) $source->actual_qty + $adjustmentCrt : null);
+        $expectedPcs = $item->qty_sistem_pcs !== null
+            ? (float) $item->qty_sistem_pcs
+            : ($source && $source->qty_pcs !== null
+                ? (float) $source->qty_pcs + $adjustmentPcs
+                : ($adjustmentPcs !== 0.0 ? $adjustmentPcs : null));
+
+        return array_merge($item->toArray(), [
+            'expected_crt' => $expectedCrt,
+            'expected_pcs' => $expectedPcs,
+            'snapshot_frozen' => $item->qty_sistem_crt !== null,
+            'tanggal_penerimaan' => $tanggalTerima,
+            'condition_terima' => $source?->condition,
+            'selisih_terima' => $source
+                ? (float) $source->actual_qty - (float) $source->expected_qty
+                : null,
+            'umur_simpan_hari' => $umurSimpan,
+            'sisa_hari' => $sisaHariItem,
+            'diterima_minggu_ini' => $diterimaMingguIni,
+        ]);
     }
 
     /**

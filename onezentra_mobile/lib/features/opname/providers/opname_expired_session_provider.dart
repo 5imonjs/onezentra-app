@@ -186,21 +186,41 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
         data,
         photoPath: photoPath,
       );
-      // Backend mengembalikan baris terverifikasi terbaru. Patch satu baris
-      // saja; show() cukup dipanggil sekali saat membuka sesi, bukan setelah
-      // setiap hitungan (apalagi per draft saat submit).
-      var rawItem = result is Map ? result['item'] : null;
-      if (rawItem is Map && _selected != null && _selected!.id == sessionId) {
-        var verified = OpnameExpiredSessionItem.fromJson(
-          Map<String, dynamic>.from(rawItem),
-        );
-        var items = List<OpnameExpiredSessionItem>.from(_selected!.items);
-        var index = items.indexWhere((i) => i.id == verified.id);
-        if (index >= 0) {
-          items[index] = verified;
-          _selected = _selected!.withItems(items);
-          _notify();
+      // Repository mengembalikan SELURUH body HTTP: payload ada di `data`.
+      // Membaca result['item'] membuat patch tak pernah jalan dengan API asli
+      // (baris tampak belum terhitung setelah petugas menyimpan hitungan).
+      var body = result is Map ? result : null;
+      var payload = body?['data'] is Map ? body!['data'] : body;
+      var rawItem = payload is Map ? payload['item'] : null;
+      var rawSession = payload is Map ? payload['session'] : null;
+      var current = _selected;
+
+      if (current != null && current.id == sessionId) {
+        var next = current;
+        if (rawItem is Map) {
+          var verified = OpnameExpiredSessionItem.fromJson(
+            Map<String, dynamic>.from(rawItem),
+          );
+          var items = List<OpnameExpiredSessionItem>.from(current.items);
+          var index = items.indexWhere((i) => i.id == verified.id);
+          if (index >= 0) {
+            // Patch field hitung saja — label batch & acuan berasal dari
+            // detail dan tidak boleh hilang setelah verifikasi.
+            items[index] = items[index].withVerification(verified);
+            next = current.withItems(items);
+          }
         }
+        _selected = next;
+        if (rawSession is Map) {
+          // Status REVISI → IN_PROGRESS dan penanda input selesai juga ikut
+          // berubah di server saat verifikasi.
+          _applyUpdatedSession(
+            OpnameExpiredSession.fromJson(
+              Map<String, dynamic>.from(rawSession),
+            ),
+          );
+        }
+        _notify();
       }
       return null;
     } on ApiException catch (e) {

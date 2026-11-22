@@ -1251,4 +1251,57 @@ class OpnameExpiredSessionTest extends TestCase
         // baris (dan LazyLoadingViolationException di mode dev/test).
         $this->assertSame('2026-09-01', $items->first()['tanggal_penerimaan']);
     }
+
+    public function test_verify_response_item_matches_detail_shape_and_carries_session_state(): void
+    {
+        $receipt = $this->receipt('B-VERIFY-SHAPE', 10, '2027-02-01');
+        $batch = Batch::issueForReceivingItem($receipt);
+        app(OpnameExpiredService::class)->generate();
+
+        Sanctum::actingAs($this->supervisor);
+        $wave = OpnameExpiredWave::where('kode_barang', 'B-VERIFY-SHAPE')->firstOrFail();
+        $sessionId = $this->postJson('/api/v1/opname-sessions', [
+            'week_start' => '2026-09-07',
+            'kode_depo' => 'DPO',
+            'assigned_to' => $this->field->id,
+            'wave_ids' => [$wave->id],
+        ])->assertCreated()->json('data.id');
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$sessionId}/start")->assertOk();
+        $itemId = OpnameExpiredSessionItem::where('session_id', $sessionId)->firstOrFail()->id;
+        $res = $this->postJson("/api/v1/opname-sessions/{$sessionId}/items/{$itemId}", [
+            'qty_fisik_crt' => 8,
+            'identified_via' => 'scan',
+        ])->assertOk();
+
+        $item = $res->json('data.item');
+        // Mobile patches baris ini tanpa memuat ulang detail — semua field
+        // tampilan harus ada, bukan hanya wave seperti sebelumnya.
+        $this->assertSame($batch->batch_number, $item['batch']['batch_number']);
+        $this->assertEquals(10, (float) $item['expected_crt']);
+        $this->assertSame('2026-09-09', $item['tanggal_penerimaan']);
+        $this->assertArrayHasKey('qty_fisik_crt', $item);
+        $this->assertSame('IN_PROGRESS', $res->json('data.session.status'));
+    }
+
+    public function test_verify_after_revision_returns_updated_session_status(): void
+    {
+        $session = $this->countedSession();
+
+        Sanctum::actingAs($this->approver);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/revise", [
+            'reason' => 'Perbaiki hitungan fisik',
+        ])->assertOk();
+
+        Sanctum::actingAs($this->field);
+        $item = $session->items()->first();
+        $res = $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
+            'qty_fisik_crt' => 4,
+            'identified_via' => 'manual',
+        ])->assertOk();
+
+        // Status di response dipakai mobile untuk mengganti hint REVISI.
+        $this->assertSame('IN_PROGRESS', $res->json('data.session.status'));
+    }
 }
