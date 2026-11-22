@@ -88,6 +88,7 @@ class OpnameExpiredSessionItem {
     this.sisaHariBatch,
     this.diterimaMingguIni = false,
     this.clusterLabel,
+    this.compositeUnit,
   });
 
   factory OpnameExpiredSessionItem.fromJson(Map<String, dynamic> json) =>
@@ -125,6 +126,9 @@ class OpnameExpiredSessionItem {
         // dibedakan warna agar stok baru terlihat berbeda dari barang
         // bawaan minggu sebelumnya.
         diterimaMingguIni: json['diterima_minggu_ini'] == true,
+        // Satuan komposit dari master NPN (aktif saat setting global
+        // `composite_unit` di OpnameExpiredService dinyalakan).
+        compositeUnit: _readString(json['composite_unit']),
         // Qty wave minggu ini: acuan stok sesi dari backend.
         qtyWaveCrt: _readDouble(_readMap(json['wave'])?['qty_ini_crt']),
         qtyWavePcs: _readDouble(_readMap(json['wave'])?['qty_ini_pcs']),
@@ -165,6 +169,10 @@ class OpnameExpiredSessionItem {
   final bool diterimaMingguIni;
   final double? qtyFisikCrt;
   final double? qtyFisikPcs;
+
+  /// Satuan komposit dari master NPN (non-null saat setting global
+  /// `composite_unit` dinyalakan & produk punya data NPN).
+  final String? compositeUnit;
   final String? condition;
   final String? disposition;
   final String? notes;

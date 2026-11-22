@@ -706,10 +706,10 @@ void main() {
     expect(find.text('1/1 dihitung'), findsOneWidget);
     // Baris batch: FISIK tunjukkan qty yang diinput, SELISIH terhitung.
     expect(find.text('FISIK'), findsOneWidget);
-    expect(find.textContaining('6 CRT'), findsOneWidget);
+    expect(find.textContaining('6 CRT'), findsWidgets);
     expect(find.textContaining('Selisih'), findsOneWidget);
-    // PCS yang diinput harus tampil di samping CRT.
-    expect(find.textContaining('2 PCS'), findsWidgets);
+    // Unit BALL (dari NPN) menjadi satuan komposit — PCS masuk ke BALL.
+    expect(find.textContaining('2 BALL'), findsWidgets);
 
     // Kembali ke daftar: jumlah di kartu sesi ikut terpatch (1/1).
     await tester.tap(find.byIcon(Icons.arrow_back_rounded));
@@ -1617,6 +1617,47 @@ void main() {
     // Status tiap batch tetap terlihat, termasuk yang ditandai habis.
     expect(find.text('Habis'), findsOneWidget);
   });
+
+  testWidgets(
+    'satuan komposit: FISIK menampilkan total PCS dengan satuan NPN',
+    (tester) async {
+      const item = OpnameExpiredSessionItem(
+        id: 31,
+        sessionId: 1,
+        waveId: 200,
+        kodeBarang: 'ESVAG150',
+        namaBarang: 'Vitamin Sirup 60ml',
+        batchNumber: 'BATCH-31',
+        expectedCrt: 10,
+        qtyFisikCrt: 6,
+        qtyFisikPcs: 2,
+        verifiedAt: '2026-11-22T02:30:00Z',
+        compositeUnit: 'ZAK',
+      );
+      var repository = _FakeOpnameExpiredSessionRepository(
+        sessions: [
+          const OpnameExpiredSession(
+            id: 1,
+            weekStart: '2026-11-02',
+            weekEnd: '2026-11-08',
+            kodeDepo: 'DP01',
+            namaDepo: 'Depo Utama',
+            status: 'IN_PROGRESS',
+            items: [item],
+          ),
+        ],
+      );
+      var auth = await _loginAuth();
+
+      await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+      await tester.tap(find.text('Sesi minggu 02/11/2026'));
+      await tester.pumpAndSettle();
+
+      // Satuan komposit tampil di header & baris: total PCS dengan satuan NPN.
+      expect(find.text('Fisik'), findsOneWidget);
+      expect(find.text('2 ZAK'), findsWidgets);
+    },
+  );
 
   testWidgets('hitung fisik tidak mengunduh ulang detail sesi', (tester) async {
     var repository = buildCountingFixture();

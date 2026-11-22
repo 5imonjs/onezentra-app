@@ -102,15 +102,50 @@ String _formatQty(double? value) {
   return _qtyFormatter.format(value);
 }
 
-/// Nilai FISIK untuk tampilan metrik — CRT + PCS bila ada. Pola ini sama
-/// dengan ACUAN di baris produk agar input PCS tidak terlihat: user lihat
-/// hanya "fokus" ke angka CRT.
+/// Nilai FISIK untuk tampilan metrik — CRT + BALL (unit kedua dari fisik)
+/// bila ada. Pola ini sama dengan ACUAN di baris produk agar input kedua
+/// unit tidak terlihat: user lihat hanya "fokus" ke angka CRT.
 String _fisikMetricValue(double? crt, double? pcs) {
   var text = '${_formatQty(crt)} CRT';
   if (pcs != null && pcs != 0) {
-    text += ' · ${_formatQty(pcs)} PCS';
+    text += ' · ${_formatQty(pcs)} BALL';
   }
   return text;
+}
+
+/// Nilai display FISIK — saat satuan komposit (master NPN) aktif,
+/// tampilkan total PCS dengan satuan komposit; sekaligus lihat
+/// [_fisikMetricValue] bila tak ada satuan komposit.
+String _compositeFisikValue(String? unit, double pcs, double crt) =>
+    unit != null && unit.isNotEmpty
+    ? '${_formatQty(pcs)} $unit'
+    : _fisikMetricValue(crt, pcs);
+
+/// Satuan komposit dari koleksi item — pertama yang punya data NPN
+/// (production may vary per wave).
+String? _firstCompUnit(Iterable<OpnameExpiredSessionItem> items) {
+  for (var item in items) {
+    if (item.compositeUnit != null) {
+      return item.compositeUnit;
+    }
+  }
+  return null;
+}
+
+/// Total hasil inputan fisik di sesi: jumlah CRT/BALL yang terverifikasi.
+/// Ditampilkan di header sesi biar petugas langsung tahu berapa total fisik
+/// dimasukkan (lihat kolom FISIK per baris) di lapangan.
+(double, double) _sessionTotalFisik(OpnameExpiredSession session) {
+  var crt = 0.0;
+  var pcs = 0.0;
+  for (var item in session.items) {
+    if (!item.isVerified) {
+      continue;
+    }
+    crt += item.qtyFisikCrt ?? 0;
+    pcs += item.qtyFisikPcs ?? 0;
+  }
+  return (crt, pcs);
 }
 
 /// Format tanggal tampilan dd/MM/yyyy — baku warga gudang; input tetap ISO
@@ -973,6 +1008,8 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     var total = session.items.length;
     var productCount = session.items.map(_productKey).toSet().length;
     var progress = total == 0 ? 0.0 : countedTotal / total;
+    var totalFisik = _sessionTotalFisik(session);
+    var sessionCompUnit = _firstCompUnit(session.items);
     var hint = _statusHint(session.status);
     var colors = context.colors;
 
@@ -1104,7 +1141,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
               ),
             ],
           ),
-          // Ringkasan empat metrik — pembacaan sekilas tanpa menggulir.
+          // Ringkasan lima metrik — pembacaan sekilas tanpa menggulir.
           const SizedBox(height: AppTheme.space2),
           Row(
             children: [
@@ -1120,6 +1157,20 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                 value: '$countedTotal',
                 label: 'Selesai',
                 color: colors.success,
+              ),
+              const SizedBox(width: 6),
+              _OpnameStatTile(
+                icon: Icons.fact_check_rounded,
+                value: _compositeFisikValue(
+                  sessionCompUnit,
+                  totalFisik.$2,
+                  totalFisik.$1,
+                ),
+                label: 'Fisik',
+                color: AppTheme.primary600,
+                tooltip:
+                    'Total hasil inputan fisik — jumlah seluruh baris yang '
+                    'terverifikasi (CRT + BALL).',
               ),
               const SizedBox(width: 6),
               _OpnameStatTile(
@@ -2665,50 +2716,55 @@ class _OpnameStatTile extends StatelessWidget {
     required this.value,
     required this.label,
     required this.color,
+    this.tooltip,
   });
 
   final IconData icon;
   final String value;
   final String label;
   final Color color;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     var colors = context.colors;
     return Expanded(
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.10),
-          borderRadius: AppTheme.radiusLg,
-          border: Border.all(color: color.withValues(alpha: 0.22)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 17, color: color),
-            const SizedBox(height: 3),
-            Text(
-              value,
-              style: GoogleFonts.roboto(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: color,
+      child: Tooltip(
+        message: tooltip ?? '',
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.10),
+            borderRadius: AppTheme.radiusLg,
+            border: Border.all(color: color.withValues(alpha: 0.22)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 17, color: color),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                style: GoogleFonts.roboto(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
               ),
-            ),
-            const SizedBox(height: 1),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.roboto(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: colors.textMuted,
+              const SizedBox(height: 1),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.roboto(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textMuted,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -3095,7 +3151,7 @@ class _ProductMiniStat extends StatelessWidget {
 
   final IconData icon;
   final String label;
-  final int value;
+  final Object value;
   final Color color;
 
   @override
@@ -3167,6 +3223,15 @@ class _OpnameProductCard extends StatelessWidget {
         .length;
     var remaining = total - counted;
     var complete = counted == total;
+    // Fisik total di produk — dari baris yang terverifikasi: CRT/BALL, atau
+    // total PCS dengan satuan komposit master NPN bila setting aktif.
+    var compUnit = _firstCompUnit(allItems);
+    var totalFisikCrt = allItems
+        .where((item) => item.isVerified)
+        .fold<double>(0, (sum, item) => sum + (item.qtyFisikCrt ?? 0));
+    var totalFisikPcs = allItems
+        .where((item) => item.isVerified)
+        .fold<double>(0, (sum, item) => sum + (item.qtyFisikPcs ?? 0));
     var productAccent = _productAccent(_productKey(first), colors);
     var accent = complete ? colors.success : productAccent;
     var count = onCount;
@@ -3227,6 +3292,17 @@ class _OpnameProductCard extends StatelessWidget {
                 label: 'Dihitung',
                 value: counted,
                 color: colors.success,
+              ),
+              const SizedBox(width: 4),
+              _ProductMiniStat(
+                icon: Icons.fact_check_rounded,
+                label: 'Fisik',
+                value: _compositeFisikValue(
+                  compUnit,
+                  totalFisikPcs,
+                  totalFisikCrt,
+                ),
+                color: AppTheme.primary600,
               ),
               const SizedBox(width: 4),
               _ProductMiniStat(
@@ -3555,7 +3631,11 @@ class _OpnameBatchRow extends StatelessWidget {
               _MiniFact(
                 label: 'FISIK',
                 value: verified
-                    ? _fisikMetricValue(item.qtyFisikCrt, item.qtyFisikPcs)
+                    ? _compositeFisikValue(
+                        item.compositeUnit,
+                        item.qtyFisikPcs ?? 0,
+                        item.qtyFisikCrt ?? 0,
+                      )
                     : '—',
                 color: colors.foreground,
               ),

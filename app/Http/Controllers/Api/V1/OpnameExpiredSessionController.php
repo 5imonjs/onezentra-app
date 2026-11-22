@@ -834,6 +834,9 @@ class OpnameExpiredSessionController extends Controller
             'umur_simpan_hari' => $umurSimpan,
             'sisa_hari' => $sisaHariItem,
             'diterima_minggu_ini' => $diterimaMingguIni,
+            'composite_unit' => app(OpnameExpiredService::class)->compositeUnit(
+                (string) $item->kode_barang,
+            ),
         ]);
     }
 

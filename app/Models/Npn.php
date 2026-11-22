@@ -79,6 +79,28 @@ class Npn extends Model
         return null;
     }
 
+    /**
+     * Resolusi NPN oleh berbagai kunci identitas — sejajar resolusi di
+     * import (ReceivingItemImport) & NpnController: dipakai untuk menampilkan
+     * satuan komposit global (see OpnameExpiredService::compositeUnit).
+     */
+    public static function findByCode(string $code): ?Npn
+    {
+        $code = trim($code);
+        if ($code === '') {
+            return null;
+        }
+
+        return Npn::query()
+            ->where(fn ($q) => $q
+                ->orWhere('BOSnetszProductId', $code)
+                ->orWhere('SAPszProductId', $code)
+                ->orWhere('szBarcode', $code)
+                ->orWhere('szNickName', $code)
+                ->orWhere('szNickNameNew', $code))
+            ->first();
+    }
+
     protected function casts(): array
     {
         return [

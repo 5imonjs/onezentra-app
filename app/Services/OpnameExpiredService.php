@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Batch;
+use App\Models\Npn;
 use App\Models\OpnameExpiredAdjustment;
 use App\Models\OpnameExpiredBaselineImport;
 use App\Models\OpnameExpiredSession;
@@ -25,6 +26,31 @@ class OpnameExpiredService
 
     /** @var array<int, array{crt: float, pcs: float}> */
     private array $adjustmentTotals = [];
+
+    /**
+     * Satuan komposit untuk produk — hanya aktif saat setting global
+     * `composite_unit` dinyalakan: nama satuan dari master NPN
+     * (UOM komp, fallback UOM staging). Null = tampilkan CRT/BALL/PCS
+     * biasa.
+     */
+    public function compositeUnit(string $kodeBarang): ?string
+    {
+        if ((int) OpnameSetting::get('composite_unit', 0) === 0) {
+            return null;
+        }
+
+        $npn = Npn::findByCode($kodeBarang);
+        if ($npn === null) {
+            return null;
+        }
+
+        $desc = trim((string) ($npn->szCompUomDesc ?? ''));
+        if ($desc !== '') {
+            return $desc;
+        }
+
+        return $npn->stagingUom();
+    }
 
     public function generate(?Carbon $reference = null, ?User $user = null): array
     {

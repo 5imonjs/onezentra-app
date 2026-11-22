@@ -183,8 +183,13 @@ class OpnameExpiredController extends Controller
             ->pluck('wave_id')
             ->flip();
 
-        $waves->getCollection()->transform(function (OpnameExpiredWave $wave) use ($openWaveIds): OpnameExpiredWave {
+        $service = app(OpnameExpiredService::class);
+        $waves->getCollection()->transform(function (OpnameExpiredWave $wave) use ($openWaveIds, $service): OpnameExpiredWave {
             $wave->setAttribute('has_open_session', $openWaveIds->has($wave->id));
+            $wave->setAttribute(
+                'composite_unit',
+                $service->compositeUnit((string) $wave->kode_barang),
+            );
 
             return $wave;
         });
@@ -556,7 +561,11 @@ class OpnameExpiredController extends Controller
 
     public function settings(): JsonResponse
     {
-        return response()->json(['data' => $this->thresholds()]);
+        return response()->json([
+            'data' => array_merge($this->thresholds(), [
+                'composite_unit' => (bool) OpnameSetting::get('composite_unit', 0),
+            ]),
+        ]);
     }
 
     public function updateSettings(Request $request): JsonResponse
@@ -565,15 +574,22 @@ class OpnameExpiredController extends Controller
             'threshold_aman' => 'required|integer|min:1',
             'threshold_perhatian' => 'required|integer|min:1|lte:threshold_aman',
             'threshold_kritis' => 'required|integer|min:1|lte:threshold_perhatian',
+            'composite_unit' => 'nullable|boolean',
         ]);
 
         foreach ($validated as $key => $value) {
+            if ($key === 'composite_unit') {
+                OpnameSetting::set($key, ((bool) $value) ? 1 : 0);
+                continue;
+            }
             OpnameSetting::set($key, (int) $value);
         }
 
         return response()->json([
-            'message' => 'Threshold opname diperbarui.',
-            'data' => $this->thresholds(),
+            'message' => 'Pengaturan opname diperbarui.',
+            'data' => array_merge($this->thresholds(), [
+                'composite_unit' => (bool) OpnameSetting::get('composite_unit', 0),
+            ]),
         ]);
     }
 
