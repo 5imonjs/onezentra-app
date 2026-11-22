@@ -11,7 +11,9 @@ use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
 use App\Models\Permission;
+use App\Models\Receiving;
 use App\Models\ReceivingItem;
+use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\OpnameExpiredService;
@@ -1025,6 +1027,7 @@ class OpnameExpiredSessionTest extends TestCase
 
         $fetch = function (?string $params = null) use (&$fetch): array {
             $res = $this->getJson("/api/v1/opname-sessions?per_page=100{$params}")->assertOk();
+
             return collect($res->json('data.data'))->pluck('id')->all();
         };
 
@@ -1164,5 +1167,88 @@ class OpnameExpiredSessionTest extends TestCase
         $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertStatus(422);
         $this->assertDatabaseCount('opname_expired_adjustments', 2);
         $this->assertEquals(-5, (float) OpnameExpiredWave::findOrFail($waveId)->qty_koreksi_crt);
+    }
+
+    public function test_index_returns_progress_counts_without_expanding_items(): void
+    {
+        $session = $this->makeSession();
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+        $first = $session->items()->first();
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$first->id}", [
+            'qty_fisik_crt' => 5,
+            'identified_via' => 'scan',
+        ])->assertOk();
+
+        Sanctum::actingAs($this->supervisor);
+        $res = $this->getJson('/api/v1/opname-sessions')->assertOk();
+        $row = collect($res->json('data.data'))->firstWhere('id', $session->id);
+
+        $this->assertSame(2, $row['items_count']);
+        $this->assertSame(1, $row['verified_count']);
+        // Daftar tidak boleh membawa item/wave/batch — dulu payload ini
+        // berisi ribuan baris yang dibuang web & mobile.
+        $this->assertArrayNotHasKey('items', $row);
+    }
+
+    public function test_action_responses_carry_state_without_item_payload(): void
+    {
+        $session = $this->makeSession();
+
+        Sanctum::actingAs($this->field);
+        $res = $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+        $this->assertSame('IN_PROGRESS', $res->json('data.status'));
+        $this->assertArrayNotHasKey('items', $res->json('data'));
+    }
+
+    public function test_show_omits_unused_verifier_relation(): void
+    {
+        $session = $this->makeSession();
+
+        Sanctum::actingAs($this->field);
+        $res = $this->getJson("/api/v1/opname-sessions/{$session->id}")->assertOk();
+        $item = $res->json('data.items.0');
+
+        $this->assertArrayNotHasKey('verifier', $item);
+        $this->assertArrayHasKey('wave', $item);
+        $this->assertArrayHasKey('batch', $item);
+    }
+
+    public function test_show_resolves_tanggal_penerimaan_from_receiving_without_lazy_load(): void
+    {
+        $rencana = RencanaKirim::create([
+            'po_transporter' => 'SJ-REC-FALLBACK',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'status' => 'COMPLETED',
+            'created_by' => $this->supervisor->id,
+        ]);
+        $receiving = Receiving::create([
+            'rencana_kirim_id' => $rencana->id,
+            'status' => 'COMPLETED',
+            'actual_arrival_time' => '2026-09-01 08:00:00',
+        ]);
+        $row = $this->receipt('B-REC-FALLBACK', 4, '2027-02-01');
+        $row->update(['receiving_id' => $receiving->id, 'tanggal_penerimaan' => null]);
+        Batch::issueForReceivingItem($row);
+        app(OpnameExpiredService::class)->generate();
+
+        Sanctum::actingAs($this->supervisor);
+        $wave = OpnameExpiredWave::where('kode_barang', 'B-REC-FALLBACK')->firstOrFail();
+        $sessionId = $this->postJson('/api/v1/opname-sessions', [
+            'week_start' => '2026-09-07',
+            'kode_depo' => 'DPO',
+            'assigned_to' => $this->field->id,
+            'wave_ids' => [$wave->id],
+        ])->assertCreated()->json('data.id');
+
+        Sanctum::actingAs($this->field);
+        $items = collect($this->getJson("/api/v1/opname-sessions/{$sessionId}")
+            ->assertOk()->json('data.items'));
+
+        // Accessor jatuh ke receiving; eager-load mencegah satu query per
+        // baris (dan LazyLoadingViolationException di mode dev/test).
+        $this->assertSame('2026-09-01', $items->first()['tanggal_penerimaan']);
     }
 }

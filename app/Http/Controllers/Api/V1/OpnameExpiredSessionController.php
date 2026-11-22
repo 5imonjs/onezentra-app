@@ -16,6 +16,7 @@ use App\Services\OpnameExpiredService;
 use App\Services\OpnameSessionLifecycleService;
 use App\Support\EvidenceStorage;
 use App\Support\LikePattern;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -43,7 +44,15 @@ class OpnameExpiredSessionController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = OpnameExpiredSession::with(['assignee', 'creator', 'items.wave', 'items.batch'])
+        // Daftar hanya butuh identitas sesi + progres hitung (done/total).
+        // Memuat items.wave/items.batch di sini mengirim ribuan baris per
+        // halaman — web & mobile membuang semuanya kecuali dua angka. Agregat
+        // di SQL supaya payload turun dari MB ke KB.
+        $query = OpnameExpiredSession::with(['assignee', 'creator'])
+            ->withCount([
+                'items as items_count',
+                'items as verified_count' => fn (Builder $q) => $q->whereNotNull('verified_at'),
+            ])
             ->orderByDesc('week_start')
             ->orderByDesc('id');
 
@@ -258,14 +267,21 @@ class OpnameExpiredSessionController extends Controller
     {
         $this->authorizeSession($request, $session);
 
-        $session->load(['assignee', 'creator', 'submitter', 'decider', 'items.wave', 'items.batch', 'items.verifier']);
+        // `items.verifier` sengaja tidak dimuat: kedua klien hanya membaca
+        // kolom verified_by/verified_via pada baris, bukan objek verifier.
+        $session->load(['assignee', 'creator', 'submitter', 'decider', 'items.wave', 'items.batch']);
 
         // Qty acuan per batch (sistem) agar petugas tahu angka pembanding
-        // tiap label: satu query per sumber, bukan N+1.
+        // tiap label: satu query per sumber, bukan N+1. `receiving` ikut
+        // eager-loaded karena accessor tanggal_penerimaan jatuh ke sana untuk
+        // baris tanpa tanggal terima manual — tanpa itu tiap baris memicu
+        // query tersendiri (LazyLoadingViolationException di dev/test).
         $batches = $session->items->map->batch->filter()->unique('id')->values();
-        $byReceiving = ReceivingItem::whereIn('id', $batches->pluck('receiving_item_id')->filter()->all())
+        $byReceiving = ReceivingItem::with('receiving')
+            ->whereIn('id', $batches->pluck('receiving_item_id')->filter()->all())
             ->get()->keyBy('id');
-        $bySj = ReceivingItem::whereIn('sj_validation_item_id', $batches->pluck('sj_validation_item_id')->filter()->all())
+        $bySj = ReceivingItem::with('receiving')
+            ->whereIn('sj_validation_item_id', $batches->pluck('sj_validation_item_id')->filter()->all())
             ->get()->keyBy('sj_validation_item_id');
 
         $adjustments = OpnameExpiredAdjustment::query()
@@ -355,7 +371,13 @@ class OpnameExpiredSessionController extends Controller
             ]);
         })->all();
 
-        $data = $session->toArray();
+        // Bangun envelope dari atribut saja: toArray() akan menyusun ulang
+        // seluruh relasi item (mentah) yang lalu ditimpa $items di bawah —
+        // kerja ganda yang sia-sia untuk sesi beribu-ribu baris.
+        $data = $session->attributesToArray();
+        foreach (['assignee', 'creator', 'submitter', 'decider'] as $relation) {
+            $data[$relation] = $session->$relation?->toArray();
+        }
         $data['items'] = $items;
         // Momen penghitungan selesai (verifikasi baris terakhir) — dipakai
         // UI untuk menampilkan durasi mulai→selesai opname.
@@ -391,7 +413,7 @@ class OpnameExpiredSessionController extends Controller
 
         return response()->json([
             'message' => 'Sesi dimulai.',
-            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
+            'data' => $this->sessionSummary($session->fresh()),
         ]);
     }
 
@@ -482,7 +504,7 @@ class OpnameExpiredSessionController extends Controller
 
         return response()->json([
             'message' => 'Input ditandai selesai — menunggu validasi dari web.',
-            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
+            'data' => $this->sessionSummary($session->fresh()),
         ]);
     }
 
@@ -494,7 +516,7 @@ class OpnameExpiredSessionController extends Controller
 
         return response()->json([
             'message' => 'Sesi disetujui — koreksi wave berlaku.',
-            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
+            'data' => $this->sessionSummary($session->fresh()),
         ]);
     }
 
@@ -510,7 +532,7 @@ class OpnameExpiredSessionController extends Controller
 
         return response()->json([
             'message' => 'Sesi dikembalikan ke petugas untuk revisi.',
-            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
+            'data' => $this->sessionSummary($session->fresh()),
         ]);
     }
 
@@ -682,7 +704,7 @@ class OpnameExpiredSessionController extends Controller
 
         return response()->json([
             'message' => "Ditambahkan {$added} verifikasi ke sesi.",
-            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
+            'data' => $this->sessionSummary($session->fresh()),
         ]);
     }
 
@@ -755,6 +777,17 @@ class OpnameExpiredSessionController extends Controller
             ->get();
 
         return response()->json(['data' => $histories]);
+    }
+
+    /**
+     * Ringkasan sesi untuk response aksi: seluruh atribut sesi (status,
+     * penanda waktu, catatan keputusan) tanpa items + wave + batch. Klien
+     * memakainya untuk menyinkronkan state lokal; detail lengkap tetap
+     * di GET /{session} yang dipanggil sekali saat membuka sesi.
+     */
+    private function sessionSummary(OpnameExpiredSession $session): array
+    {
+        return $session->attributesToArray();
     }
 
     private function authorizeSession(Request $request, OpnameExpiredSession $session): void

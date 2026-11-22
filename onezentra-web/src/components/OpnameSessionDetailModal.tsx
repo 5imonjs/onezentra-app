@@ -65,6 +65,10 @@ export interface SessionDetail {
   assignee?: { id: number; full_name: string; email: string } | null;
   submitter?: { id: number; full_name: string } | null;
   decider?: { id: number; full_name: string } | null;
+  /** Dari endpoint daftar (tanpa items) — dipakai untuk kolom progres. */
+  items_count?: number;
+  verified_count?: number;
+  /** Hanya ada di endpoint detail (GET /{id}). */
   items?: SessionDetailItem[];
 }
 

@@ -318,8 +318,10 @@ export default function OpnameSessionsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {sessions.map((s) => {
-                    const done = s.items?.filter((i) => i.verified_at).length ?? 0;
-                    const total = s.items?.length ?? 0;
+                    // Daftar dari backend sudah membawa agregat — jangan
+                    // menunggu/mengurai ribuan item hanya untuk dua angka.
+                    const done = s.verified_count ?? s.items?.filter((i) => i.verified_at).length ?? 0;
+                    const total = s.items_count ?? s.items?.length ?? 0;
                     return (
                       <tr key={s.id} className="hover:bg-overlay-70 transition-colors">
                         <td className="px-5 py-3 text-sm text-foreground whitespace-nowrap">{fmtDate(s.week_start)}</td>

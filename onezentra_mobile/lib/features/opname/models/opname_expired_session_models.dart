@@ -198,6 +198,8 @@ class OpnameExpiredSession {
     this.decidedBy,
     this.decidedAt,
     this.decisionNote,
+    this.itemsCount,
+    this.verifiedCount,
     this.items = const <OpnameExpiredSessionItem>[],
   });
 
@@ -217,10 +219,15 @@ class OpnameExpiredSession {
       createdBy: _readInt(json['created_by']),
       submittedBy: _readInt(json['submitted_by']),
       submittedAt: _readString(json['submitted_at']),
+      inputCompletedAt: _readString(json['input_completed_at']),
       finishedAt: _readString(json['finished_at']),
       decidedBy: _readInt(json['decided_by']),
       decidedAt: _readString(json['decided_at']),
       decisionNote: _readString(json['decision_note']),
+      // Endpoint daftar mengirim dua agregat ini tanpa items — detail
+      // tetap mengirim items lengkap.
+      itemsCount: _readInt(json['items_count']),
+      verifiedCount: _readInt(json['verified_count']),
       items: rawItems is List
           ? rawItems
                 .whereType<Map>()
@@ -252,7 +259,36 @@ class OpnameExpiredSession {
   final int? decidedBy;
   final String? decidedAt;
   final String? decisionNote;
+  final int? itemsCount;
+  final int? verifiedCount;
   final List<OpnameExpiredSessionItem> items;
+
+  /// Salin sesi dengan daftar item baru. Dipakai klien untuk patch state
+  /// lokal setelah verifikasi/aksi, tanpa mengunduh ulang detail penuh.
+  OpnameExpiredSession withItems(List<OpnameExpiredSessionItem> nextItems) =>
+      OpnameExpiredSession(
+        id: id,
+        weekStart: weekStart,
+        weekEnd: weekEnd,
+        kodeDepo: kodeDepo,
+        namaDepo: namaDepo,
+        assignedTo: assignedTo,
+        status: status,
+        notes: notes,
+        startedAt: startedAt,
+        completedAt: completedAt,
+        createdBy: createdBy,
+        submittedBy: submittedBy,
+        submittedAt: submittedAt,
+        inputCompletedAt: inputCompletedAt,
+        finishedAt: finishedAt,
+        decidedBy: decidedBy,
+        decidedAt: decidedAt,
+        decisionNote: decisionNote,
+        itemsCount: itemsCount,
+        verifiedCount: verifiedCount,
+        items: nextItems,
+      );
 
   bool get isOpen => status == 'OPEN';
   bool get acceptsCounting => status == 'IN_PROGRESS' || status == 'REVISI';

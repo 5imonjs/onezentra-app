@@ -114,21 +114,32 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
     return _selected;
   }
 
-  Future<void> _execute(Future<dynamic> Function() action) async {
+  /// Response aksi memuat seluruh atribut sesi tetapi TANPA items. Patch
+  /// state lokal dari respons itu — memanggil show() di sini mengunduh ulang
+  /// seluruh detail (ribuan baris) setelah setiap klik.
+  void _applyUpdatedSession(OpnameExpiredSession updated) {
+    var current = _selected;
+    if (current == null || current.id != updated.id) {
+      _selected = updated;
+      return;
+    }
+    _selected = updated.withItems(
+      updated.items.isNotEmpty ? updated.items : current.items,
+    );
+  }
+
+  Future<void> _execute(Future<OpnameExpiredSession> Function() action) async {
     var requestId = ++_requestId;
     _isLoading = true;
     _error = null;
     _notify();
     try {
-      await action();
+      var updated = await action();
       if (requestId != _requestId) {
         return;
       }
-      if (_selected != null) {
-        await show(_selected!.id);
-      } else {
-        await load();
-      }
+      _applyUpdatedSession(updated);
+      _notify();
     } on ApiException catch (e) {
       if (requestId != _requestId) {
         return;
@@ -160,7 +171,7 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
 
   /// Simpan hasil hitung dari sheet input: sheet memakai state simpan
   /// sendiri (tanpa spinner global), jadi method ini mengembalikan pesan
-  /// error (null = sukses) dan menyegarkan detail sesi saat berhasil.
+  /// error (null = sukses) dan patch baris yang berubah di state lokal.
   /// [photoPath] mengisi foto bukti wajib untuk kondisi bermasalah.
   Future<String?> verifyItem(
     int sessionId,
@@ -169,13 +180,28 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
     String? photoPath,
   }) async {
     try {
-      await _repository.verifyItem(
+      var result = await _repository.verifyItem(
         sessionId,
         itemId,
         data,
         photoPath: photoPath,
       );
-      await show(sessionId);
+      // Backend mengembalikan baris terverifikasi terbaru. Patch satu baris
+      // saja; show() cukup dipanggil sekali saat membuka sesi, bukan setelah
+      // setiap hitungan (apalagi per draft saat submit).
+      var rawItem = result is Map ? result['item'] : null;
+      if (rawItem is Map && _selected != null && _selected!.id == sessionId) {
+        var verified = OpnameExpiredSessionItem.fromJson(
+          Map<String, dynamic>.from(rawItem),
+        );
+        var items = List<OpnameExpiredSessionItem>.from(_selected!.items);
+        var index = items.indexWhere((i) => i.id == verified.id);
+        if (index >= 0) {
+          items[index] = verified;
+          _selected = _selected!.withItems(items);
+          _notify();
+        }
+      }
       return null;
     } on ApiException catch (e) {
       return e.message;
@@ -189,7 +215,7 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
     }
   }
 
-  /// Tandai input selesai (penanda, bukan approval) lalu segarkan detail.
+  /// Tandai input selesai (penanda, bukan approval) lalu patch state lokal.
   Future<void> markInputComplete(int id) =>
       _execute(() => _repository.markComplete(id));
 

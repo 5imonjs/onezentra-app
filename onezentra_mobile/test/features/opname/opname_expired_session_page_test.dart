@@ -24,6 +24,7 @@ class _FakeOpnameExpiredSessionRepository
   final List<OpnameExpiredSession> sessions;
   final bool fail;
   int listCalls = 0;
+  int showCalls = 0;
   bool? lastMine;
   bool lastActiveOnly = false;
   final List<Map<String, dynamic>> verifyPayloads = [];
@@ -87,6 +88,7 @@ class _FakeOpnameExpiredSessionRepository
 
   @override
   Future<OpnameExpiredSession> show(int id) async {
+    showCalls++;
     for (var session in sessions) {
       if (session.id == id) {
         return _withMark(session);
@@ -1259,5 +1261,64 @@ void main() {
       find.text('Input selesai — validasi dilakukan dari web.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('daftar sesi memakai agregat backend tanpa items', (
+    tester,
+  ) async {
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          weekEnd: '2026-11-08',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          itemsCount: 4,
+          verifiedCount: 2,
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+
+    expect(find.text('2/4 dihitung'), findsOneWidget);
+  });
+
+  testWidgets('hitung fisik tidak mengunduh ulang detail sesi', (tester) async {
+    var repository = buildCountingFixture();
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await openVerifySheet(tester);
+    expect(repository.showCalls, 1); // sekali saat membuka sesi
+
+    await tester.enterText(find.byKey(const Key('verify_qty_crt')), '6');
+    await tester.ensureVisible(find.text('Simpan Hasil Hitung'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Simpan Hasil Hitung'));
+    await tester.pumpAndSettle();
+
+    expect(repository.verifyPayloads, hasLength(1));
+    // Sebelumnya verifyItem memanggil show() — satu unduhan detail penuh
+    // per baris (dan per draft saat submit).
+    expect(repository.showCalls, 1);
+  });
+
+  test('model sesi mengurai agregat daftar dan penanda input selesai', () {
+    var session = OpnameExpiredSession.fromJson({
+      'id': 9,
+      'status': 'IN_PROGRESS',
+      'items_count': 5,
+      'verified_count': 3,
+      'input_completed_at': '2026-11-21T12:00:00Z',
+    });
+
+    expect(session.itemsCount, 5);
+    expect(session.verifiedCount, 3);
+    expect(session.inputCompletedAt, '2026-11-21T12:00:00Z');
+    expect(session.items, isEmpty);
   });
 }

@@ -113,4 +113,35 @@ describe('OpnameSessionsPage — deep link dari Monitoring Kedaluwarsa', () => {
     });
     expect(await screen.findByText('Halaman 2 / 2')).toBeInTheDocument();
   });
+
+  it('progres daftar memakai agregat backend tanpa mengurai items', async () => {
+    window.history.replaceState({}, '', '/opname-sessions');
+    list.mockResolvedValue({
+      data: {
+        data: {
+          data: [{
+            id: 1,
+            week_start: '2026-11-02',
+            kode_depo: '0126',
+            nama_depo: 'Depo Pontianak',
+            assigned_to: 7,
+            assignee: { full_name: 'Budi Petugas' },
+            status: 'IN_PROGRESS',
+            items_count: 4,
+            verified_count: 2,
+          }],
+          current_page: 1,
+          last_page: 1,
+          total: 1,
+          from: 1,
+          to: 1,
+        },
+      },
+    });
+
+    render(<OpnameSessionsPage />);
+
+    expect(await screen.findByText('2/4')).toBeInTheDocument();
+    expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ per_page: 25 }));
+  });
 });

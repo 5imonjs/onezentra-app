@@ -67,7 +67,7 @@ class OpnameExpiredSessionRepository {
     var query = Uri(
       queryParameters: <String, String>{
         'page': '1',
-        'per_page': '50',
+        'per_page': '25',
         if (weekStart != null && weekStart.isNotEmpty) 'week_start': weekStart,
         if (kodeDepo != null && kodeDepo.isNotEmpty) 'kode_depo': kodeDepo,
         if (status != null && status.isNotEmpty) 'status': status,

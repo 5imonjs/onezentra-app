@@ -1697,8 +1697,12 @@ class _OpnameSessionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var colors = context.colors;
-    var counted = session.items.where((i) => i.isVerified).length;
-    var total = session.items.length;
+    // Daftar dari backend hanya membawa dua agregat (tanpa items). Fallback
+    // ke items dipertahankan untuk fixtures/respons lama.
+    var counted =
+        session.verifiedCount ??
+        session.items.where((i) => i.isVerified).length;
+    var total = session.itemsCount ?? session.items.length;
 
     return AppCard(
       padding: const EdgeInsets.all(AppTheme.space3),
