@@ -2,80 +2,93 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardRecent from './DashboardRecent';
 
-const { useSummary } = vi.hoisted(() => ({
-  useSummary: vi.fn(),
+const { hasPermission, liveActivity } = vi.hoisted(() => ({
+  hasPermission: vi.fn((_perm: string) => true),
+  liveActivity: vi.fn(),
+}));
+
+vi.mock('@/store/auth', () => ({
+  useAuthStore: () => ({ hasPermission }),
+}));
+
+vi.mock('@/lib/api', () => ({
+  dashboard: { liveActivity },
+  getErrorMessage: (_e: unknown, fallback: string) => fallback,
 }));
 
 vi.mock('@/lib/dashboardSummary', () => ({
-  useDashboardSummary: useSummary,
   formatRelativeTime: vi.fn(() => 'baru saja'),
 }));
 
-const summaryKosong = {
-  depot: null,
-  totals: {},
-  new_7d: {},
-  alerts: { expired_kritis: 0, expired_total: 0, standarisasi_pending: 0 },
-  quality: { npn_no_volume: 0, npn_no_umur: 0 },
-  sla: { avg_gate_to_receiving_hours: null, sj_open_count: 0, sj_oldest_days: null },
-  recent: [],
-  activity_trend: { current_7d: 0, prev_7d: 0 },
-};
+const event = (overrides: Record<string, unknown> = {}) => ({
+  id: 1,
+  user_id: 7,
+  user_name: 'Budi Petugas',
+  level: 'staff_logistic',
+  kode_depo: '0127',
+  nama_depo: 'Singkawang',
+  method: 'POST',
+  route: 'api/v1/opname-sessions/42/items/11',
+  module: 'Opname Expired',
+  action: 'Memproses Opname Expired',
+  occurred_at: '2026-11-22T08:00:00+07:00',
+  ...overrides,
+});
 
-describe('DashboardRecent', () => {
+describe('DashboardRecent — log aktivitas', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    hasPermission.mockReturnValue(true);
+    liveActivity.mockResolvedValue({
+      data: { data: { events: [event()] } },
+    });
   });
 
   afterEach(cleanup);
 
-  it('regresi: kegagalan memuat tampil dengan tombol coba lagi, bukan null diam-diam', () => {
-    const reload = vi.fn();
-    useSummary.mockReturnValue({ summary: summaryKosong, loading: false, failed: true, reload });
-
-    render(<DashboardRecent kodeDepo="DPO" />);
-
-    expect(screen.getByText(/Gagal memuat aktivitas terbaru/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Coba lagi' }));
-    expect(reload).toHaveBeenCalledTimes(1);
-  });
-
-  it('menampilkan skeleton saat data masih dimuat, bukan layout kosong', () => {
-    useSummary.mockReturnValue({ summary: summaryKosong, loading: true, failed: false, reload: vi.fn() });
-
+  it('tidak merender panel tanpa izin activity.view', () => {
+    hasPermission.mockReturnValue(false);
     render(<DashboardRecent />);
-
-    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
-  });
-
-  it('tidak merender section bila daftar aktivitas kosong', () => {
-    useSummary.mockReturnValue({ summary: summaryKosong, loading: false, failed: false, reload: vi.fn() });
-
-    render(<DashboardRecent />);
-
     expect(screen.queryByText('Aktivitas Terbaru')).not.toBeInTheDocument();
+    expect(liveActivity).not.toHaveBeenCalled();
   });
 
-  it('menampilkan item aktivitas terbaru', () => {
-    useSummary.mockReturnValue({
-      summary: {
-        ...summaryKosong,
-        recent: [{
-          type: 'Rencana Kirim',
-          title: 'PO-TEST-1',
-          subtitle: 'DRAFT • Depo Test',
-          href: '/rencana-kirim',
-          at: '2026-10-01T08:00:00+07:00',
-        }],
+  it('menampilkan aktivitas mobile dan login dari log aktivitas', async () => {
+    liveActivity.mockResolvedValue({
+      data: {
+        data: {
+          events: [
+            event({
+              id: 2,
+              module: 'Login & Logout',
+              action: 'Login ke sistem',
+              user_name: 'Siti Admin',
+              method: 'LOGIN',
+              route: 'auth.login',
+            }),
+            event(),
+          ],
+        },
       },
-      loading: false,
-      failed: false,
-      reload: vi.fn(),
     });
 
+    render(<DashboardRecent kodeDepo="0127" />);
+
+    expect(await screen.findByText('Aktivitas Terbaru')).toBeInTheDocument();
+    expect(screen.getByText('Login ke sistem')).toBeInTheDocument();
+    expect(screen.getByText(/Siti Admin/)).toBeInTheDocument();
+    expect(screen.getByText('Memproses Opname Expired')).toBeInTheDocument();
+    expect(screen.getByText('Budi Petugas · Singkawang · staff_logistic')).toBeInTheDocument();
+    expect(liveActivity).toHaveBeenCalledWith(0, '0127');
+  });
+
+  it('regresi: gagal memuat menampilkan tombol coba lagi', async () => {
+    liveActivity.mockRejectedValueOnce(new Error('offline'));
+
     render(<DashboardRecent />);
 
-    expect(screen.getByText('Aktivitas Terbaru')).toBeInTheDocument();
-    expect(screen.getByText('PO-TEST-1')).toBeInTheDocument();
+    const retry = await screen.findByRole('button', { name: 'Coba lagi' });
+    fireEvent.click(retry);
+    expect(liveActivity).toHaveBeenCalledTimes(2);
   });
 });

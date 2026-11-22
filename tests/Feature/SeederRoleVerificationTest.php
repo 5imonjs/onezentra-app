@@ -388,7 +388,10 @@ class SeederRoleVerificationTest extends TestCase
         // role-permission mencakup grant turunan lain.
         // admin_planner & bh tidak lagi punya depot.view_all (fix 2026-10-22)
         $this->assertSame(14, Role::count());
-        $this->assertSame(113, Permission::count());
+        // activity.view (log aktivitas lintas modul). Grant admin_master sudah
+        // tercakup dalam setelan "all permissions" seeder, jadi pivot tidak
+        // bertambah.
+        $this->assertSame(114, Permission::count());
         $this->assertSame(572, DB::table('role_permission')->count());
     }
 

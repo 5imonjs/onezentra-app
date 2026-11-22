@@ -89,7 +89,7 @@ describe('DashboardInsights', () => {
   });
 
   it('tidak menampilkan chart tanpa izin modul terkait', () => {
-    hasPermission.mockImplementation((p: string) => p !== 'users.view' && p !== 'opname.view');
+    hasPermission.mockImplementation((p: string) => p !== 'users.view' && p !== 'opname.view' && p !== 'activity.view');
     render(<DashboardInsights />);
     expect(screen.queryByText('Aktivitas 7 Hari')).not.toBeInTheDocument();
     expect(screen.queryByText('Progres Monitoring Expired')).not.toBeInTheDocument();

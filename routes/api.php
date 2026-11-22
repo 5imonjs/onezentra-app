@@ -101,11 +101,12 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::get('dashboard/activity', [DashboardController::class, 'activity'])
-        ->middleware(['auth:sanctum', 'permission:dashboard.view', 'throttle:600,1,api']);
+        ->middleware(['auth:sanctum', 'permission:activity.view', 'throttle:600,1,api']);
 
-    // Feed real-time untuk pengelola user; admin_master difilter di controller.
+    // Feed real-time log aktivitas (termasuk mobile & login). Izin terpisah
+    // supaya bisa dibatasi ke level tertentu lewat Role & Permission.
     Route::get('dashboard/activity/live', [DashboardController::class, 'liveActivity'])
-        ->middleware(['auth:sanctum', 'permission:users.view', 'throttle:600,1,api']);
+        ->middleware(['auth:sanctum', 'permission:activity.view', 'throttle:600,1,api']);
 
     Route::get('dashboard/summary', [DashboardController::class, 'summary'])
         ->middleware(['auth:sanctum', 'permission:dashboard.view', 'throttle:600,1,api']);

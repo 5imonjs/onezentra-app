@@ -60,6 +60,7 @@ class SystemEndToEndTest extends TestCase
             'reports.view',
             'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim',
             'dashboard.view',
+            'activity.view',
             'depot.view_all',
             'standarisasi.view', 'standarisasi.create', 'standarisasi.edit', 'standarisasi.approve', 'standarisasi.delete',
         ];

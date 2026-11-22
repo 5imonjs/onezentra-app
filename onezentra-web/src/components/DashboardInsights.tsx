@@ -234,8 +234,9 @@ export default function DashboardInsights({ kodeDepo }: { kodeDepo?: string }) {
   const [daily, setDaily] = useState<Daily[]>([]);
   const [statuses, setStatuses] = useState<StatusCount[]>([]);
   const [depots, setDepots] = useState<DepotProgress[]>([]);
+  const [lastProgressUpdate, setLastProgressUpdate] = useState<Date | null>(null);
 
-  const canActivity = hasPermission('users.view');
+  const canActivity = hasPermission('activity.view');
   const canRencana = hasPermission('rencana_kirim.view');
   const canOpname = hasPermission('opname.view');
 
@@ -244,6 +245,7 @@ export default function DashboardInsights({ kodeDepo }: { kodeDepo?: string }) {
     try {
       const res = await opnameExpired.progress();
       setDepots((res.data?.data?.depots ?? []) as DepotProgress[]);
+      setLastProgressUpdate(new Date());
     } catch {
       setDepots([]);
     }
@@ -323,8 +325,27 @@ export default function DashboardInsights({ kodeDepo }: { kodeDepo?: string }) {
         <div className="p-4 sm:p-5"><ExceptionBars rows={exceptionRows} onOpen={(href) => router.push(href)} /></div>
       </DashboardPanel>
       {canOpname && (
-        <DashboardPanel ariaLabel="Progres Monitoring Expired" title="Progres Monitoring Expired" subtitle="Klik untuk membuka monitoring" icon={ICON_OPNAME}
-          badge={<span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold tabular-nums text-emerald-600 ring-1 ring-emerald-500/20">{depots.length} depo</span>}>
+        <DashboardPanel
+          ariaLabel="Progres Monitoring Expired"
+          title="Progres Monitoring Expired"
+          subtitle={lastProgressUpdate
+            ? `Diperbarui ${lastProgressUpdate.toLocaleTimeString('id-ID')} · klik untuk monitoring`
+            : 'Klik untuk membuka monitoring'}
+          icon={ICON_OPNAME}
+          badge={
+            <span className="flex items-center gap-2">
+              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold tabular-nums text-emerald-600 ring-1 ring-emerald-500/20">{depots.length} depo</span>
+              <button
+                type="button"
+                onClick={() => void loadProgress()}
+                title="Segarkan progres sekarang"
+                aria-label="Segarkan progres"
+                className="rounded-lg border border-border px-2 py-0.5 text-[11px] font-bold text-foreground transition-colors hover:bg-popover"
+              >
+                ↻
+              </button>
+            </span>
+          }>
           <div className="p-4 sm:p-5"><ProgressRing depots={depots} onOpen={() => router.push('/opname-expired')} /></div>
         </DashboardPanel>
       )}

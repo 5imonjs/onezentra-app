@@ -21,12 +21,20 @@ class DashboardActivityTest extends TestCase
             'slug' => 'dashboard.view',
             'menu_group' => 'Test',
         ]);
+        $activityPermission = Permission::firstOrCreate(
+            ['slug' => 'activity.view'],
+            ['name' => 'Lihat Log Aktivitas', 'menu_group' => 'Test'],
+        );
         $globalDepotPermission = Permission::firstOrCreate(
             ['slug' => 'depot.view_all'],
             ['name' => 'Akses Semua Depo', 'menu_group' => 'Test'],
         );
         $role = Role::create(['name' => 'Dashboard Tester', 'slug' => 'dashboard_tester']);
-        $role->permissions()->attach([$permission->id, $globalDepotPermission->id]);
+        $role->permissions()->attach([
+            $permission->id,
+            $globalDepotPermission->id,
+            $activityPermission->id,
+        ]);
         $user = User::create([
             'email' => 'activity@example.com',
             'password' => 'password',
@@ -180,11 +188,18 @@ class DashboardActivityTest extends TestCase
             ['slug' => 'users.view'],
             ['name' => 'Users View', 'menu_group' => 'Test'],
         );
+        $activityPermission = Permission::firstOrCreate(
+            ['slug' => 'activity.view'],
+            ['name' => 'Lihat Log Aktivitas', 'menu_group' => 'Test'],
+        );
         $role = Role::firstOrCreate(
             ['slug' => 'live_activity'],
             ['name' => 'Live Activity'],
         );
-        $role->permissions()->syncWithoutDetaching([$permission->id]);
+        $role->permissions()->syncWithoutDetaching([
+            $permission->id,
+            $activityPermission->id,
+        ]);
 
         $user = User::create([
             'email' => $email,
