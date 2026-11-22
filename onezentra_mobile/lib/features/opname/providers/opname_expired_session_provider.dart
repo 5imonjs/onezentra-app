@@ -223,11 +223,13 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
         if (rawSession is Map) {
           // Status REVISI → IN_PROGRESS dan penanda input selesai juga ikut
           // berubah di server saat verifikasi.
-          _applyUpdatedSession(
-            OpnameExpiredSession.fromJson(
-              Map<String, dynamic>.from(rawSession),
-            ),
+          var updated = OpnameExpiredSession.fromJson(
+            Map<String, dynamic>.from(rawSession),
           );
+          _applyUpdatedSession(updated);
+          // Daftar ikut terpatch: jumlah "dihitung/sisa" di kartu sesi
+          // segera baru setelah input, tanpa reload dari server.
+          _patchSessionList(updated);
         }
         _notify();
       }
@@ -242,6 +244,25 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
       debugPrintStack(stackTrace: stack, maxFrames: 8);
       return 'Terjadi kesalahan tidak terduga. Silakan coba lagi.';
     }
+  }
+
+  /// Daftar sesi ikut terpatch setelah verifikasi: jumlah "dihitung/sisa"
+  /// di kartu sesi langsung baru. Respons verify server tidak membawa
+  /// item detil maupun `verified_count`, jadi gunakan sesi yang sudah
+  /// di-patch dan hitung jumlah yang terverifikasi.
+  void _patchSessionList(OpnameExpiredSession updated) {
+    var selected = _selected;
+    if (selected == null || selected.id != updated.id) {
+      return;
+    }
+    var verifiedCount = selected.items.where((item) => item.isVerified).length;
+    _sessions = _sessions
+        .map(
+          (session) => session.id == updated.id
+              ? selected.withVerifiedCount(verifiedCount)
+              : session,
+        )
+        .toList();
   }
 
   /// Tandai input selesai (penanda, bukan approval) lalu patch state lokal.

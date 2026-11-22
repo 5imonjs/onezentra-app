@@ -102,6 +102,17 @@ String _formatQty(double? value) {
   return _qtyFormatter.format(value);
 }
 
+/// Nilai FISIK untuk tampilan metrik — CRT + PCS bila ada. Pola ini sama
+/// dengan ACUAN di baris produk agar input PCS tidak terlihat: user lihat
+/// hanya "fokus" ke angka CRT.
+String _fisikMetricValue(double? crt, double? pcs) {
+  var text = '${_formatQty(crt)} CRT';
+  if (pcs != null && pcs != 0) {
+    text += ' · ${_formatQty(pcs)} PCS';
+  }
+  return text;
+}
+
 /// Format tanggal tampilan dd/MM/yyyy — baku warga gudang; input tetap ISO
 /// dari backend (yyyy-MM-dd), fallback string asli bila tak terurai.
 String _dateOut(DateTime parsed) => DateFormat('dd/MM/yyyy').format(parsed);
@@ -1831,12 +1842,16 @@ class _VerifySheetState extends State<_VerifySheet> {
           children: [
             _SheetMetric(
               label: 'ACUAN',
-              value: '${_formatQty(item.expectedCrt)} CRT',
+              value:
+                  '${_formatQty(item.expectedCrt)} CRT'
+                  '${item.expectedPcs != null ? ' · ${_formatQty(item.expectedPcs)} PCS' : ''}',
               color: colors.textSecondary,
             ),
             _SheetMetric(
               label: 'FISIK',
-              value: hasInput ? '${_formatQty(_qtyCrtValue)} CRT' : '—',
+              value: hasInput
+                  ? _fisikMetricValue(_qtyCrtValue, _qtyPcsValue)
+                  : '—',
               color: colors.foreground,
             ),
             _SheetMetric(
@@ -3484,7 +3499,9 @@ class _OpnameBatchRow extends StatelessWidget {
               ),
               _MiniFact(
                 label: 'FISIK',
-                value: verified ? '${_formatQty(item.qtyFisikCrt)} CRT' : '—',
+                value: verified
+                    ? _fisikMetricValue(item.qtyFisikCrt, item.qtyFisikPcs)
+                    : '—',
                 color: colors.foreground,
               ),
               _MiniFact(

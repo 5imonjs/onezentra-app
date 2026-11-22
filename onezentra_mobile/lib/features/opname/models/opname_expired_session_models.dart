@@ -335,6 +335,35 @@ class OpnameExpiredSession {
         items: nextItems,
       );
 
+  /// Salin sesi dengan jumlah item yang sudah diverifikasi. Respons verify
+  /// server tidak membawa `verified_count` (hanya ada di endpoint daftar),
+  /// jadi klien hitung dari item yang sudah terpatch.
+  OpnameExpiredSession withVerifiedCount(int verifiedCount) =>
+      OpnameExpiredSession(
+        id: id,
+        weekStart: weekStart,
+        weekEnd: weekEnd,
+        kodeDepo: kodeDepo,
+        namaDepo: namaDepo,
+        assignedTo: assignedTo,
+        assigneeName: assigneeName,
+        status: status,
+        notes: notes,
+        startedAt: startedAt,
+        completedAt: completedAt,
+        createdBy: createdBy,
+        submittedBy: submittedBy,
+        submittedAt: submittedAt,
+        inputCompletedAt: inputCompletedAt,
+        finishedAt: finishedAt,
+        decidedBy: decidedBy,
+        decidedAt: decidedAt,
+        decisionNote: decisionNote,
+        itemsCount: itemsCount,
+        verifiedCount: verifiedCount,
+        items: items,
+      );
+
   bool get isOpen => status == 'OPEN';
   bool get acceptsCounting => status == 'IN_PROGRESS' || status == 'REVISI';
   bool get isPendingApproval => status == 'PENDING_APPROVAL';

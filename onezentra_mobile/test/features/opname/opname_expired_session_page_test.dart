@@ -126,6 +126,7 @@ class _FakeOpnameExpiredSessionRepository
           'session_id': sessionId,
           'batch_id': 31,
           'qty_fisik_crt': data['qty_fisik_crt'],
+          'qty_fisik_pcs': data['qty_fisik_pcs'],
           'verified_at': '2026-11-22T02:30:00Z',
           'verified_via': data['identified_via'],
         },
@@ -641,6 +642,44 @@ void main() {
       expect(find.text('Simpan Hasil Hitung'), findsNothing);
     },
   );
+
+  testWidgets('verify: detail & daftar ikut terpatch setelah simpan hitung', (
+    tester,
+  ) async {
+    var repository = buildCountingFixture();
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await openVerifySheet(tester);
+
+    await tester.enterText(find.byKey(const Key('verify_qty_crt')), '6');
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('verify_qty_pcs')), '2');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Simpan Hasil Hitung'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Simpan Hasil Hitung'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Simpan Hasil Hitung'), findsNothing);
+
+    // Kartu produk ikut terpatch: Dihitung turun, Sisa naik.
+    expect(find.text('Dihitung 1'), findsOneWidget);
+    expect(find.text('Sisa 0'), findsOneWidget);
+    // Header sesi ikut terpatch: progres 1/1.
+    expect(find.text('1/1 dihitung'), findsOneWidget);
+    // Baris batch: FISIK tunjukkan qty yang diinput, SELISIH terhitung.
+    expect(find.text('FISIK'), findsOneWidget);
+    expect(find.textContaining('6 CRT'), findsOneWidget);
+    expect(find.textContaining('Selisih'), findsOneWidget);
+    // PCS yang diinput harus tampil di samping CRT.
+    expect(find.textContaining('2 PCS'), findsWidgets);
+
+    // Kembali ke daftar: jumlah di kartu sesi ikut terpatch (1/1).
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
+    expect(find.text('1/1 dihitung'), findsOneWidget);
+  });
 
   testWidgets('hitung fisik: payload lengkap & identifikasi manual tercatat', (
     tester,
