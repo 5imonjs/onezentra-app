@@ -1709,6 +1709,44 @@ class _VerifySheetState extends State<_VerifySheet> {
     );
   }
 
+  /// Informasi kunci yang pertama dicari petugas sebelum mengisi hitungan.
+  Widget _targetInfo(String label, String value, Color color) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: AppTheme.radiusLg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.roboto(
+              fontSize: 8.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.4,
+              color: context.colors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.roboto(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
   Widget _buildTargetCard(
     ThemeColors colors,
     OpnameExpiredSessionItem item,
@@ -1749,7 +1787,30 @@ class _VerifySheetState extends State<_VerifySheet> {
             ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _targetInfo(
+              'QTY EXPIRED',
+              '${_formatQty(item.qtyWaveCrt)} CRT',
+              AppTheme.primary600,
+            ),
+            const SizedBox(width: 4),
+            _targetInfo(
+              'TERIMA',
+              _formatDate(item.tanggalPenerimaan),
+              colors.info,
+            ),
+            const SizedBox(width: 4),
+            _targetInfo(
+              'EXPIRED',
+              '${_formatDate(item.expiredDateIni)}'
+                  '${item.sisaHariBatch != null ? ' · ${item.sisaHariBatch}h' : ''}',
+              (item.sisaHariBatch ?? 999) <= 7 ? colors.danger : colors.warning,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         Text(
           '${item.namaBarang ?? '-'} · Barcode ${item.barcodeLabel ?? '-'}'
           ' · Terima ${_formatDate(item.tanggalPenerimaan)}'
@@ -2655,8 +2716,9 @@ class _OpnameProductCard extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        '$total batch · Stok wave ${_formatQty(stokWave)} CRT'
-                        '${stokPcs > 0 ? ' / ${_formatQty(stokPcs)} PCS' : ''}',
+                        'Qty expired ${_formatQty(stokWave)} CRT'
+                        '${stokPcs > 0 ? ' / ${_formatQty(stokPcs)} PCS' : ''}'
+                        ' · $total batch',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.roboto(
@@ -2891,19 +2953,49 @@ class _OpnameBatchRow extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 5),
-          Text(
-            'Barcode ${item.barcodeLabel ?? '—'}'
-            '${item.tanggalPenerimaan != null ? ' · Terima ${_formatDate(item.tanggalPenerimaan)}' : ''}'
-            ' · Exp ${_formatDate(item.expiredDateIni)}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.roboto(fontSize: 10, color: colors.textMuted),
+          // Tanggal terima & expired adalah informasi pertama yang dicari
+          // petugas — tampilkan sebagai blok tersendiri, bukan teks pinggiran.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+            decoration: BoxDecoration(
+              color: colors.surfaceHover,
+              borderRadius: AppTheme.radiusLg,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_month_rounded,
+                  size: 12,
+                  color: colors.textSecondary,
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    'Barcode ${item.barcodeLabel ?? '—'}'
+                    '${item.tanggalPenerimaan != null ? ' · Terima ${_formatDate(item.tanggalPenerimaan)}' : ''}'
+                    ' · Exp ${_formatDate(item.expiredDateIni)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.roboto(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 5),
           Wrap(
             spacing: 4,
             runSpacing: 4,
             children: [
+              chip(
+                'Qty expired ${_formatQty(item.qtyWaveCrt)} CRT',
+                color: colors.warning,
+                icon: Icons.inventory_2_rounded,
+              ),
               if (deltaInfo != null)
                 chip(deltaInfo.$1, color: deltaInfo.$2)
               else

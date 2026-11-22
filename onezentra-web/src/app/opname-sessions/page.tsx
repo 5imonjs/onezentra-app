@@ -126,6 +126,25 @@ export default function OpnameSessionsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Kolom progres di daftar sesi memakai items_count/verified_count dari
+  // backend. Tarik ulang saat tab aktif supaya hitungan mobile langsung tampil
+  // tanpa user menekan refresh manual.
+  useEffect(() => {
+    const refresh = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void load();
+      }
+    };
+    const timer = window.setInterval(refresh, 15_000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [load]);
+
   // Daftar depo tersumber dari master user; user global dengan depot.view_all
   // melihat seluruh depo. Gagal memuat cukup mematikan dropdown, bukan halaman.
   const loadDepots = useCallback(async () => {

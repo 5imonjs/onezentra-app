@@ -1379,6 +1379,10 @@ void main() {
 
     expect(find.text('PINDUK CEPAT'), findsOneWidget);
     expect(find.text('HASIL HITUNG'), findsOneWidget);
+    // Qty expired + tanggal terima jadi informasi pertama di form hitung.
+    expect(find.text('QTY EXPIRED'), findsOneWidget);
+    expect(find.text('TERIMA'), findsOneWidget);
+    expect(find.text('EXPIRED'), findsOneWidget);
     expect(
       find.text('Isi qty fisik untuk melihat selisih terhadap acuan.'),
       findsOneWidget,
@@ -1489,6 +1493,7 @@ void main() {
     await tester.tap(find.text('Sesi minggu 02/11/2026'));
     await tester.pumpAndSettle();
 
+    expect(find.textContaining('Qty expired'), findsWidgets);
     expect(find.text('Total 3'), findsOneWidget);
     expect(find.text('Dihitung 2'), findsOneWidget);
     expect(find.text('Habis 1'), findsOneWidget);
