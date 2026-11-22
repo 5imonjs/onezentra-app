@@ -1329,4 +1329,22 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertSame(1, $res->json('data.item_counted'));
         $this->assertSame(50, $res->json('data.item_pct'));
     }
+
+    public function test_index_filters_multiple_statuses_for_mobile_history(): void
+    {
+        $approved = $this->makeSession();
+        $approved->update(['status' => OpnameExpiredSession::STATUS_APPROVED]);
+        $cancelled = $this->makeSession();
+        $cancelled->update(['status' => OpnameExpiredSession::STATUS_CANCELLED]);
+        $open = $this->makeSession();
+
+        Sanctum::actingAs($this->supervisor);
+        $res = $this->getJson('/api/v1/opname-sessions?statuses[]=APPROVED&statuses[]=CANCELLED')
+            ->assertOk();
+        $ids = collect($res->json('data.data'))->pluck('id')->all();
+
+        $this->assertContains($approved->id, $ids);
+        $this->assertContains($cancelled->id, $ids);
+        $this->assertNotContains($open->id, $ids);
+    }
 }

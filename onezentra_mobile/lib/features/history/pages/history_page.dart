@@ -6,6 +6,8 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/gate/pages/gate_history_page.dart';
 import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart';
+import 'package:onezentra_mobile/features/opname/pages/opname_history_page.dart';
+import 'package:onezentra_mobile/features/opname/repositories/opname_expired_session_repository.dart';
 import 'package:onezentra_mobile/features/inbound/pages/inbound_page.dart';
 import 'package:onezentra_mobile/features/inbound/repositories/inbound_repository.dart';
 import 'package:onezentra_mobile/features/validation/pages/validation_history_page.dart';
@@ -21,11 +23,13 @@ class HistoryPage extends StatelessWidget {
     this.gateRepository,
     this.validationRepository,
     this.inboundRepository,
+    this.opnameRepository,
   });
 
   final GateRepository? gateRepository;
   final ValidationRepository? validationRepository;
   final InboundRepository? inboundRepository;
+  final OpnameExpiredSessionRepository? opnameRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +37,7 @@ class HistoryPage extends StatelessWidget {
     var canViewGate = user?.hasPermission('gate.view') ?? false;
     var canViewValidation = user?.hasPermission('sj_validation.view') ?? false;
     var canViewReceiving = user?.hasPermission('receiving.view') ?? false;
+    var canViewOpname = user?.hasPermission('opname.session.view') ?? false;
 
     var tabs = <_HistoryTab>[
       if (canViewGate)
@@ -55,6 +60,15 @@ class HistoryPage extends StatelessWidget {
           label: 'Penerimaan',
           icon: Icons.inventory_2_rounded,
           child: InboundPage(repository: inboundRepository, embedded: true),
+        ),
+      if (canViewOpname)
+        _HistoryTab(
+          label: 'Opname',
+          icon: Icons.fact_check_rounded,
+          child: OpnameHistoryPage(
+            repository: opnameRepository,
+            embedded: true,
+          ),
         ),
     ];
 

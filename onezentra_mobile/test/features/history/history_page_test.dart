@@ -13,6 +13,8 @@ import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart
 import 'package:onezentra_mobile/features/history/pages/history_page.dart';
 import 'package:onezentra_mobile/features/inbound/models/inbound_models.dart';
 import 'package:onezentra_mobile/features/inbound/repositories/inbound_repository.dart';
+import 'package:onezentra_mobile/features/opname/models/opname_expired_session_models.dart';
+import 'package:onezentra_mobile/features/opname/repositories/opname_expired_session_repository.dart';
 import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
 import 'package:onezentra_mobile/features/validation/repositories/validation_repository.dart';
 
@@ -60,6 +62,11 @@ class _FakeInboundRepository extends InboundRepository {
     int perPage = 20,
   }) async =>
       ReceivingPage(items: const [], currentPage: page, lastPage: 1, total: 0);
+}
+
+class _FakeOpnameRepository extends OpnameExpiredSessionRepository {
+  @override
+  Future<List<OpnameExpiredSession>> history() async => const [];
 }
 
 class _FakeAuthRepository extends AuthRepository {
@@ -110,6 +117,7 @@ Future<void> _pumpHistory(WidgetTester tester, AuthProvider auth) async {
           gateRepository: _FakeGateRepository(),
           validationRepository: _FakeValidationRepository(),
           inboundRepository: _FakeInboundRepository(),
+          opnameRepository: _FakeOpnameRepository(),
         ),
       ),
     ),
@@ -145,6 +153,22 @@ void main() {
     await tester.tap(find.text('Penerimaan'));
     await tester.pumpAndSettle();
     expect(find.text('Belum ada penerimaan'), findsOneWidget);
+  });
+
+  testWidgets('tab opname muncul untuk petugas opname', (tester) async {
+    var auth = await _loginAuth([
+      'gate.view',
+      'sj_validation.view',
+      'receiving.view',
+      'opname.session.view',
+    ]);
+
+    await _pumpHistory(tester, auth);
+
+    expect(find.byType(Tab), findsNWidgets(4));
+    await tester.tap(find.text('Opname'));
+    await tester.pumpAndSettle();
+    expect(find.text('Belum ada riwayat opname'), findsOneWidget);
   });
 
   testWidgets('tab disembunyikan sesuai permission', (tester) async {

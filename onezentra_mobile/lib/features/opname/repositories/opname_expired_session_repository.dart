@@ -94,6 +94,30 @@ class OpnameExpiredSessionRepository {
         .toList();
   }
 
+  /// Riwayat sesi opname untuk menu Riwayat: sesi yang sudah dikirim,
+  /// disetujui, selesai (legacy), atau dibatalkan. Sesi OPEN/IN_PROGRESS
+  /// tetap berada di halaman Tugas Lapangan.
+  Future<List<OpnameExpiredSession>> history() async {
+    const statuses = ['PENDING_APPROVAL', 'APPROVED', 'COMPLETED', 'CANCELLED'];
+    var statusQuery = statuses
+        .map((status) => 'statuses%5B%5D=${Uri.encodeComponent(status)}')
+        .join('&');
+    var response = _expectObject(
+      await _get('/opname-sessions?page=1&per_page=50&$statusQuery'),
+    );
+    var raw = response['data'];
+    var rawSessions = <dynamic>[];
+    if (raw is List) {
+      rawSessions = raw;
+    } else if (raw is Map && raw['data'] is List) {
+      rawSessions = raw['data'] as List<dynamic>;
+    }
+    return rawSessions
+        .whereType<Map>()
+        .map((e) => OpnameExpiredSession.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
   /// Detail satu sesi dengan item verifikasi.
   Future<OpnameExpiredSession> show(int id) async {
     var body = _expectObject(await _get('/opname-sessions/$id'));

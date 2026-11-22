@@ -79,10 +79,15 @@ class _HomePageState extends State<HomePage> {
     var historyMenus = [
       _HomeMenu(
         'Riwayat',
-        'Gate, validasi, dan penerimaan dalam satu tempat',
+        'Gate, validasi, penerimaan, dan opname dalam satu tempat',
         Icons.history_rounded,
         context.colors.info,
-        ['gate.view', 'sj_validation.view', 'receiving.view'],
+        [
+          'gate.view',
+          'sj_validation.view',
+          'receiving.view',
+          'opname.session.view',
+        ],
         '/riwayat',
       ),
     ];

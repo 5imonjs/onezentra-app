@@ -71,6 +71,22 @@ class OpnameExpiredSessionController extends Controller
 
         if ($request->status) {
             $query->where('status', strtoupper(trim($request->status)));
+        } else {
+            // Riwayat mobile menampilkan beberapa status final sekaligus.
+            $statuses = $request->validate([
+                'statuses' => 'sometimes|array|max:10',
+                'statuses.*' => 'string|max:32',
+            ])['statuses'] ?? [];
+            if ($statuses !== []) {
+                $query->whereIn(
+                    'status',
+                    collect($statuses)
+                        ->map(fn ($status): string => strtoupper(trim((string) $status)))
+                        ->filter()
+                        ->values()
+                        ->all(),
+                );
+            }
         }
 
         if ($request->boolean('mine')) {

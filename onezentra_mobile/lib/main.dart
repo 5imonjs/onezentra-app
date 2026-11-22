@@ -175,6 +175,7 @@ const List<String> _historyViewPermissions = [
   'gate.view',
   'sj_validation.view',
   'receiving.view',
+  'opname.session.view',
 ];
 
 const Map<String, List<String>> _routePermissions = {
@@ -269,6 +270,7 @@ GoRouter buildRouter(
         gateRepository: gateRepository,
         validationRepository: validationRepository,
         inboundRepository: inboundRepository,
+        opnameRepository: opnameExpiredSessionRepository,
       ),
     ),
   ],

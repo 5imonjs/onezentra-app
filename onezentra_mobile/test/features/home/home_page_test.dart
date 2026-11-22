@@ -121,7 +121,7 @@ void main() {
     expect(find.text('Opname Expired'), findsNothing);
     expect(find.text('Sesi Opname'), findsOneWidget);
     expect(
-      find.text('Gate, validasi, dan penerimaan dalam satu tempat'),
+      find.text('Gate, validasi, penerimaan, dan opname dalam satu tempat'),
       findsOneWidget,
     );
     // History is one entry, not one menu per stage.
@@ -180,9 +180,10 @@ void main() {
 
     await _pumpHomePage(tester, auth);
 
-    // Tidak ada kartu alur kerja gate, tapi opname tetap tampil.
+    // Tidak ada kartu alur kerja gate, tapi opname dan Riwayat (tab Opname)
+    // tetap tampil untuk petugas opname.
     expect(find.text('Check In Point'), findsNothing);
-    expect(find.text('Riwayat'), findsNothing);
+    expect(find.text('Riwayat'), findsOneWidget);
     expect(find.text('Opname stok'), findsOneWidget);
     expect(find.text('Sesi Opname'), findsOneWidget);
     expect(find.text('Opname Expired'), findsNothing);

@@ -227,6 +227,7 @@ class OpnameExpiredSession {
     this.kodeDepo,
     this.namaDepo,
     this.assignedTo,
+    this.assigneeName,
     this.status = 'OPEN',
     this.notes,
     this.startedAt,
@@ -253,6 +254,7 @@ class OpnameExpiredSession {
       kodeDepo: _readString(json['kode_depo']),
       namaDepo: _readString(json['nama_depo']),
       assignedTo: _readInt(json['assigned_to']),
+      assigneeName: _readString(_readMap(json['assignee'])?['full_name']),
       status: _readString(json['status']) ?? 'OPEN',
       notes: _readString(json['notes']),
       startedAt: _readString(json['started_at']),
@@ -288,6 +290,7 @@ class OpnameExpiredSession {
   final String? kodeDepo;
   final String? namaDepo;
   final int? assignedTo;
+  final String? assigneeName;
   final String status;
   final String? notes;
   final String? startedAt;
@@ -314,6 +317,7 @@ class OpnameExpiredSession {
         kodeDepo: kodeDepo,
         namaDepo: namaDepo,
         assignedTo: assignedTo,
+        assigneeName: assigneeName,
         status: status,
         notes: notes,
         startedAt: startedAt,
