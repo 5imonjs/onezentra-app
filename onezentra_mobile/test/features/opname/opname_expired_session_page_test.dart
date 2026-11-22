@@ -1316,6 +1316,75 @@ void main() {
     expect(find.text('2/4 dihitung'), findsOneWidget);
   });
 
+  testWidgets('daftar sesi: pita ringkasan beban kerja tampil', (tester) async {
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          itemsCount: 5,
+          verifiedCount: 2,
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+
+    expect(find.text('Sesi aktif'), findsOneWidget);
+    expect(find.text('Total batch'), findsOneWidget);
+    expect(find.text('Perlu dihitung'), findsOneWidget);
+  });
+
+  testWidgets('detail sesi: tombol kembali tanpa memuat ulang daftar', (
+    tester,
+  ) async {
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+    expect(find.text('Draf lokal'), findsOneWidget);
+
+    var callsBeforeBack = repository.listCalls;
+    await tester.tap(find.byTooltip('Kembali ke daftar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sesi minggu 02/11/2026'), findsOneWidget);
+    expect(find.text('Draf lokal'), findsNothing);
+    expect(repository.listCalls, callsBeforeBack);
+  });
+
+  testWidgets('sheet hitung: panduan input & aksi cepat tampil jelas', (
+    tester,
+  ) async {
+    var repository = buildCountingFixture();
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await openVerifySheet(tester);
+
+    expect(find.text('PINDUK CEPAT'), findsOneWidget);
+    expect(find.text('HASIL HITUNG'), findsOneWidget);
+    expect(
+      find.text('Isi qty fisik untuk melihat selisih terhadap acuan.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('detail sesi: ringkasan metrik modern tampil sekilas', (
     tester,
   ) async {

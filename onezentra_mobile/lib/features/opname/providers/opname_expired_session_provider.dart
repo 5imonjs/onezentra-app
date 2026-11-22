@@ -79,6 +79,15 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
   }
 
   /// Membuka detail sesi (dan memuatnya bila belum terpilih).
+  /// Kembali dari detail ke daftar tanpa memuat ulang jaringan.
+  void clearSelection() {
+    if (_disposed) {
+      return;
+    }
+    _selected = null;
+    _notify();
+  }
+
   Future<OpnameExpiredSession?> show(int id) async {
     var requestId = ++_requestId;
     _isLoading = true;

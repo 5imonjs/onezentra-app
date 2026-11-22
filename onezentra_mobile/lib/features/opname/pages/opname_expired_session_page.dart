@@ -357,30 +357,76 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                     subtitle:
                         'Sesi opname akan dibuat saat ada barang kadaluarsa yang perlu dicek.',
                   )
-                : ListView.separated(
-                    itemCount: provider.sessions.length,
-                    separatorBuilder: (child, index) =>
-                        const SizedBox(height: AppTheme.space3),
-                    padding: const EdgeInsets.all(AppTheme.space4),
-                    itemBuilder: (_, index) => _OpnameSessionTile(
-                      session: provider.sessions[index],
-                      onTap: () {
-                        // Filter/pencarian dari sesi sebelumnya jangan terbawa
-                        // ke sesi lain — petugas selalu melihat kondisi awal.
-                        _resetDetailFilters();
-                        var id = provider.sessions[index].id;
-                        provider.show(id);
-                        _loadDrafts(id);
-                      },
-                    ),
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Tablet: konten dibatasi 720dp dan ditengah, tidak
+                      // diregangkan penuh seperti versi lama.
+                      var side = constraints.maxWidth >= 760
+                          ? (constraints.maxWidth - 720) / 2
+                          : AppTheme.space4;
+                      return ListView.separated(
+                        itemCount: provider.sessions.length,
+                        separatorBuilder: (child, index) =>
+                            const SizedBox(height: AppTheme.space3),
+                        padding: EdgeInsets.fromLTRB(
+                          side,
+                          AppTheme.space4,
+                          side,
+                          AppTheme.space4,
+                        ),
+                        itemBuilder: (_, index) => _OpnameSessionTile(
+                          session: provider.sessions[index],
+                          onTap: () {
+                            // Filter/pencarian dari sesi sebelumnya jangan
+                            // terbawa ke sesi lain — petugas selalu melihat
+                            // kondisi awal.
+                            _resetDetailFilters();
+                            var id = provider.sessions[index].id;
+                            provider.show(id);
+                            _loadDrafts(id);
+                          },
+                        ),
+                      );
+                    },
                   ),
           );
 
+    var inDetail = provider.selected != null;
+    var colors = context.colors;
+
     return Scaffold(
-      backgroundColor: context.colors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('Sesi Opname'),
         elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: colors.background,
+        leading: inDetail
+            ? IconButton(
+                tooltip: 'Kembali ke daftar',
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () {
+                  _resetDetailFilters();
+                  provider.clearSelection();
+                },
+              )
+            : const Icon(Icons.inventory_2_rounded, size: 20),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Sesi Opname'),
+            Text(
+              inDetail
+                  ? 'Hitung fisik · ${_formatDate(provider.selected!.weekStart)}'
+                  : 'Tugas lapangan · ${provider.sessions.length} sesi aktif',
+              style: GoogleFonts.roboto(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w500,
+                color: colors.textMuted,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             onPressed: provider.load,
@@ -389,10 +435,83 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
           ),
         ],
       ),
-      body: SafeArea(child: content),
-      bottomNavigationBar: canView && provider.selected != null
+      body: Column(
+        children: [
+          if (!inDetail && provider.sessions.isNotEmpty && !provider.isLoading)
+            _buildOverviewBand(provider),
+          Expanded(child: SafeArea(child: content)),
+        ],
+      ),
+      bottomNavigationBar: canView && inDetail
           ? _buildActionDock(provider, context)
           : null,
+    );
+  }
+
+  /// Ringkasan beban kerja di atas daftar: berapa sesi, berapa batch, dan
+  /// berapa yang masih harus dihitung — dihitung dari agregat backend.
+  Widget _buildOverviewBand(OpnameExpiredSessionProvider provider) {
+    var colors = context.colors;
+    var batchCount = 0;
+    var pendingCount = 0;
+    for (var session in provider.sessions) {
+      var total = session.itemsCount ?? session.items.length;
+      var done =
+          session.verifiedCount ??
+          session.items.where((i) => i.isVerified).length;
+      batchCount += total;
+      pendingCount += total - done;
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(
+        AppTheme.space4,
+        AppTheme.space2,
+        AppTheme.space4,
+        0,
+      ),
+      padding: const EdgeInsets.all(AppTheme.space3),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.primary600.withValues(alpha: 0.14),
+            AppTheme.primary600.withValues(alpha: 0.04),
+          ],
+        ),
+        borderRadius: AppTheme.radius2xl,
+        border: Border.all(color: AppTheme.primary600.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _OverviewMetric(
+              icon: Icons.assignment_rounded,
+              value: '${provider.sessions.length}',
+              label: 'Sesi aktif',
+              color: AppTheme.primary600,
+            ),
+          ),
+          Container(width: 1, height: 34, color: colors.border),
+          Expanded(
+            child: _OverviewMetric(
+              icon: Icons.layers_rounded,
+              value: '$batchCount',
+              label: 'Total batch',
+              color: colors.info,
+            ),
+          ),
+          Container(width: 1, height: 34, color: colors.border),
+          Expanded(
+            child: _OverviewMetric(
+              icon: Icons.pending_actions_rounded,
+              value: '$pendingCount',
+              label: 'Perlu dihitung',
+              color: colors.warning,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1220,7 +1339,10 @@ class _VerifySheetState extends State<_VerifySheet> {
       double.tryParse(_qtyCrt.text.replaceAll(',', '.')) ?? 0;
   double get _qtyPcsValue =>
       double.tryParse(_qtyPcs.text.replaceAll(',', '.')) ?? 0;
-  bool get _isMarkedEmpty => _qtyCrtValue == 0 && _qtyPcsValue == 0;
+  // Kolom masih kosong = belum ada masukan, bukan "fisik 0". Tanpa syarat ini
+  // sheet langsung mengatakan "Tandai habis" sebelum petugas mengetik apa pun.
+  bool get _isMarkedEmpty =>
+      _qtyCrt.text.trim().isNotEmpty && _qtyCrtValue == 0 && _qtyPcsValue == 0;
 
   /// Selisih terhadap acuan, untuk preview live.
   double? get _delta {
@@ -1323,30 +1445,40 @@ class _VerifySheetState extends State<_VerifySheet> {
     var delta = _delta;
     var item = widget.item;
 
+    Color feedbackColor = _isMarkedEmpty
+        ? colors.warning
+        : delta == null
+        ? colors.textMuted
+        : delta == 0
+        ? colors.success
+        : delta > 0
+        ? colors.warning
+        : colors.danger;
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.92,
+          maxHeight: MediaQuery.of(context).size.height * 0.94,
         ),
         decoration: BoxDecoration(
           color: colors.background,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           border: Border(top: BorderSide(color: colors.border)),
         ),
         child: SafeArea(
           top: false,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Center(
                   child: Container(
-                    width: 36,
+                    width: 40,
                     height: 4,
                     decoration: BoxDecoration(
                       color: colors.border,
@@ -1354,29 +1486,71 @@ class _VerifySheetState extends State<_VerifySheet> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(
-                      child: Text(
-                        'Hitung Fisik',
-                        style: GoogleFonts.roboto(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: colors.foreground,
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.primary600.withValues(alpha: 0.9),
+                            AppTheme.primary600.withValues(alpha: 0.55),
+                          ],
                         ),
+                        borderRadius: AppTheme.radiusXl,
+                      ),
+                      child: const Icon(
+                        Icons.fact_check_rounded,
+                        size: 22,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.space3),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hitung Fisik',
+                            style: GoogleFonts.roboto(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                              color: colors.foreground,
+                            ),
+                          ),
+                          Text(
+                            'Identifikasi manual · acuan sistem sebagai pembanding',
+                            style: GoogleFonts.roboto(
+                              fontSize: 10.5,
+                              color: colors.textMuted,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close_rounded, size: 20),
+                      icon: const Icon(Icons.close_rounded, size: 22),
                       tooltip: 'Tutup',
                       color: colors.textMuted,
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
                 _buildTargetCard(colors, item),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                Text(
+                  'PINDUK CEPAT',
+                  style: GoogleFonts.roboto(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                    color: colors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   children: [
@@ -1393,10 +1567,21 @@ class _VerifySheetState extends State<_VerifySheet> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
+                Text(
+                  'HASIL HITUNG',
+                  style: GoogleFonts.roboto(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                    color: colors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
+                      flex: 3,
                       child: AppTextField(
                         controller: _qtyCrt,
                         key: const Key('verify_qty_crt'),
@@ -1409,6 +1594,7 @@ class _VerifySheetState extends State<_VerifySheet> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
+                      flex: 2,
                       child: AppTextField(
                         controller: _qtyPcs,
                         key: const Key('verify_qty_pcs'),
@@ -1421,87 +1607,67 @@ class _VerifySheetState extends State<_VerifySheet> {
                     ),
                   ],
                 ),
-                if (delta != null && delta != 0) ...[
-                  const SizedBox(height: 8),
-                  Row(
+                const SizedBox(height: 12),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: feedbackColor.withValues(alpha: 0.10),
+                    borderRadius: AppTheme.radiusLg,
+                    border: Border.all(
+                      color: feedbackColor.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
                     children: [
                       Icon(
-                        delta > 0
+                        _isMarkedEmpty
+                            ? Icons.inventory_2_outlined
+                            : delta == null
+                            ? Icons.info_outline_rounded
+                            : delta == 0
+                            ? Icons.check_circle_outline_rounded
+                            : delta > 0
                             ? Icons.trending_up_rounded
                             : Icons.trending_down_rounded,
-                        size: 16,
-                        color: delta > 0 ? colors.warning : colors.danger,
+                        size: 18,
+                        color: feedbackColor,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Selisih ${delta > 0 ? '+' : ''}${_formatQty(delta)} CRT dari acuan',
+                          _isMarkedEmpty
+                              ? 'Tandai habis — fisik 0; koreksi (retur/disposal) '
+                                    'dilakukan saat web memvalidasi sesi ini.'
+                              : delta == null
+                              ? 'Isi qty fisik untuk melihat selisih terhadap acuan.'
+                              : delta == 0
+                              ? 'Sesuai acuan'
+                              : 'Selisih ${delta > 0 ? '+' : ''}${_formatQty(delta)} CRT dari acuan',
                           style: GoogleFonts.roboto(
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: delta > 0 ? colors.warning : colors.danger,
+                            fontWeight: FontWeight.w700,
+                            height: 1.35,
+                            color: feedbackColor,
                           ),
                         ),
                       ),
                     ],
                   ),
-                ] else ...[
-                  const SizedBox(height: 8),
-                  if (_isMarkedEmpty)
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.inventory_2_outlined,
-                          size: 16,
-                          color: colors.warning,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Tandai habis — fisik 0; koreksi (retur/disposal) '
-                            'dilakukan saat web memvalidasi sesi ini.',
-                            style: GoogleFonts.roboto(
-                              fontSize: 11,
-                              height: 1.35,
-                              color: colors.warning,
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  else if (delta != null)
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline_rounded,
-                          size: 16,
-                          color: colors.success,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Sesuai acuan',
-                          style: GoogleFonts.roboto(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: colors.success,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-                // Tanpa disposisi: tindak lanjut fisik (retur/disposal)
-                // diurus terpisah di lapangan, bukan bagian sheet hitung.
-                const SizedBox(height: 12),
+                ),
+                const SizedBox(height: 16),
                 AppTextField(
                   controller: _notes,
                   label: 'Catatan (opsional)',
                   maxLines: 2,
                 ),
-                const SizedBox(height: 12),
-                if (_errorMessage != null)
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: colors.dangerWell,
                       borderRadius: AppTheme.radiusLg,
@@ -1530,10 +1696,13 @@ class _VerifySheetState extends State<_VerifySheet> {
                       ],
                     ),
                   ),
+                ],
+                const SizedBox(height: 20),
                 AppPrimaryButton(
                   text: 'Simpan Hasil Hitung',
                   onPressed: _save,
                   isLoading: _saving,
+                  height: 48,
                 ),
                 const SizedBox(height: AppTheme.space2),
                 AppSecondaryButton(
@@ -1555,22 +1724,41 @@ class _VerifySheetState extends State<_VerifySheet> {
     ThemeColors colors,
     OpnameExpiredSessionItem item,
   ) => Container(
-    padding: const EdgeInsets.all(12),
+    padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: context.colors.surfaceCard,
-      borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: context.colors.border),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          AppTheme.primary600.withValues(alpha: 0.14),
+          colors.surfaceCard,
+        ],
+      ),
+      borderRadius: AppTheme.radius2xl,
+      border: Border.all(color: AppTheme.primary600.withValues(alpha: 0.25)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
-          style: GoogleFonts.robotoMono(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: context.colors.foreground,
-          ),
+        Row(
+          children: [
+            const Icon(
+              Icons.qr_code_2_rounded,
+              size: 16,
+              color: AppTheme.primary600,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
+                style: GoogleFonts.robotoMono(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: colors.foreground,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 2),
         Text(
@@ -1771,6 +1959,55 @@ class _SessionDurationState extends State<_SessionDuration> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Metrik ringkas di pita ringkasan daftar sesi.
+class _OverviewMetric extends StatelessWidget {
+  const _OverviewMetric({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 5),
+            Text(
+              value,
+              style: GoogleFonts.roboto(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: GoogleFonts.roboto(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w600,
+            color: colors.textMuted,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2116,61 +2353,78 @@ class _ExpandablePrincipalGroupState extends State<_ExpandablePrincipalGroup> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        InkWell(
-          onTap: () => setState(() => _expanded = !_expanded),
-          borderRadius: AppTheme.radiusLg,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppTheme.space2),
-            child: Row(
-              children: [
-                Container(
-                  width: 3,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: colors.primaryWell,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: AppTheme.space2),
-                Expanded(
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.roboto(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: colors.foreground,
+        Material(
+          color: colors.surfaceCard,
+          borderRadius: AppTheme.radiusXl,
+          child: InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: AppTheme.radiusXl,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.space3,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: AppTheme.radiusXl,
+                border: Border.all(color: colors.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: colors.primaryWell,
+                      borderRadius: AppTheme.radiusLg,
+                    ),
+                    child: Icon(
+                      Icons.business_rounded,
+                      size: 17,
+                      color: colors.primaryWellText,
                     ),
                   ),
-                ),
-                const SizedBox(width: AppTheme.space2),
-                Text(
-                  '${widget.productCount} produk · ${widget.batchCount} batch',
-                  style: GoogleFonts.roboto(
-                    fontSize: 10.5,
-                    color: colors.textMuted,
+                  const SizedBox(width: AppTheme.space3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.roboto(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: colors.foreground,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${widget.productCount} produk · ${widget.batchCount} batch',
+                          style: GoogleFonts.roboto(
+                            fontSize: 10.5,
+                            color: colors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () => setState(() => _expanded = !_expanded),
-                  tooltip: _expanded ? 'Ciutkan' : 'Kembangkan',
-                  icon: Icon(
-                    _expanded
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
-                    size: 20,
-                    color: colors.textMuted,
+                  AnimatedRotation(
+                    turns: _expanded ? 0 : 0.5,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.expand_less_rounded,
+                      size: 20,
+                      color: colors.textMuted,
+                    ),
                   ),
-                  constraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 40,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
+        const SizedBox(height: AppTheme.space2),
         if (_expanded)
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2298,22 +2552,23 @@ class _OpnameProductCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 30,
-            height: 30,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  accent.withValues(alpha: 0.18),
-                  accent.withValues(alpha: 0.06),
+                  accent.withValues(alpha: 0.28),
+                  accent.withValues(alpha: 0.08),
                 ],
               ),
-              borderRadius: AppTheme.radiusLg,
+              borderRadius: AppTheme.radiusXl,
+              border: Border.all(color: accent.withValues(alpha: 0.3)),
             ),
             child: Icon(
               complete ? Icons.check_rounded : Icons.inventory_2_rounded,
-              size: 17,
+              size: 20,
               color: accent,
             ),
           ),
@@ -2368,27 +2623,19 @@ class _OpnameProductCard extends StatelessWidget {
           ),
           const SizedBox(width: AppTheme.space2),
           Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
             children: [
+              _OpnameProgressRing(
+                progress: total == 0 ? 0 : counted / total,
+                counted: counted,
+                total: total,
+              ),
               Text(
                 '$counted/$total',
                 style: GoogleFonts.roboto(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
                   color: complete ? colors.success : colors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              SizedBox(
-                width: 48,
-                height: 4,
-                child: ClipRRect(
-                  borderRadius: AppTheme.radiusFull,
-                  child: LinearProgressIndicator(
-                    value: total == 0 ? 0 : counted / total,
-                    backgroundColor: colors.border,
-                    valueColor: AlwaysStoppedAnimation<Color>(accent),
-                  ),
                 ),
               ),
             ],
@@ -2778,8 +3025,11 @@ class _OpnameBatchRow extends StatelessWidget {
             const SizedBox(height: AppTheme.space3),
             AppSecondaryButton(
               text: verified ? 'Hitung Ulang' : 'Hitung Fisik',
+              leadingIcon: verified
+                  ? Icons.edit_rounded
+                  : Icons.fact_check_rounded,
               onPressed: onCount,
-              height: 44,
+              height: 46,
             ),
           ],
         ],
