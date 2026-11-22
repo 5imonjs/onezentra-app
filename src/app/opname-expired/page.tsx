@@ -39,6 +39,8 @@ interface Wave {
   qty_ini_pcs: number;
   qty_lalu_crt: number;
   qty_lalu_pcs: number;
+  /** Satuan komposit (master NPN) — aktif saat setting global dinyalakan. */
+  composite_unit?: string | null;
   expired_date_ini: string;
   expired_date_lalu: string | null;
   sisa_hari: number;
@@ -219,7 +221,11 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
         )}
       </td>
       <td className="px-5 py-3 text-right whitespace-nowrap">
-        <span className="text-sm tabular-nums text-foreground">{fnum(num(w.qty_ini_pcs))}</span>
+        <span className="text-sm tabular-nums text-foreground">
+          {w.composite_unit
+            ? `${fnum(num(w.qty_ini_pcs))} ${w.composite_unit}`
+            : fnum(num(w.qty_ini_pcs))}
+        </span>
         {num(w.qty_koreksi_pcs) !== 0 && (
           <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_pcs)}</span>
         )}
@@ -1595,10 +1601,16 @@ export default function OpnameExpiredPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-popover rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Qty Minggu Ini</p>
-                    <p className="text-lg font-bold text-foreground tabular-nums mt-1">{fnum(num(current.qty_ini_crt))} CRT</p>
-                    <p className="text-xs text-muted-foreground tabular-nums">
-                      {num(current.qty_ini_pcs) > 0 ? `${fnum(num(current.qty_ini_pcs))} PCS` : 'PCS: —'}
+                    <p className="text-lg font-bold text-foreground tabular-nums mt-1">
+                      {current.composite_unit
+                        ? `${fnum(num(current.qty_ini_pcs))} ${current.composite_unit}`
+                        : `${fnum(num(current.qty_ini_crt))} CRT`}
                     </p>
+                    {!current.composite_unit && (
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        {num(current.qty_ini_pcs) > 0 ? `${fnum(num(current.qty_ini_pcs))} PCS` : 'PCS: —'}
+                      </p>
+                    )}
                     {num(current.qty_koreksi_crt) !== 0 && (
                       <p className="text-[11px] text-blue-600 tabular-nums mt-0.5">koreksi {num(current.qty_koreksi_crt)} CRT / {num(current.qty_koreksi_pcs)} PCS</p>
                     )}
@@ -1792,7 +1804,7 @@ export default function OpnameExpiredPage() {
       <Modal open={showSettings} onClose={() => setShowSettings(false)} title="Pengaturan Status Kedaluwarsa" subtitle="Ambang batas status kedaluwarsa" size="md"
         footer={
           <>
-            <button onClick={() => { setThresholdForm({ threshold_aman: 90, threshold_perhatian: 30, threshold_kritis: 7 }); setThresholdErrors([]); }} className="btn-secondary">Reset</button>
+            <button onClick={() => { setThresholdForm({ threshold_aman: 90, threshold_perhatian: 30, threshold_kritis: 7, composite_unit: 0 }); setThresholdErrors([]); }} className="btn-secondary">Reset</button>
             <button onClick={() => setShowSettings(false)} className="btn-secondary">Batal</button>
             <button onClick={saveSettings} className="btn-primary">Simpan</button>
           </>
@@ -1832,6 +1844,19 @@ export default function OpnameExpiredPage() {
             <label htmlFor="threshold-kritis" className="block text-xs font-medium text-muted-foreground mb-1">Batas Rekomendasi SEGERA (hari)</label>
             <input id="threshold-kritis" type="number" min={1} step={1} value={thresholdForm.threshold_kritis} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_kritis: parseInt(e.target.value) || 0 }))} className="input-field" />
             <p className="text-[11px] text-slate-400 mt-1">Lot berstatus Kritis dengan sisa ≤ hari ini → rekomendasi <span className="text-red-600 font-medium">&ldquo;SEGERA kirim/retur&rdquo;</span>. Nilai ini tidak menggeser batas status; status Kritis ditentukan oleh Ambang Perhatian.</p>
+          </div>
+          <div>
+            <label htmlFor="composite-unit" className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <input
+                id="composite-unit"
+                type="checkbox"
+                className="w-4 h-4 accent-emerald-600"
+                checked={thresholdForm.composite_unit === 1}
+                onChange={(e) => setThresholdForm((p) => ({ ...p, composite_unit: e.target.checked ? 1 : 0 }))}
+              />
+              Satuan komposit (NPN)
+            </label>
+            <p className="text-[11px] text-slate-400 mt-1">Tampilkan total PCS dengan satuan master NPN (ZAK/CASE/dll) di kolom PCS. Bila produk tak punya data NPN, tampilan biasa (CRT/BALL/PCS) tetap dipakai.</p>
           </div>
         </div>
       </Modal>
