@@ -371,6 +371,10 @@ export default function OpnameExpiredPage() {
     nama_depo: string | null;
     total: number;
     validated: number;
+    /** Hitungan lapangan dari item sesi — berubah saat mobile input. */
+    item_total?: number;
+    item_counted?: number;
+    item_pct?: number;
     has_session: boolean;
     has_open_session?: boolean;
     open_session_id?: number | null;
@@ -518,7 +522,7 @@ export default function OpnameExpiredPage() {
   const loadProgress = useCallback(async (week?: string) => {
     try {
       const res = await opnameExpired.progress({ week_start: week || undefined }) as {
-        data: { data: { depots: { kode_depo: string; nama_depo: string | null; total: number; validated: number; has_session: boolean; has_open_session?: boolean; open_session_id?: number | null; has_finalized_session?: boolean; finalized_session_id?: number | null; submitted: boolean }[] } };
+        data: { data: { depots: { kode_depo: string; nama_depo: string | null; total: number; validated: number; item_total?: number; item_counted?: number; item_pct?: number; has_session: boolean; has_open_session?: boolean; open_session_id?: number | null; has_finalized_session?: boolean; finalized_session_id?: number | null; submitted: boolean }[] } };
       };
       setDepoProgress(res.data.data.depots);
       setProgressError(false);
@@ -529,6 +533,24 @@ export default function OpnameExpiredPage() {
   }, []);
 
   useEffect(() => { loadProgress(weekStart); }, [loadProgress, weekStart]);
+
+  // Hitungan mobile masuk ke item sesi, jadi progres harus ditarik ulang.
+  // Hanya saat tab aktif + saat fokus untuk menghindari request bertumpuk.
+  useEffect(() => {
+    const refresh = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void loadProgress(weekStart);
+      }
+    };
+    const timer = window.setInterval(refresh, 15_000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [loadProgress, weekStart]);
 
   // Status data awal hanya relevan untuk akun depo. Akun pusat/global tidak
   // dipaksa memilih satu depo di sini.
@@ -621,6 +643,11 @@ export default function OpnameExpiredPage() {
   // filter tab/search, sehingga cocok untuk menentukan langkah alur.
   const progressTotal = depoProgress?.reduce((sum, d) => sum + d.total, 0) ?? 0;
   const progressValidated = depoProgress?.reduce((sum, d) => sum + d.validated, 0) ?? 0;
+  // Progres hitungan lapangan (berubah saat mobile input), dipakai untuk
+  // tampilan. `progressValidated` tetap dipakai logika alur/approval.
+  const countedTotal = depoProgress?.reduce((sum, d) => sum + (d.item_total ?? d.total), 0) ?? 0;
+  const countedDone = depoProgress?.reduce((sum, d) => sum + (d.item_counted ?? d.validated), 0) ?? 0;
+  const countedPct = countedTotal > 0 ? Math.round((countedDone / countedTotal) * 100) : 0;
   const weekRows = depoProgress && depoProgress.length > 0
     ? progressTotal
     : Object.values(statusSummary).reduce((sum, s) => sum + (s?.count ?? 0), 0);
@@ -630,7 +657,6 @@ export default function OpnameExpiredPage() {
   const onlyOpenSessionId = openSessionRows.length === 1 ? (openSessionRows[0].open_session_id ?? null) : null;
   const finalizedSessionRows = depoProgress?.filter((d) => d.has_finalized_session && d.finalized_session_id) ?? [];
   const onlyFinalizedSessionId = finalizedSessionRows.length === 1 ? (finalizedSessionRows[0].finalized_session_id ?? null) : null;
-  const progressPct = progressTotal > 0 ? Math.round((progressValidated / progressTotal) * 100) : 0;
   const hasWeekRows = weekRows > 0 || waves.length > 0;
 
   // Dipakai empty-state: apakah pencarian aktif (UI saja).
@@ -1145,7 +1171,7 @@ export default function OpnameExpiredPage() {
               <h2 className="text-sm font-bold text-foreground">
                 Progres Sesi Opname per Depo
                 <span className="ml-2 font-medium text-slate-400">
-                  {depoProgress.filter((d) => d.submitted).length}/{depoProgress.length} depo sudah submit · {progressPct}% baris tervalidasi
+                  {depoProgress.filter((d) => d.submitted).length}/{depoProgress.length} depo submit · {countedPct}% batch dihitung ({countedDone}/{countedTotal})
                 </span>
               </h2>
               {hasPermission('opname.create') && depoProgress.some((d) => !d.submitted) && (
@@ -1162,7 +1188,9 @@ export default function OpnameExpiredPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
               {depoProgress.map((d) => {
-                const pct = d.total > 0 ? Math.round((d.validated / d.total) * 100) : 100;
+                const rowTotal = d.item_total ?? d.total;
+                const rowDone = d.item_counted ?? d.validated;
+                const pct = rowTotal > 0 ? Math.round((rowDone / rowTotal) * 100) : 100;
                 return (
                   <div key={d.kode_depo} className="flex items-center gap-3 rounded-xl border border-border px-3 py-2">
                     <span className={`w-2 h-2 rounded-full shrink-0 ${d.submitted ? 'bg-emerald-500' : 'bg-amber-500'}`} aria-hidden="true" />
@@ -1172,7 +1200,7 @@ export default function OpnameExpiredPage() {
                         <div className={`h-full rounded-full ${d.submitted ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
-                    <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap" title={`${d.validated} dari ${d.total} baris tervalidasi`}>{d.validated}/{d.total}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap" title={`${rowDone} dari ${rowTotal} batch dihitung`}>{rowDone}/{rowTotal}</span>
                     {hasPermission('opname.session.view') && (
                       <Link
                         href={sessionHref({ depo: d.kode_depo })}
