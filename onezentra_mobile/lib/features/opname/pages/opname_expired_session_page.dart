@@ -2238,11 +2238,76 @@ class _DateFactCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var colors = context.colors;
+    if (dense) {
+      // Mode ringkas (baris batch/produk): satu baris — label + tanggal +
+      // helper, menyisakkan ruang untuk metrik & chip di bawahnya.
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: tone.withValues(alpha: 0.07),
+          borderRadius: AppTheme.radiusLg,
+          border: Border.all(color: tone.withValues(alpha: 0.22)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 11, color: tone),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.roboto(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                      color: tone,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        date,
+                        maxLines: 1,
+                        style: GoogleFonts.roboto(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: colors.foreground,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (helper != null) ...[
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(
+                        helper!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.roboto(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: tone,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: dense ? 8 : 10,
-        vertical: dense ? 7 : 9,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: tone.withValues(alpha: 0.07),
         borderRadius: AppTheme.radiusLg,
@@ -2251,8 +2316,8 @@ class _DateFactCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: dense ? 14 : 16, color: tone),
-          SizedBox(width: dense ? 6 : 8),
+          Icon(icon, size: 16, color: tone),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2263,7 +2328,7 @@ class _DateFactCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: dense ? 8.5 : 9.5,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
                     color: colors.textMuted,
@@ -2277,7 +2342,7 @@ class _DateFactCard extends StatelessWidget {
                     date,
                     maxLines: 1,
                     style: GoogleFonts.roboto(
-                      fontSize: dense ? 13 : 15,
+                      fontSize: 15,
                       fontWeight: FontWeight.w800,
                       height: 1.15,
                       color: colors.foreground,
@@ -2291,7 +2356,7 @@ class _DateFactCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.roboto(
-                      fontSize: dense ? 9.5 : 10.5,
+                      fontSize: 10.5,
                       fontWeight: FontWeight.w700,
                       color: tone,
                     ),
