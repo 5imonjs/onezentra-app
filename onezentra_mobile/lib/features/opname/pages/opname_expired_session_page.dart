@@ -2424,6 +2424,51 @@ class _ExpandablePrincipalGroupState extends State<_ExpandablePrincipalGroup> {
   }
 }
 
+/// Ringkasan kecil per produk: total, sudah dihitung, habis/kosong, dan sisa.
+/// Ditempatkan di dalam kartu supaya petugas melihat komposisi batch produk
+/// yang sama tanpa membuka satu per satu (beberapa batch bisa berisi habis,
+/// sebagian belum dihitung).
+class _ProductMiniStat extends StatelessWidget {
+  const _ProductMiniStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.09),
+        borderRadius: AppTheme.radiusLg,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 3),
+          Text(
+            '$label $value',
+            style: GoogleFonts.roboto(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// Satu produk = satu kartu. Header memuat identitas + progres, baris batch
 /// di bawahnya dipisah divider. Petugas tidak perlu mencocokkan header cluster
 /// terpisah dengan barisnya saat menghitung fisik di lapangan.
@@ -2450,6 +2495,16 @@ class _OpnameProductCard extends StatelessWidget {
     var first = allItems.first;
     var counted = allItems.where((item) => item.isVerified).length;
     var total = allItems.length;
+    // Batch yang ditandai habis: fisik 0 CRT dan 0 PCS setelah diverifikasi.
+    var emptyCount = allItems
+        .where(
+          (item) =>
+              item.isVerified &&
+              (item.qtyFisikCrt ?? 0) == 0 &&
+              (item.qtyFisikPcs ?? 0) == 0,
+        )
+        .length;
+    var remaining = total - counted;
     var complete = counted == total;
     var productAccent = _productAccent(_productKey(first), colors);
     var accent = complete ? colors.success : productAccent;
@@ -2495,6 +2550,38 @@ class _OpnameProductCard extends StatelessWidget {
             total,
             complete,
             accent,
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              _ProductMiniStat(
+                icon: Icons.layers_rounded,
+                label: 'Total',
+                value: total,
+                color: AppTheme.primary600,
+              ),
+              const SizedBox(width: 4),
+              _ProductMiniStat(
+                icon: Icons.task_alt_rounded,
+                label: 'Dihitung',
+                value: counted,
+                color: colors.success,
+              ),
+              const SizedBox(width: 4),
+              _ProductMiniStat(
+                icon: Icons.inventory_2_rounded,
+                label: 'Habis',
+                value: emptyCount,
+                color: colors.warning,
+              ),
+              const SizedBox(width: 4),
+              _ProductMiniStat(
+                icon: Icons.pending_actions_rounded,
+                label: 'Sisa',
+                value: remaining,
+                color: colors.textMuted,
+              ),
+            ],
           ),
           const SizedBox(height: AppTheme.space2),
           for (var i = 0; i < items.length; i++) ...[

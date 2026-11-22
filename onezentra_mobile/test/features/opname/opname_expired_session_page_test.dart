@@ -1435,6 +1435,68 @@ void main() {
     expect(find.text('1/2 dihitung'), findsOneWidget);
   });
 
+  testWidgets('kartu produk merangkum total, dihitung, habis, dan sisa', (
+    tester,
+  ) async {
+    const penuh = OpnameExpiredSessionItem(
+      id: 91,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-900',
+      namaBarang: 'Sirup Herbal 200ml',
+      batchNumber: 'BATCH-91',
+      expectedCrt: 5,
+      qtyFisikCrt: 5,
+      verifiedAt: '2026-11-21T02:30:00Z',
+    );
+    const habis = OpnameExpiredSessionItem(
+      id: 92,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-900',
+      namaBarang: 'Sirup Herbal 200ml',
+      batchNumber: 'BATCH-92',
+      expectedCrt: 2,
+      qtyFisikCrt: 0,
+      qtyFisikPcs: 0,
+      verifiedAt: '2026-11-21T02:31:00Z',
+    );
+    const belum = OpnameExpiredSessionItem(
+      id: 93,
+      sessionId: 1,
+      waveId: 100,
+      kodeBarang: 'KB-900',
+      namaBarang: 'Sirup Herbal 200ml',
+      batchNumber: 'BATCH-93',
+      expectedCrt: 3,
+    );
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          weekEnd: '2026-11-08',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: [penuh, habis, belum],
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Total 3'), findsOneWidget);
+    expect(find.text('Dihitung 2'), findsOneWidget);
+    expect(find.text('Habis 1'), findsOneWidget);
+    expect(find.text('Sisa 1'), findsOneWidget);
+    // Status tiap batch tetap terlihat, termasuk yang ditandai habis.
+    expect(find.text('Habis'), findsOneWidget);
+  });
+
   testWidgets('hitung fisik tidak mengunduh ulang detail sesi', (tester) async {
     var repository = buildCountingFixture();
     var auth = await _loginAuth();
