@@ -2,7 +2,7 @@ name: onezentra_mobile
 description: "OneZentra Mobile - Warehouse Management System"
 publish_to: 'none'
 
-version: 1.0.23+27
+version: 1.0.24+28
 
 environment:
   sdk: ^3.11.0
