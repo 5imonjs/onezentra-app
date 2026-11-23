@@ -3055,11 +3055,11 @@ class _OpnameProductCard extends StatelessWidget {
         : '';
 
     return AppCard(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       color: complete ? colors.success.withValues(alpha: 0.05) : null,
       border: complete
           ? Border.all(color: colors.success.withValues(alpha: 0.45))
-          : Border(top: BorderSide(color: productAccent, width: 3)),
+          : Border.all(color: colors.border),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -3074,7 +3074,7 @@ class _OpnameProductCard extends StatelessWidget {
             complete,
             accent,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppTheme.space2),
           Row(
             children: [
               _ProductMiniStat(
@@ -3083,14 +3083,12 @@ class _OpnameProductCard extends StatelessWidget {
                 value: total,
                 color: AppTheme.primary600,
               ),
-              const SizedBox(width: 3),
               _ProductMiniStat(
                 icon: Icons.task_alt_rounded,
                 label: 'Dihitung',
                 value: counted,
                 color: colors.success,
               ),
-              const SizedBox(width: 3),
               _ProductMiniStat(
                 icon: Icons.fact_check_rounded,
                 label: 'Fisik',
@@ -3101,14 +3099,17 @@ class _OpnameProductCard extends StatelessWidget {
                 ),
                 color: AppTheme.primary600,
               ),
-              const SizedBox(width: 3),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
               _ProductMiniStat(
                 icon: Icons.inventory_2_rounded,
                 label: 'Habis',
                 value: emptyCount,
                 color: colors.warning,
               ),
-              const SizedBox(width: 3),
               _ProductMiniStat(
                 icon: Icons.pending_actions_rounded,
                 label: 'Sisa',
@@ -3300,7 +3301,7 @@ class _OpnameBatchRow extends StatelessWidget {
         : 'Belum dihitung';
 
     Widget chip(String text, {Color? color, IconData? icon}) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
         color: (color ?? colors.textMuted).withValues(alpha: 0.10),
         borderRadius: AppTheme.radiusFull,
@@ -3443,8 +3444,8 @@ class _OpnameBatchRow extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 2,
-            runSpacing: 2,
+            spacing: 4,
+            runSpacing: 4,
             children: [
               chip(
                 statusText,
