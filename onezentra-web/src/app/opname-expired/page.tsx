@@ -215,19 +215,19 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
       <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{w.principal_1 || '-'}</td>
       <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{w.principal_2 || '-'}</td>
       <td className="px-5 py-3 text-right whitespace-nowrap">
-        <span className="text-sm font-semibold tabular-nums text-foreground">{fnum(num(w.qty_ini_crt))}</span>
+        <span className="text-sm font-semibold tabular-nums text-foreground">{fnum(num(w.qty_ini_crt) + num(w.qty_koreksi_crt))}</span>
         {num(w.qty_koreksi_crt) !== 0 && (
-          <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_crt)}</span>
+          <span className="block text-[11px] text-muted-foreground tabular-nums">dari {fnum(num(w.qty_ini_crt))} · koreksi {num(w.qty_koreksi_crt)}</span>
         )}
       </td>
       <td className="px-5 py-3 text-right whitespace-nowrap">
         <span className="text-sm tabular-nums text-foreground">
           {w.composite_unit
-            ? `${fnum(num(w.qty_ini_pcs))} ${w.composite_unit}`
-            : fnum(num(w.qty_ini_pcs))}
+            ? `${fnum(num(w.qty_ini_pcs) + num(w.qty_koreksi_pcs))} ${w.composite_unit}`
+            : fnum(num(w.qty_ini_pcs) + num(w.qty_koreksi_pcs))}
         </span>
         {num(w.qty_koreksi_pcs) !== 0 && (
-          <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_pcs)}</span>
+          <span className="block text-[11px] text-muted-foreground tabular-nums">dari {fnum(num(w.qty_ini_pcs))} · koreksi {num(w.qty_koreksi_pcs)}</span>
         )}
       </td>
       <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</td>
@@ -1488,13 +1488,13 @@ export default function OpnameExpiredPage() {
                           <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                           {w.nama_depo || w.kode_depo || '-'}
                         </span>
-                        <span className="tabular-nums text-foreground"><span className="text-slate-400">Qty CRT:</span> <span className="font-semibold">{fnum(num(w.qty_ini_crt))}</span></span>
-                        <span className="tabular-nums text-foreground"><span className="text-slate-400">Qty PCS:</span> <span className="font-semibold">{fnum(num(w.qty_ini_pcs))}</span></span>
+                        <span className="tabular-nums text-foreground"><span className="text-slate-400">Qty CRT:</span> <span className="font-semibold">{fnum(num(w.qty_ini_crt) + num(w.qty_koreksi_crt))}</span></span>
+                        <span className="tabular-nums text-foreground"><span className="text-slate-400">Qty PCS:</span> <span className="font-semibold">{fnum(num(w.qty_ini_pcs) + num(w.qty_koreksi_pcs))}</span></span>
                         {sourceBadge(w.source_mix)}
                         <span className="tabular-nums text-foreground"><span className="text-slate-400">Principal 1:</span> <span className="font-semibold">{w.principal_1 || '-'}</span></span>
                         <span className="tabular-nums text-foreground"><span className="text-slate-400">Principal 2:</span> <span className="font-semibold">{w.principal_2 || '-'}</span></span>
-                        {num(w.qty_koreksi_crt) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi CRT {num(w.qty_koreksi_crt)}</span>}
-                        {num(w.qty_koreksi_pcs) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi PCS {num(w.qty_koreksi_pcs)}</span>}
+                        {num(w.qty_koreksi_crt) !== 0 && <span className="tabular-nums text-[11px] text-muted-foreground">dari {fnum(num(w.qty_ini_crt))} · koreksi CRT {num(w.qty_koreksi_crt)}</span>}
+                        {num(w.qty_koreksi_pcs) !== 0 && <span className="tabular-nums text-[11px] text-muted-foreground">dari {fnum(num(w.qty_ini_pcs))} · koreksi PCS {num(w.qty_koreksi_pcs)}</span>}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="rounded-lg bg-popover px-2.5 py-2">
