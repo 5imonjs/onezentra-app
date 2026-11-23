@@ -2,12 +2,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import OpnameExpiredPage from './page';
 
-const { hasPermission, list, pending, progress, baselineManifests, getErrorMessage, notifyGlobal } = vi.hoisted(() => ({
+const { hasPermission, list, pending, progress, baselineManifests, deleteWave, getErrorMessage, notifyGlobal } = vi.hoisted(() => ({
   hasPermission: vi.fn((_slug: string) => true),
   list: vi.fn(),
   pending: vi.fn(),
   progress: vi.fn(),
   baselineManifests: vi.fn(),
+  deleteWave: vi.fn(),
   getErrorMessage: vi.fn((_e: unknown, fallback: string) => fallback),
   notifyGlobal: vi.fn(),
 }));
@@ -29,7 +30,28 @@ vi.mock('@/components/Modal', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('@/components/ConfirmDialog', () => ({ default: () => null }));
+vi.mock('@/components/ConfirmDialog', () => ({
+  default: ({
+    open,
+    onConfirm,
+    onClose,
+    confirmLabel = 'Konfirmasi',
+    cancelLabel = 'Batal',
+    loading = false,
+  }: {
+    open: boolean;
+    onConfirm: () => void;
+    onClose: () => void;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    loading?: boolean;
+  }) => (open ? (
+    <div>
+      <button onClick={onClose} disabled={loading}>{cancelLabel}</button>
+      <button onClick={onConfirm} disabled={loading}>{confirmLabel}</button>
+    </div>
+  ) : null),
+}));
 
 vi.mock('@/components/ManualBatchManager', () => ({ default: () => null }));
 
@@ -45,7 +67,7 @@ vi.mock('@/lib/api', () => ({
     export: vi.fn(),
     settings: vi.fn(),
     updateSettings: vi.fn(),
-    delete: vi.fn(),
+    delete: deleteWave,
     remind: vi.fn(),
   },
   getErrorMessage,
@@ -54,6 +76,7 @@ vi.mock('@/lib/api', () => ({
 describe('OpnameExpiredPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    deleteWave.mockReset();
     hasPermission.mockReturnValue(true);
 
     list.mockResolvedValue({
@@ -414,4 +437,96 @@ describe('OpnameExpiredPage', () => {
     expect(link.getAttribute('href')).toContain('create=1');
     expect(link.getAttribute('href')).not.toContain('session_id=');
   });
+
+  it('mengirim DELETE sekali per baris walau konfirmasi hapus massal diklik dua kali', async () => {
+    list.mockResolvedValue(listResponse([makeWave(5340, 'AAA'), makeWave(5145, 'BBB')]));
+    // Loop pertama sengaja ditahan supaya klik kedua jatuh saat delete masih berjalan.
+    deleteWave.mockImplementation(() => new Promise(() => {}));
+
+    render(<OpnameExpiredPage />);
+    await screen.findAllByText('AAA');
+
+    fireEvent.click(screen.getByLabelText('Pilih semua baris yang tampil'));
+    fireEvent.click(screen.getByRole('button', { name: 'Hapus baris terpilih' }));
+
+    const confirm = screen.getByRole('button', { name: 'Ya, hapus' });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+
+    await waitFor(() => expect(deleteWave).toHaveBeenCalledTimes(1));
+    expect(deleteWave).toHaveBeenCalledWith(5340);
+  });
+
+  it('menganggap 404 saat hapus satu baris sebagai sudah terhapus', async () => {
+    list.mockResolvedValue(listResponse([makeWave(5340, 'AAA')]));
+    deleteWave.mockRejectedValue({ response: { status: 404 } });
+
+    render(<OpnameExpiredPage />);
+    await screen.findAllByText('AAA');
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Hapus' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Ya, hapus' }));
+
+    await waitFor(() => {
+      expect(notifyGlobal).toHaveBeenCalledWith(
+        'Baris monitoring sudah tidak ada (mungkin sudah dihapus).',
+        'success',
+      );
+    });
+    expect(notifyGlobal).not.toHaveBeenCalledWith('Hapus gagal', 'error');
+  });
 });
+
+function makeWave(id: number, kode: string) {
+  return {
+    id,
+    week_start: '2026-11-16',
+    week_end: '2026-11-22',
+    kode_depo: 'DPO',
+    nama_depo: 'Depo Test',
+    kode_barang: kode,
+    nama_barang: `Barang ${kode}`,
+    principal_1: null,
+    principal_2: null,
+    source_mix: { sj: 1, import: 0, legacy: 0 },
+    sumber_material: 'Depo Test',
+    tanggal_penerimaan: '2026-11-14',
+    qty_ini_crt: 0,
+    qty_ini_pcs: 0,
+    qty_lalu_crt: 0,
+    qty_lalu_pcs: 0,
+    expired_date_ini: '2026-03-02',
+    expired_date_lalu: null,
+    sisa_hari: -259,
+    status_ini: 'EXPIRED',
+    status_lalu: null,
+    perubahan: 'BARU',
+    rekomendasi: '-',
+    selisih_expired_date: null,
+    qty_koreksi_crt: 0,
+    qty_koreksi_pcs: 0,
+    validated_at: null,
+  };
+}
+
+function listResponse(waves: Array<ReturnType<typeof makeWave>>) {
+  return {
+    data: {
+      data: {
+        data: waves,
+        current_page: 1,
+        last_page: 1,
+        per_page: 25,
+        total: waves.length,
+      },
+      meta: {
+        weeks: ['2026-11-16'],
+        thresholds: { threshold_aman: 90, threshold_perhatian: 30, threshold_kritis: 7 },
+        status_summary: {},
+        prev_week_start: null,
+        prev_status_summary: {},
+        depot_summary: [],
+      },
+    },
+  };
+}

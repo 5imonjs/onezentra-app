@@ -758,7 +758,15 @@ export default function OpnameExpiredPage() {
       notifyGlobal('Baris monitoring berhasil dihapus', 'success');
       reloadAll(false);
     } catch (e) {
-      notifyGlobal(getErrorMessage(e, 'Hapus gagal'), 'error');
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      // 404 = baris sudah dihapus (mis. oleh user lain / tab lain). Jangan
+      // tampilkan sebagai kegagalan; hasil akhirnya tetap "sudah tidak ada".
+      if (status === 404) {
+        notifyGlobal('Baris monitoring sudah tidak ada (mungkin sudah dihapus).', 'success');
+        reloadAll(false);
+      } else {
+        notifyGlobal(getErrorMessage(e, 'Hapus gagal'), 'error');
+      }
     } finally {
       setSingleDeleting(false);
       setShowSingleDelete(false);
@@ -770,6 +778,11 @@ export default function OpnameExpiredPage() {
   const [selectedWaveIds, setSelectedWaveIds] = useState<Set<number>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  // Ref guard: `bulkDeleting` (state) baru terlihat pada render berikutnya,
+  // jadi klik "Ya, hapus" yang kedua masih bisa memulai loop paralel. Dua loop
+  // mengirim DELETE yang sama dua kali → request kedua 404. Ref menutup celah
+  // itu sebelum render berikutnya sempat terjadi.
+  const bulkDeletingRef = useRef(false);
   // Hapus satu wave lewat ConfirmDialog (pengganti native confirm) + guard dobel-klik.
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [showSingleDelete, setShowSingleDelete] = useState(false);
@@ -785,33 +798,39 @@ export default function OpnameExpiredPage() {
   }, [setSelectedWaveIds]);
 
   const confirmBulkDeleteWaves = async () => {
+    if (bulkDeletingRef.current) return;
     const ids = waves.filter((w) => selectedWaveIds.has(w.id)).map((w) => w.id);
     if (ids.length === 0) return;
+    bulkDeletingRef.current = true;
     setBulkDeleting(true);
-    let ok = 0;
-    let fail = 0;
-    for (const id of ids) {
-      try {
-        await opnameExpired.delete(id);
-        ok++;
-      } catch (e) {
-        const status = (e as { response?: { status?: number } })?.response?.status;
-        // 404 = wave sudah tidak ada (mis. terhapus sebelumnya) → anggap berhasil
-        if (status === 404) {
+    try {
+      let ok = 0;
+      let fail = 0;
+      for (const id of ids) {
+        try {
+          await opnameExpired.delete(id);
           ok++;
-        } else {
-          fail++;
+        } catch (e) {
+          const status = (e as { response?: { status?: number } })?.response?.status;
+          // 404 = wave sudah tidak ada (mis. terhapus sebelumnya) → anggap berhasil
+          if (status === 404) {
+            ok++;
+          } else {
+            fail++;
+          }
         }
       }
+      notifyGlobal(
+        fail === 0 ? `${ok} baris opname dihapus.` : `${ok} baris opname dihapus, ${fail} gagal (kemungkinan depo lain).`,
+        fail === 0 ? 'success' : 'error'
+      );
+    } finally {
+      bulkDeletingRef.current = false;
+      setBulkDeleting(false);
+      setShowBulkDelete(false);
+      setSelectedWaveIds(new Set());
+      reloadAll(false);
     }
-    setBulkDeleting(false);
-    setShowBulkDelete(false);
-    setSelectedWaveIds(new Set());
-    notifyGlobal(
-      fail === 0 ? `${ok} baris opname dihapus.` : `${ok} baris opname dihapus, ${fail} gagal (kemungkinan depo lain).`,
-      fail === 0 ? 'success' : 'error'
-    );
-    reloadAll(false);
   };
 
   const openSettings = async () => {
@@ -1898,6 +1917,7 @@ export default function OpnameExpiredPage() {
         message="Baris monitoring terpilih akan dihapus dari minggu ini. Data catatan stok tidak ikut terhapus — Buat Baris Monitoring akan membuatnya kembali. Lanjutkan?"
         confirmLabel="Ya, hapus"
         variant="danger"
+        loading={bulkDeleting}
       />
 
       <ConfirmDialog
