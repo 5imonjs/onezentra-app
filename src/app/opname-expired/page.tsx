@@ -351,6 +351,7 @@ export default function OpnameExpiredPage() {
   const [searchApply, setSearchApply] = useState('');
   // Filter sumber data: '' semua, 'sj' murni sistem, 'import' manual, 'mixed' gabungan.
   const [sourceFilter, setSourceFilter] = useState('');
+  const [stockFilter, setStockFilter] = useState('');
   // Filter depo: '' semua; opsi dari meta.depot_summary (semua depo minggu ini).
   const [depoFilter, setDepoFilter] = useState('');
   const [depotSummary, setDepotSummary] = useState<DepotSummaryEntry[]>([]);
@@ -459,6 +460,7 @@ export default function OpnameExpiredPage() {
         search: searchApply || undefined,
         statuses: tabStatuses?.join(',') || undefined,
         source: sourceFilter || undefined,
+        stock: stockFilter || undefined,
         kode_depo: depoFilter || undefined,
         sort_by: sort.key || undefined,
         sort_dir: sort.key ? sort.dir : undefined,
@@ -491,7 +493,7 @@ export default function OpnameExpiredPage() {
     } finally {
       setLoading(false);
     }
-  }, [weekStart, searchApply, tabStatuses, page, sort, sourceFilter, depoFilter]);
+  }, [weekStart, searchApply, tabStatuses, page, sort, sourceFilter, stockFilter, depoFilter]);
 
   const handleSort = (key: SortKey) => {
     setSort((prev) => prev.key === key
@@ -1309,6 +1311,21 @@ export default function OpnameExpiredPage() {
                 <option value="import">Stok Manual</option>
                 <option value="legacy">Saldo Awal</option>
                 <option value="mixed">Gabungan</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stok</span>
+              <select
+                value={stockFilter}
+                onChange={(e) => { setStockFilter(e.target.value); setPage(1); }}
+                aria-label="Filter stok kosong"
+                title="Saring stok efektif (qty awal + koreksi): kosong CRT/BALL, kosong PCS, atau kosong keduanya"
+                className="select-field-sm min-w-[150px]"
+              >
+                <option value="">Semua stok</option>
+                <option value="kosong_crt">Kosong CRT/BALL</option>
+                <option value="kosong_pcs">Kosong PCS</option>
+                <option value="kosong_total">Kosong keduanya</option>
               </select>
             </label>
           </div>
