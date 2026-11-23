@@ -1040,7 +1040,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.space1),
+          const SizedBox(height: AppTheme.space2),
           Row(
             children: [
               Flexible(
@@ -1074,16 +1074,16 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                   totalFisik.$1,
                 ),
               ),
-              const SizedBox(height: AppTheme.space1),
+              const SizedBox(height: AppTheme.space2),
             ],
             if (hint.isNotEmpty) ...[
               _HintLine(hint: hint),
-              const SizedBox(height: AppTheme.space1),
+              const SizedBox(height: AppTheme.space2),
             ],
             _SessionDuration(session: session),
           ],
           if (total > 0) ...[
-            const SizedBox(height: AppTheme.space1),
+            const SizedBox(height: AppTheme.space2),
             Text(
               '$countedTotal/$total dihitung',
               style: GoogleFonts.roboto(
@@ -1096,7 +1096,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
             ),
           ],
           if (session.inputCompletedAt != null) ...[
-            const SizedBox(height: AppTheme.space1),
+            const SizedBox(height: AppTheme.space2),
             Row(
               children: [
                 Icon(
@@ -3074,7 +3074,7 @@ class _OpnameProductCard extends StatelessWidget {
             complete,
             accent,
           ),
-          const SizedBox(height: AppTheme.space2),
+          const SizedBox(height: AppTheme.space4),
           Row(
             children: [
               _ProductMiniStat(
@@ -3101,7 +3101,7 @@ class _OpnameProductCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppTheme.space4),
           Row(
             children: [
               _ProductMiniStat(
@@ -3118,9 +3118,9 @@ class _OpnameProductCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.space2),
+          const SizedBox(height: AppTheme.space4),
           for (var i = 0; i < items.length; i++) ...[
-            if (i > 0) const SizedBox(height: 2),
+            if (i > 0) const SizedBox(height: 4),
             _OpnameBatchRow(
               item: items[i],
               // Posisi stabil dari seluruh batch, bukan urutan hasil filter —
