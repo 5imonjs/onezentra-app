@@ -190,8 +190,11 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
   onToggle: (id: number) => void;
 }) {
   const meta = STATUS_META[w.status_ini] || STATUS_META.AMAN;
+  const efektifCrt = num(w.qty_ini_crt) + num(w.qty_koreksi_crt);
+  const efektifPcs = num(w.qty_ini_pcs) + num(w.qty_koreksi_pcs);
+  const stokHabis = efektifCrt === 0 && efektifPcs === 0;
   return (
-    <tr className="hover:bg-overlay-70 transition-colors">
+    <tr className={stokHabis ? 'hover:bg-overlay-70 transition-colors bg-muted/25' : 'hover:bg-overlay-70 transition-colors'}>
       {canDelete && (
         <td className="px-3 py-3">
           <input
@@ -205,6 +208,11 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
       )}
       <td className="px-5 py-3 whitespace-nowrap">
         {badge(w.status_ini)}
+        {stokHabis && (
+          <span className="mt-1 inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-200 text-slate-700" title="Stok efektif CRT/BALL dan PCS keduanya 0">
+            STOK HABIS
+          </span>
+        )}
       </td>
       <td className="px-5 py-3 min-w-50 max-w-80">
         <span className="block font-mono text-sm font-medium text-foreground">{w.kode_barang}</span>
