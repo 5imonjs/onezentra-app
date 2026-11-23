@@ -702,6 +702,7 @@ class OpnameExpiredService
                     'nama_depo' => $carried->nama_depo,
                     'nama_barang' => $carried->nama_barang,
                     'sumber_material' => $carried->sumber_material,
+                    'tanggal_penerimaan' => $carried->tanggal_penerimaan?->toDateString(),
                     'expired_date_lalu' => $carried->expired_date_ini?->toDateString(),
                     'selisih_expired_date' => 0,
                     'sisa_hari' => $sisaHari,
