@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
@@ -7,26 +6,14 @@ import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/opname/models/opname_expired_models.dart';
 import 'package:onezentra_mobile/features/opname/providers/opname_expired_provider.dart';
 import 'package:onezentra_mobile/features/opname/repositories/opname_expired_repository.dart';
+import 'package:onezentra_mobile/features/opname/ui/opname_ui.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Urutan level risiko: yang paling mendesak lebih dulu.
 const List<String> _statusOrder = ['EXPIRED', 'KRITIS', 'PERHATIAN', 'AMAN'];
 
-Color _statusColor(BuildContext context, String status) => switch (status) {
-  'EXPIRED' => context.colors.danger,
-  'KRITIS' => context.colors.critical,
-  'PERHATIAN' => context.colors.warning,
-  'AMAN' => context.colors.success,
-  _ => context.colors.gray400,
-};
-
-IconData? _statusIcon(String status) => switch (status) {
-  'EXPIRED' => Icons.error_rounded,
-  'KRITIS' => Icons.warning_amber_rounded,
-  'PERHATIAN' => Icons.schedule_rounded,
-  'AMAN' => Icons.check_circle_rounded,
-  _ => null,
-};
+Color _statusColor(BuildContext context, String status) =>
+    opToneForStatus(status).solid(context.colors);
 
 String _formatQty(double? value) {
   if (value == null) {
@@ -149,7 +136,12 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
             color: AppTheme.primary600,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(AppTheme.space4),
+              padding: const EdgeInsets.fromLTRB(
+                AppTheme.space4,
+                AppTheme.space3,
+                AppTheme.space4,
+                AppTheme.space8,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -184,7 +176,6 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
                           )
                   else
                     ..._buildWaveGroups(provider.waves, context),
-                  const SizedBox(height: AppTheme.space8),
                 ],
               ),
             ),
@@ -194,7 +185,6 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
       backgroundColor: context.colors.background,
       appBar: AppBar(
         title: const Text('Opname Expired'),
-        elevation: 0,
         actions: [
           IconButton(
             onPressed: () => provider.load(),
@@ -225,15 +215,15 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: context.colors.primaryWell,
                   borderRadius: AppTheme.radiusLg,
                 ),
                 child: Icon(
                   Icons.monitor_heart_rounded,
-                  size: 20,
+                  size: 22,
                   color: context.colors.primaryWellText,
                 ),
               ),
@@ -245,16 +235,16 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
                     Text(
                       'Ringkasan Opname Expired',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        fontSize: 13,
+                        fontSize: 15.5,
                         fontWeight: FontWeight.w700,
                         color: context.colors.foreground,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       '$total batch · $risk berisiko'
                       '${weekLabel == null ? '' : ' · $weekLabel'}',
-                      style: theme.textTheme.bodySmall?.copyWith(
+                      style: OpType.secondary(context).copyWith(
                         color: context.colors.textMuted,
                       ),
                     ),
@@ -263,7 +253,7 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.space3),
+          const SizedBox(height: AppTheme.space4),
           LayoutBuilder(
             builder: (context, constraints) {
               var tileWidth = (constraints.maxWidth - AppTheme.space2) / 2;
@@ -274,10 +264,10 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
                   for (var status in _statusOrder)
                     SizedBox(
                       width: tileWidth,
-                      child: AppStatTile(
+                      child: OpStat(
                         label: OpnameStatus.label(status),
-                        value: summary?.countOf(status)?.count ?? 0,
-                        dotColor: _statusColor(context, status),
+                        value: '${summary?.countOf(status)?.count ?? 0}',
+                        tone: opToneForStatus(status),
                         caption:
                             '${_formatQty(summary?.countOf(status)?.qtyCrt ?? 0)} CRT',
                       ),
@@ -287,8 +277,10 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
             },
           ),
           if (summary != null && summary.totalCount > 0) ...[
-            const SizedBox(height: AppTheme.space3),
+            const SizedBox(height: AppTheme.space4),
             Divider(height: 1, color: context.colors.border),
+            const SizedBox(height: AppTheme.space3),
+            const OpSectionLabel('Filter status'),
             const SizedBox(height: AppTheme.space2),
             Wrap(
               spacing: AppTheme.space2,
@@ -330,62 +322,66 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
     required int count,
     required bool selected,
     required VoidCallback onTap,
-  }) => InkWell(
-    key: ValueKey('opname-status-filter-${status ?? 'ALL'}'),
-    onTap: onTap,
-    borderRadius: AppTheme.radiusFull,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: selected
-            ? context.colors.foreground.withValues(alpha: 0.12)
-            : context.colors.surfaceHover,
-        borderRadius: AppTheme.radiusFull,
-        border: Border.all(
-          color: selected
-              ? context.colors.foreground.withValues(alpha: 0.4)
-              : context.colors.border,
+  }) {
+    var c = context.colors;
+    var tone = status == null ? OpTone.primary : opToneForStatus(status);
+    var solid = tone.solid(c);
+    return InkWell(
+      key: ValueKey('opname-status-filter-${status ?? 'ALL'}'),
+      onTap: onTap,
+      borderRadius: AppTheme.radiusFull,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? solid.withValues(alpha: 0.14) : c.surfaceHover,
+          borderRadius: AppTheme.radiusFull,
+          border: Border.all(
+            color: selected ? solid.withValues(alpha: 0.55) : c.border,
+            width: selected ? 1.5 : 1,
+          ),
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (status != null) ...[
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: _statusColor(context, status),
-                shape: BoxShape.circle,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (status != null) ...[
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(color: solid, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: OpType.secondary(context).copyWith(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: selected ? c.foreground : c.textSecondary,
               ),
             ),
-            const SizedBox(width: 5),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: selected
+                    ? solid.withValues(alpha: 0.2)
+                    : c.foreground.withValues(alpha: 0.06),
+                borderRadius: AppTheme.radiusFull,
+              ),
+              child: Text(
+                '$count',
+                style: OpType.muted(context).copyWith(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? c.foreground : c.textMuted,
+                ),
+              ),
+            ),
           ],
-          Text(
-            label,
-            style: GoogleFonts.roboto(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: selected
-                  ? context.colors.foreground
-                  : context.colors.textSecondary,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            '$count',
-            style: GoogleFonts.roboto(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: selected
-                  ? context.colors.foreground
-                  : context.colors.textMuted,
-            ),
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   /// Mengelompokkan wave expired per cluster (BOSnet) secara otomatis.
   List<Widget> _buildWaveGroups(
@@ -401,23 +397,28 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
 
     var widgets = <Widget>[];
     for (var entry in groups.entries) {
-      widgets.add(_buildClusterHeader(context, entry.key));
-      widgets.add(const SizedBox(height: AppTheme.space2));
+      widgets.add(_buildClusterHeader(context, entry.key, entry.value.length));
+      widgets.add(const SizedBox(height: AppTheme.space3));
       for (var wave in entry.value) {
         widgets.add(_OpnameExpiredWaveCard(wave: wave));
+        widgets.add(const SizedBox(height: AppTheme.space3));
       }
-      widgets.add(const SizedBox(height: AppTheme.space4));
+      widgets.add(const SizedBox(height: AppTheme.space2));
     }
     return widgets;
   }
 
-  Widget _buildClusterHeader(BuildContext context, String cluster) {
+  Widget _buildClusterHeader(
+    BuildContext context,
+    String cluster,
+    int count,
+  ) {
     var theme = Theme.of(context);
     return Row(
       children: [
         Container(
-          width: 3,
-          height: 16,
+          width: 4,
+          height: 18,
           decoration: BoxDecoration(
             color: context.colors.primaryWell,
             borderRadius: BorderRadius.circular(2),
@@ -428,10 +429,15 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
           child: Text(
             cluster,
             style: theme.textTheme.titleSmall?.copyWith(
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: context.colors.foreground,
             ),
           ),
+        ),
+        Text(
+          '$count batch',
+          style: OpType.muted(context).copyWith(fontWeight: FontWeight.w600),
         ),
       ],
     );
@@ -445,21 +451,19 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
       decoration: BoxDecoration(
         color: context.colors.warningWell,
         borderRadius: AppTheme.radiusXl,
-        border: Border.all(color: context.colors.warningText),
+        border: Border.all(color: context.colors.warning),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lock_rounded, size: 20, color: context.colors.warningText),
+          Icon(Icons.lock_rounded, size: 22, color: context.colors.warningText),
           const SizedBox(width: AppTheme.space3),
           Expanded(
             child: Text(
               'Anda tidak memiliki izin untuk melihat Opname Expired.',
-              style: GoogleFonts.roboto(
-                fontSize: 13,
-                height: 1.4,
-                color: context.colors.warningText,
-              ),
+              style: OpType.body(
+                context,
+              ).copyWith(color: context.colors.warningText),
             ),
           ),
         ],
@@ -481,12 +485,7 @@ class _OpnameExpiredLoading extends StatelessWidget {
           valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary600),
         ),
         const SizedBox(height: AppTheme.space4),
-        Text(
-          'Memuat Opname Expired...',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: context.colors.textMuted),
-        ),
+        Text('Memuat Opname Expired...', style: OpType.secondary(context)),
       ],
     ),
   );
@@ -497,152 +496,133 @@ class _OpnameExpiredWaveCard extends StatelessWidget {
 
   final OpnameExpiredWave wave;
 
-  static AppBadgeVariant _variant(String status) => switch (status) {
-    'EXPIRED' => AppBadgeVariant.danger,
-    'KRITIS' => AppBadgeVariant.critical,
-    'PERHATIAN' => AppBadgeVariant.warning,
-    'AMAN' => AppBadgeVariant.success,
-    _ => AppBadgeVariant.gray,
-  };
-
   @override
-  Widget build(BuildContext context) => AppCard(
-    padding: const EdgeInsets.all(AppTheme.space4),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AppBadge(
-              text: OpnameStatus.label(wave.statusIni),
-              variant: _variant(wave.statusIni),
-              icon: _statusIcon(wave.statusIni),
-            ),
-            const SizedBox(width: AppTheme.space2),
-            Expanded(
-              child: Text(
-                wave.rekomendasi ?? '-',
-                style: GoogleFonts.roboto(
-                  fontSize: 11,
-                  height: 1.4,
-                  color: context.colors.textSecondary,
+  Widget build(BuildContext context) {
+    var c = context.colors;
+    var tone = opToneForStatus(wave.statusIni);
+    return AppCard(
+      padding: const EdgeInsets.all(AppTheme.space4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              OpBadge(
+                text: OpnameStatus.label(wave.statusIni),
+                tone: tone,
+                icon: opIconForStatus(wave.statusIni),
+              ),
+              const SizedBox(width: AppTheme.space2),
+              Expanded(
+                child: Text(
+                  wave.rekomendasi ?? '-',
+                  style: OpType.secondary(context),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppTheme.space3),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: context.colors.gray100,
-                borderRadius: AppTheme.radiusLg,
+            ],
+          ),
+          const SizedBox(height: AppTheme.space3),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: tone.solid(c).withValues(alpha: 0.12),
+                  borderRadius: AppTheme.radiusLg,
+                ),
+                child: Icon(
+                  Icons.inventory_2_rounded,
+                  size: 20,
+                  color: tone.solid(c),
+                ),
               ),
-              child: Icon(
-                Icons.inventory_2_rounded,
-                size: 18,
-                color: context.colors.textMuted,
-              ),
-            ),
-            const SizedBox(width: AppTheme.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    wave.namaBarang ?? wave.kodeBarang ?? '-',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.roboto(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: context.colors.foreground,
+              const SizedBox(width: AppTheme.space3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      wave.namaBarang ?? wave.kodeBarang ?? '-',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: OpType.title(context),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    wave.kodeBarang ?? '-',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      color: context.colors.textMuted,
+                    const SizedBox(height: 2),
+                    Text(
+                      wave.kodeBarang ?? '-',
+                      style: OpType.code(
+                        context,
+                      ).copyWith(color: c.textMuted, fontWeight: FontWeight.w500),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppTheme.space3),
-        ..._metaRows(context),
-      ],
-    ),
-  );
+            ],
+          ),
+          const SizedBox(height: AppTheme.space3),
+          Divider(height: 1, color: c.border),
+          const SizedBox(height: AppTheme.space2),
+          ..._metaRows(context),
+        ],
+      ),
+    );
+  }
 
-  List<Widget> _metaRows(BuildContext context) => [
-    _waveMetaRow(context, 'Depo', wave.namaDepo ?? wave.kodeDepo ?? '-'),
-    _waveMetaRow(context, 'Sumber', _sourceLabel(wave.sourceMix)),
-    _waveMetaRow(context, 'Tanggal expired', _formatDate(wave.expiredDateIni)),
-    _waveMetaRow(
-      context,
-      'Sisa hari',
-      _formatSisaHari(wave.sisaHari),
-      valueColor: _statusColor(context, wave.statusIni),
-    ),
-    _waveMetaRow(
-      context,
-      'Tanggal penerimaan',
-      _formatDate(wave.tanggalPenerimaan),
-    ),
-    _waveMetaRow(
-      context,
-      'Qty (CRT/PCS)',
-      'CRT ${_formatQty(wave.effectiveCrt)} / PCS ${_formatQty(wave.effectivePcs)}',
-    ),
-    if ((wave.qtyKoreksiCrt ?? 0) != 0 || (wave.qtyKoreksiPcs ?? 0) != 0)
-      _waveMetaRow(
-        context,
+  List<Widget> _metaRows(BuildContext context) {
+    var c = context.colors;
+    var rows = <(String, String, Color?)>[
+      ('Depo', wave.namaDepo ?? wave.kodeDepo ?? '-', null),
+      ('Sumber', _sourceLabel(wave.sourceMix), null),
+      ('Tanggal expired', _formatDate(wave.expiredDateIni), null),
+      ('Sisa hari', _formatSisaHari(wave.sisaHari), _statusColor(context, wave.statusIni)),
+      (
+        'Tanggal penerimaan',
+        _formatDate(wave.tanggalPenerimaan),
+        null,
+      ),
+      (
+        'Qty (CRT/PCS)',
+        'CRT ${_formatQty(wave.effectiveCrt)} / PCS ${_formatQty(wave.effectivePcs)}',
+        null,
+      ),
+    ];
+    if ((wave.qtyKoreksiCrt ?? 0) != 0 || (wave.qtyKoreksiPcs ?? 0) != 0) {
+      rows.add((
         'Koreksi',
         'CRT ${_formatQty(wave.qtyKoreksiCrt)} / PCS ${_formatQty(wave.qtyKoreksiPcs)}',
-        valueColor: context.colors.info,
-      ),
-  ];
-
-  Widget _waveMetaRow(
-    BuildContext context,
-    String label,
-    String value, {
-    Color? valueColor,
-  }) => Padding(
-    padding: const EdgeInsets.only(bottom: AppTheme.space2),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: GoogleFonts.roboto(
-              fontSize: 10.5,
-              color: context.colors.textMuted,
-            ),
+        c.info,
+      ));
+    }
+    return [
+      for (final row in rows)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppTheme.space2),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  row.$1,
+                  style: OpType.secondary(
+                    context,
+                  ).copyWith(color: c.textMuted, fontWeight: FontWeight.w500),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space3),
+              Flexible(
+                child: Text(
+                  row.$2,
+                  textAlign: TextAlign.end,
+                  style: OpType.body(
+                    context,
+                  ).copyWith(color: row.$3 ?? c.foreground, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: AppTheme.space2),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: GoogleFonts.robotoMono(
-              fontSize: 10.5,
-              color: valueColor ?? context.colors.foreground,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
+    ];
+  }
 }

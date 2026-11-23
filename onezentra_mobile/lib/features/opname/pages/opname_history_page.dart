@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:onezentra_mobile/core/network/api_client.dart';
@@ -7,7 +6,15 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/opname/models/opname_expired_session_models.dart';
 import 'package:onezentra_mobile/features/opname/repositories/opname_expired_session_repository.dart';
+import 'package:onezentra_mobile/features/opname/ui/opname_ui.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
+
+OpTone _sessionTone(String status) => switch (status.toUpperCase()) {
+  'APPROVED' || 'COMPLETED' => OpTone.success,
+  'CANCELLED' => OpTone.danger,
+  'REVISI' => OpTone.critical,
+  _ => OpTone.info,
+};
 
 /// Riwayat sesi opname untuk menu Riwayat terpadu.
 ///
@@ -107,7 +114,7 @@ class _OpnameHistoryPageState extends State<OpnameHistoryPage> {
         padding: const EdgeInsets.all(AppTheme.space4),
         child: Text(
           'Anda tidak memiliki izin untuk melihat Riwayat Opname.',
-          style: GoogleFonts.roboto(fontSize: 13, color: colors.textSecondary),
+          style: OpType.secondary(context),
         ),
       );
     } else if (!_bootstrapped && _loading) {
@@ -131,7 +138,7 @@ class _OpnameHistoryPageState extends State<OpnameHistoryPage> {
         child: ListView.separated(
           padding: const EdgeInsets.all(AppTheme.space3),
           itemCount: _sessions.length,
-          separatorBuilder: (_, index) => const SizedBox(height: 8),
+          separatorBuilder: (_, index) => const SizedBox(height: AppTheme.space2),
           itemBuilder: (_, index) {
             var session = _sessions[index];
             var total = session.itemsCount ?? session.items.length;
@@ -139,7 +146,7 @@ class _OpnameHistoryPageState extends State<OpnameHistoryPage> {
                 session.verifiedCount ??
                 session.items.where((i) => i.isVerified).length;
             return AppCard(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(AppTheme.space4),
               onTap: () => _openDetail(session),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,36 +155,31 @@ class _OpnameHistoryPageState extends State<OpnameHistoryPage> {
                     children: [
                       Text(
                         'SESI #${session.id}',
-                        style: GoogleFonts.robotoMono(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.primary600,
-                        ),
+                        style: OpType.code(
+                          context,
+                        ).copyWith(color: AppTheme.primary600, fontSize: 14),
                       ),
                       const Spacer(),
-                      AppBadge(
+                      OpBadge(
                         text: OpnameSessionStatus.label(session.status),
-                        variant: _badgeVariant(session.status),
+                        tone: _sessionTone(session.status),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppTheme.space2),
                   Text(
                     'Minggu ${_formatDate(session.weekStart)} · ${session.namaDepo ?? session.kodeDepo ?? '-'}',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      color: colors.textSecondary,
-                    ),
+                    style: OpType.secondary(context),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: AppTheme.space2),
                   Row(
                     children: [
                       Icon(
                         Icons.person_rounded,
-                        size: 13,
+                        size: 16,
                         color: colors.textMuted,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           session.assigneeName ??
@@ -186,20 +188,17 @@ class _OpnameHistoryPageState extends State<OpnameHistoryPage> {
                                   : 'Petugas tidak tercatat'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.roboto(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: colors.foreground,
-                          ),
+                          style: OpType.body(
+                            context,
+                          ).copyWith(fontWeight: FontWeight.w600),
                         ),
                       ),
+                      const SizedBox(width: AppTheme.space2),
                       Text(
                         '$done/$total batch',
-                        style: GoogleFonts.roboto(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: colors.textMuted,
-                        ),
+                        style: OpType.secondary(
+                          context,
+                        ).copyWith(fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
@@ -220,13 +219,6 @@ class _OpnameHistoryPageState extends State<OpnameHistoryPage> {
       body: SafeArea(child: content),
     );
   }
-
-  AppBadgeVariant _badgeVariant(String status) => switch (status) {
-    'APPROVED' || 'COMPLETED' => AppBadgeVariant.success,
-    'CANCELLED' => AppBadgeVariant.danger,
-    'REVISI' => AppBadgeVariant.critical,
-    _ => AppBadgeVariant.info,
-  };
 
   String _formatDate(String? iso) {
     if (iso == null || iso.isEmpty) {
@@ -307,7 +299,7 @@ class _OpnameHistoryDetailState extends State<_OpnameHistoryDetail> {
               children: [
                 Center(
                   child: Container(
-                    width: 36,
+                    width: 40,
                     height: 4,
                     decoration: BoxDecoration(
                       color: colors.border,
@@ -315,18 +307,11 @@ class _OpnameHistoryDetailState extends State<_OpnameHistoryDetail> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        'HASIL SESI #${detail.id}',
-                        style: GoogleFonts.roboto(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: colors.foreground,
-                        ),
-                      ),
+                      child: Text('HASIL SESI #${detail.id}', style: OpType.title(context)),
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
@@ -336,29 +321,17 @@ class _OpnameHistoryDetailState extends State<_OpnameHistoryDetail> {
                   ],
                 ),
                 if (_error != null)
-                  Text(
-                    _error!,
-                    style: GoogleFonts.roboto(
-                      color: colors.danger,
-                      fontSize: 12,
-                    ),
-                  ),
-                const SizedBox(height: 4),
+                  Text(_error!, style: OpType.secondary(context).copyWith(color: colors.danger)),
+                const SizedBox(height: AppTheme.space2),
                 Text(
                   'Petugas: ${detail.assigneeName ?? (detail.assignedTo != null ? 'Petugas #${detail.assignedTo}' : '-')}',
-                  style: GoogleFonts.roboto(
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                  ),
+                  style: OpType.body(context).copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
                   'Status: ${OpnameSessionStatus.label(detail.status)} · $done/$total batch dihitung',
-                  style: GoogleFonts.roboto(
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                  ),
+                  style: OpType.secondary(context),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppTheme.space4),
                 if (_detail == null && _error == null)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 32),
@@ -369,17 +342,14 @@ class _OpnameHistoryDetailState extends State<_OpnameHistoryDetail> {
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Text(
                       'Tidak ada baris hasil opname pada sesi ini.',
-                      style: GoogleFonts.roboto(
-                        fontSize: 12,
-                        color: colors.textMuted,
-                      ),
+                      style: OpType.muted(context),
                     ),
                   )
                 else
                   for (var item in items) ...[
                     Container(
-                      padding: const EdgeInsets.all(10),
-                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(AppTheme.space4),
+                      margin: const EdgeInsets.only(bottom: AppTheme.space2),
                       decoration: BoxDecoration(
                         color: colors.surfaceCard,
                         borderRadius: AppTheme.radiusLg,
@@ -392,35 +362,22 @@ class _OpnameHistoryDetailState extends State<_OpnameHistoryDetail> {
                             item.batchNumber ??
                                 item.kodeBarang ??
                                 'Batch #${item.id}',
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: colors.foreground,
-                            ),
+                            style: OpType.code(context),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppTheme.space1),
                           Text(
                             'Fisik CRT ${_qty(item.qtyFisikCrt)} · PCS ${_qty(item.qtyFisikPcs)}'
                             ' · Acuan ${_qty(item.expectedCrt)} CRT',
-                            style: GoogleFonts.roboto(
-                              fontSize: 11,
-                              color: colors.textSecondary,
-                            ),
+                            style: OpType.secondary(context),
                           ),
                           Text(
                             'Terima ${_iso(item.tanggalPenerimaan)} · Exp ${_iso(item.expiredDateIni)}',
-                            style: GoogleFonts.roboto(
-                              fontSize: 11,
-                              color: colors.textMuted,
-                            ),
+                            style: OpType.muted(context),
                           ),
                           if (item.notes != null && item.notes!.isNotEmpty)
                             Text(
                               'Catatan: ${item.notes}',
-                              style: GoogleFonts.roboto(
-                                fontSize: 11,
-                                color: colors.textMuted,
-                              ),
+                              style: OpType.muted(context),
                             ),
                         ],
                       ),

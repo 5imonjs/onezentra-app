@@ -12,17 +12,18 @@ import 'package:onezentra_mobile/features/opname/models/opname_expired_session_m
 import 'package:onezentra_mobile/features/opname/providers/opname_expired_session_provider.dart';
 import 'package:onezentra_mobile/features/opname/repositories/opname_expired_session_repository.dart';
 import 'package:onezentra_mobile/features/opname/services/opname_session_draft_store.dart';
+import 'package:onezentra_mobile/features/opname/ui/opname_ui.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
-AppBadgeVariant _sessionBadgeVariant(String status) => switch (status) {
-  'OPEN' => AppBadgeVariant.info,
-  'IN_PROGRESS' => AppBadgeVariant.primary,
-  'PENDING_APPROVAL' => AppBadgeVariant.warning,
-  'APPROVED' => AppBadgeVariant.success,
-  'COMPLETED' => AppBadgeVariant.success,
-  'REVISI' => AppBadgeVariant.critical,
-  'CANCELLED' => AppBadgeVariant.danger,
-  _ => AppBadgeVariant.gray,
+OpTone _sessionTone(String status) => switch (status.toUpperCase()) {
+  'OPEN' => OpTone.info,
+  'IN_PROGRESS' => OpTone.primary,
+  'PENDING_APPROVAL' => OpTone.warning,
+  'APPROVED' => OpTone.success,
+  'COMPLETED' => OpTone.success,
+  'REVISI' => OpTone.critical,
+  'CANCELLED' => OpTone.danger,
+  _ => OpTone.neutral,
 };
 
 /// Aksen warna per produk — sama seperti kartu warna-warni di menu Opname
@@ -39,13 +40,7 @@ Color _productAccent(String key, ThemeColors colors) {
   return palette[key.hashCode % palette.length];
 }
 
-AppBadgeVariant _riskBadgeVariant(String status) => switch (status) {
-  'EXPIRED' => AppBadgeVariant.danger,
-  'KRITIS' => AppBadgeVariant.critical,
-  'PERHATIAN' => AppBadgeVariant.warning,
-  'AMAN' => AppBadgeVariant.success,
-  _ => AppBadgeVariant.gray,
-};
+OpTone _riskTone(String status) => opToneForStatus(status);
 
 IconData? _sessionIcon(String status) => switch (status) {
   'OPEN' => Icons.lock_open_rounded,
@@ -568,7 +563,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                   ? 'Hitung fisik · ${_formatDate(provider.selected!.weekStart)}'
                   : 'Tugas lapangan · ${provider.sessions.length} sesi aktif',
               style: GoogleFonts.roboto(
-                fontSize: 10.5,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w500,
                 color: colors.textMuted,
               ),
@@ -792,7 +787,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                               ),
                         hintText: 'Cari nama produk / kode batch...',
                         hintStyle: GoogleFonts.roboto(
-                          fontSize: 13,
+                          fontSize: 15,
                           color: context.colors.textMuted,
                         ),
                         border: OutlineInputBorder(
@@ -857,7 +852,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
             child: Text(
               'Tampilkan:',
               style: GoogleFonts.roboto(
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: colors.textMuted,
               ),
@@ -949,7 +944,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                 Text(
                   label,
                   style: GoogleFonts.roboto(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: selected ? Colors.white : colors.textSecondary,
                   ),
@@ -958,7 +953,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                 Text(
                   '$count',
                   style: GoogleFonts.roboto(
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: selected ? Colors.white : colors.textMuted,
                   ),
@@ -1014,16 +1009,16 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 12.5,
+                    fontSize: 14.5,
                     fontWeight: FontWeight.w700,
                     color: colors.foreground,
                   ),
                 ),
               ),
               const SizedBox(width: AppTheme.space2),
-              AppBadge(
+              OpBadge(
                 text: OpnameSessionStatus.label(session.status),
-                variant: _sessionBadgeVariant(session.status),
+                tone: _sessionTone(session.status),
                 icon: _sessionIcon(session.status),
               ),
               IconButton(
@@ -1054,7 +1049,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 10.5,
+                    fontSize: 12.5,
                     color: colors.textSecondary,
                   ),
                 ),
@@ -1063,7 +1058,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
               Text(
                 '$productCount produk · $total batch',
                 style: GoogleFonts.roboto(
-                  fontSize: 10.5,
+                  fontSize: 12.5,
                   color: colors.textMuted,
                 ),
               ),
@@ -1092,7 +1087,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
             Text(
               '$countedTotal/$total dihitung',
               style: GoogleFonts.roboto(
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: countedTotal == total
                     ? colors.success
@@ -1113,7 +1108,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                 Text(
                   'Input selesai — validasi dilakukan dari web.',
                   style: GoogleFonts.roboto(
-                    fontSize: 10.5,
+                    fontSize: 12.5,
                     color: colors.success,
                   ),
                 ),
@@ -1265,7 +1260,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
             child: Text(
               'Anda tidak memiliki izin untuk melihat Sesi Opname.',
               style: GoogleFonts.roboto(
-                fontSize: 13,
+                fontSize: 15,
                 height: 1.4,
                 color: context.colors.warningText,
               ),
@@ -1534,7 +1529,7 @@ class _VerifySheetState extends State<_VerifySheet> {
                               Text(
                                 'Hitung Fisik',
                                 style: GoogleFonts.roboto(
-                                  fontSize: 19,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.w800,
                                   color: colors.foreground,
                                 ),
@@ -1546,7 +1541,7 @@ class _VerifySheetState extends State<_VerifySheet> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.roboto(
-                                  fontSize: 11,
+                                  fontSize: 13,
                                   color: colors.textMuted,
                                 ),
                               ),
@@ -1576,7 +1571,7 @@ class _VerifySheetState extends State<_VerifySheet> {
                       Text(
                         'AKSI CEPAT',
                         style: GoogleFonts.roboto(
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.8,
                           color: colors.textMuted,
@@ -1607,7 +1602,7 @@ class _VerifySheetState extends State<_VerifySheet> {
                       Text(
                         'HASIL HITUNG',
                         style: GoogleFonts.roboto(
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.8,
                           color: colors.textMuted,
@@ -1678,7 +1673,7 @@ class _VerifySheetState extends State<_VerifySheet> {
                                 child: Text(
                                   _errorMessage!,
                                   style: GoogleFonts.roboto(
-                                    fontSize: 12,
+                                    fontSize: 14,
                                     height: 1.4,
                                     color: colors.dangerText,
                                   ),
@@ -1811,7 +1806,7 @@ class _VerifySheetState extends State<_VerifySheet> {
               child: Text(
                 feedbackText,
                 style: GoogleFonts.roboto(
-                  fontSize: 11.5,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w700,
                   height: 1.35,
                   color: feedbackColor,
@@ -1862,16 +1857,16 @@ class _VerifySheetState extends State<_VerifySheet> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.robotoMono(
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: colors.foreground,
                 ),
               ),
             ),
             if (item.statusIni != null && item.statusIni!.trim().isNotEmpty)
-              AppBadge(
+              OpBadge(
                 text: OpnameStatus.label(item.statusIni),
-                variant: _riskBadgeVariant(item.statusIni!),
+                tone: _riskTone(item.statusIni!),
               ),
           ],
         ),
@@ -1881,7 +1876,7 @@ class _VerifySheetState extends State<_VerifySheet> {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.roboto(
-            fontSize: 12,
+            fontSize: 14,
             height: 1.3,
             color: colors.textSecondary,
           ),
@@ -1946,7 +1941,7 @@ class _VerifySheetState extends State<_VerifySheet> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.robotoMono(
-                    fontSize: 10.5,
+                    fontSize: 12.5,
                     color: colors.textMuted,
                   ),
                 ),
@@ -1955,7 +1950,7 @@ class _VerifySheetState extends State<_VerifySheet> {
                 Text(
                   'Umur simpan ${item.umurSimpanHari} hari',
                   style: GoogleFonts.roboto(
-                    fontSize: 10,
+                    fontSize: 12,
                     color: colors.textMuted,
                   ),
                 ),
@@ -1971,7 +1966,7 @@ class _VerifySheetState extends State<_VerifySheet> {
               '${item.selisihTerima! > 0 ? '+' : ''}'
               '${_formatQty(item.selisihTerima)} CRT',
               style: GoogleFonts.roboto(
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: colors.warning,
               ),
@@ -1984,7 +1979,7 @@ class _VerifySheetState extends State<_VerifySheet> {
             child: Text(
               'Kondisi saat terima: ${_conditionLabel(item.conditionTerima)}',
               style: GoogleFonts.roboto(
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: colors.warning,
               ),
@@ -2025,7 +2020,7 @@ class _QuickActionButton extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.roboto(
-            fontSize: 11.5,
+            fontSize: 13.5,
             fontWeight: FontWeight.w700,
             color: colors.foreground,
           ),
@@ -2088,7 +2083,7 @@ class _DateFactCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.roboto(
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.4,
                       color: tone,
@@ -2103,7 +2098,7 @@ class _DateFactCard extends StatelessWidget {
                         date,
                         maxLines: 1,
                         style: GoogleFonts.roboto(
-                          fontSize: 12,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: colors.foreground,
                         ),
@@ -2118,7 +2113,7 @@ class _DateFactCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.roboto(
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: tone,
                         ),
@@ -2154,7 +2149,7 @@ class _DateFactCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 9.5,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
                     color: colors.textMuted,
@@ -2168,7 +2163,7 @@ class _DateFactCard extends StatelessWidget {
                     date,
                     maxLines: 1,
                     style: GoogleFonts.roboto(
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: FontWeight.w800,
                       height: 1.15,
                       color: colors.foreground,
@@ -2182,7 +2177,7 @@ class _DateFactCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.roboto(
-                      fontSize: 10.5,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                       color: tone,
                     ),
@@ -2234,7 +2229,7 @@ class _TargetMetric extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 8.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.4,
                     color: colors.textMuted,
@@ -2245,7 +2240,7 @@ class _TargetMetric extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 11.5,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w800,
                     color: color,
                   ),
@@ -2284,7 +2279,7 @@ class _SheetMetric extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.roboto(
-              fontSize: 8.5,
+              fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.4,
               color: colors.textMuted,
@@ -2298,7 +2293,7 @@ class _SheetMetric extends StatelessWidget {
               value,
               maxLines: 1,
               style: GoogleFonts.roboto(
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: FontWeight.w800,
                 color: color,
               ),
@@ -2338,7 +2333,7 @@ class _QtyStepper extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.roboto(
-            fontSize: 11,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
             color: colors.textSecondary,
           ),
@@ -2532,7 +2527,7 @@ class _SessionDurationState extends State<_SessionDuration> {
               isRunning ? 'Durasi berjalan' : 'Durasi opname',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.roboto(fontSize: 10, color: colors.textMuted),
+              style: GoogleFonts.roboto(fontSize: 12, color: colors.textMuted),
             ),
           ),
           const SizedBox(width: 2),
@@ -2540,7 +2535,7 @@ class _SessionDurationState extends State<_SessionDuration> {
           Text(
             _formatDuration(duration),
             style: GoogleFonts.robotoMono(
-              fontSize: 12,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: isRunning ? colors.foreground : colors.success,
             ),
@@ -2579,7 +2574,7 @@ class _OverviewMetric extends StatelessWidget {
             Text(
               value,
               style: GoogleFonts.roboto(
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: color,
               ),
@@ -2590,7 +2585,7 @@ class _OverviewMetric extends StatelessWidget {
         Text(
           label,
           style: GoogleFonts.roboto(
-            fontSize: 9.5,
+            fontSize: 11.5,
             fontWeight: FontWeight.w600,
             color: colors.textMuted,
           ),
@@ -2628,7 +2623,7 @@ class _FisikTile extends StatelessWidget {
           Text(
             value,
             style: GoogleFonts.roboto(
-              fontSize: 12,
+              fontSize: 14,
               fontWeight: FontWeight.w800,
               color: AppTheme.primary600,
             ),
@@ -2637,7 +2632,7 @@ class _FisikTile extends StatelessWidget {
           Text(
             'Fisik',
             style: GoogleFonts.roboto(
-              fontSize: 9.5,
+              fontSize: 11.5,
               fontWeight: FontWeight.w600,
               color: colors.textMuted,
             ),
@@ -2676,7 +2671,7 @@ class _HintLine extends StatelessWidget {
                 hint,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.roboto(fontSize: 10, color: colors.info),
+                style: GoogleFonts.roboto(fontSize: 12, color: colors.info),
               ),
             ),
           ),
@@ -2720,7 +2715,7 @@ class _OpnameProgressRing extends StatelessWidget {
           Text(
             total == 0 ? '—' : '${(progress * 100).round()}%',
             style: GoogleFonts.roboto(
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: FontWeight.w800,
               color: done ? colors.success : colors.foreground,
             ),
@@ -2754,7 +2749,7 @@ class _OpnameSessionLoading extends StatelessWidget {
         Text(
           'Memuat sesi...',
           style: GoogleFonts.roboto(
-            fontSize: 12,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             color: colors.textMuted,
           ),
@@ -2861,7 +2856,7 @@ class _OpnameSessionTile extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.roboto(
-                              fontSize: 14,
+                              fontSize: 15.5,
                               fontWeight: FontWeight.w700,
                               color: colors.foreground,
                             ),
@@ -2881,7 +2876,7 @@ class _OpnameSessionTile extends StatelessWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.roboto(
-                                    fontSize: 12,
+                                    fontSize: 14,
                                     color: colors.textSecondary,
                                   ),
                                 ),
@@ -2889,9 +2884,9 @@ class _OpnameSessionTile extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 6),
-                          AppBadge(
+                          OpBadge(
                             text: OpnameSessionStatus.label(session.status),
-                            variant: _sessionBadgeVariant(session.status),
+                            tone: _sessionTone(session.status),
                             icon: _sessionIcon(session.status),
                           ),
                         ],
@@ -2912,7 +2907,7 @@ class _OpnameSessionTile extends StatelessWidget {
                               ? '$counted/$total dihitung'
                               : 'Tidak ada batch',
                           style: GoogleFonts.roboto(
-                            fontSize: 9.5,
+                            fontSize: 11.5,
                             color: colors.textMuted,
                           ),
                         ),
@@ -2976,7 +2971,7 @@ class _ProductMiniStat extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.roboto(
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: color,
               ),
@@ -3184,7 +3179,7 @@ class _OpnameProductCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 14.5,
+                    fontSize: 16,
                     fontWeight: FontWeight.w800,
                     height: 1.3,
                     color: colors.foreground,
@@ -3201,7 +3196,7 @@ class _OpnameProductCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.roboto(
-                          fontSize: 11,
+                          fontSize: 13,
                           color: colors.textSecondary,
                         ),
                       ),
@@ -3212,11 +3207,9 @@ class _OpnameProductCard extends StatelessWidget {
                         message: mixed
                             ? 'Status risiko tiap batch berbeda — lihat tanggal expired pada masing-masing batch.'
                             : 'Status risiko produk minggu ini.',
-                        child: AppBadge(
+                        child: OpBadge(
                           text: mixed ? 'Campuran' : OpnameStatus.label(status),
-                          variant: mixed
-                              ? AppBadgeVariant.gray
-                              : _riskBadgeVariant(status),
+                          tone: mixed ? OpTone.neutral : _riskTone(status),
                         ),
                       ),
                     ],
@@ -3237,7 +3230,7 @@ class _OpnameProductCard extends StatelessWidget {
               Text(
                 '$counted/$total',
                 style: GoogleFonts.roboto(
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: FontWeight.w800,
                   color: complete ? colors.success : colors.textSecondary,
                 ),
@@ -3322,7 +3315,7 @@ class _OpnameBatchRow extends StatelessWidget {
           Text(
             text,
             style: GoogleFonts.roboto(
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               color: color ?? colors.textSecondary,
             ),
@@ -3362,7 +3355,7 @@ class _OpnameBatchRow extends StatelessWidget {
               Text(
                 'BATCH $index/$total',
                 style: GoogleFonts.roboto(
-                  fontSize: 9.5,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.3,
                   color: colors.textMuted,
@@ -3375,7 +3368,7 @@ class _OpnameBatchRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.robotoMono(
-                    fontSize: 13,
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: colors.foreground,
                   ),
@@ -3389,7 +3382,7 @@ class _OpnameBatchRow extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.roboto(
-              fontSize: 10.5,
+              fontSize: 12.5,
               color: colors.textSecondary,
             ),
           ),
@@ -3521,7 +3514,7 @@ class _OpnameBatchRow extends StatelessWidget {
                 label: Text(
                   verified ? 'Hitung Ulang' : 'Hitung Fisik',
                   style: GoogleFonts.roboto(
-                    fontSize: 12.5,
+                    fontSize: 14.5,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -3573,7 +3566,7 @@ class _MiniFact extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.roboto(
-                fontSize: 8,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.4,
                 color: colors.textMuted,
@@ -3587,7 +3580,7 @@ class _MiniFact extends StatelessWidget {
                 value,
                 maxLines: 1,
                 style: GoogleFonts.roboto(
-                  fontSize: 11.5,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w800,
                   color: color,
                 ),

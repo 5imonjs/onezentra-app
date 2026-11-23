@@ -12,7 +12,7 @@ import 'package:onezentra_mobile/features/auth/repositories/auth_repository.dart
 import 'package:onezentra_mobile/features/opname/models/opname_expired_models.dart';
 import 'package:onezentra_mobile/features/opname/pages/opname_expired_page.dart';
 import 'package:onezentra_mobile/features/opname/repositories/opname_expired_repository.dart';
-import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
+import 'package:onezentra_mobile/features/opname/ui/opname_ui.dart';
 
 class _FakeOpnameExpiredRepository extends OpnameExpiredRepository {
   _FakeOpnameExpiredRepository({this.waves = const [], this.fail = false});
@@ -221,12 +221,12 @@ void main() {
     expect(find.text('Expired'), findsNWidgets(3));
     expect(find.text('Lewat 3 hari'), findsOneWidget);
 
-    var badge = tester.widget<AppBadge>(
+    var badge = tester.widget<OpBadge>(
       find.byWidgetPredicate(
-        (widget) => widget is AppBadge && widget.text == 'Expired',
+        (widget) => widget is OpBadge && widget.text == 'Expired',
       ),
     );
-    expect(badge.variant, AppBadgeVariant.danger);
+    expect(badge.tone, OpTone.danger);
 
     // Risk-first: tile Expired berada sebelum Aman.
     var expiredY = tester.getTopLeft(find.text('Expired').first).dy;
