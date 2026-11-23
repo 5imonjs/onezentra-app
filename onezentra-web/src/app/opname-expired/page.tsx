@@ -216,9 +216,6 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
       <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{w.principal_2 || '-'}</td>
       <td className="px-5 py-3 text-right whitespace-nowrap">
         <span className="text-sm font-semibold tabular-nums text-foreground">{fnum(num(w.qty_ini_crt) + num(w.qty_koreksi_crt))}</span>
-        {num(w.qty_koreksi_crt) !== 0 && (
-          <span className="block text-[11px] text-muted-foreground tabular-nums">dari {fnum(num(w.qty_ini_crt))} · koreksi {num(w.qty_koreksi_crt)}</span>
-        )}
       </td>
       <td className="px-5 py-3 text-right whitespace-nowrap">
         <span className="text-sm tabular-nums text-foreground">
@@ -226,9 +223,6 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
             ? `${fnum(num(w.qty_ini_pcs) + num(w.qty_koreksi_pcs))} ${w.composite_unit}`
             : fnum(num(w.qty_ini_pcs) + num(w.qty_koreksi_pcs))}
         </span>
-        {num(w.qty_koreksi_pcs) !== 0 && (
-          <span className="block text-[11px] text-muted-foreground tabular-nums">dari {fnum(num(w.qty_ini_pcs))} · koreksi {num(w.qty_koreksi_pcs)}</span>
-        )}
       </td>
       <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</td>
       <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{fmtDate(w.expired_date_ini)}</td>
@@ -1493,8 +1487,6 @@ export default function OpnameExpiredPage() {
                         {sourceBadge(w.source_mix)}
                         <span className="tabular-nums text-foreground"><span className="text-slate-400">Principal 1:</span> <span className="font-semibold">{w.principal_1 || '-'}</span></span>
                         <span className="tabular-nums text-foreground"><span className="text-slate-400">Principal 2:</span> <span className="font-semibold">{w.principal_2 || '-'}</span></span>
-                        {num(w.qty_koreksi_crt) !== 0 && <span className="tabular-nums text-[11px] text-muted-foreground">dari {fnum(num(w.qty_ini_crt))} · koreksi CRT {num(w.qty_koreksi_crt)}</span>}
-                        {num(w.qty_koreksi_pcs) !== 0 && <span className="tabular-nums text-[11px] text-muted-foreground">dari {fnum(num(w.qty_ini_pcs))} · koreksi PCS {num(w.qty_koreksi_pcs)}</span>}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="rounded-lg bg-popover px-2.5 py-2">
