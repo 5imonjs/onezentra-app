@@ -1914,7 +1914,7 @@ export default function OpnameExpiredPage() {
         onClose={() => setShowBulkDelete(false)}
         onConfirm={confirmBulkDeleteWaves}
         title={`Hapus ${selectedWaveIds.size} Baris Monitoring`}
-        message="Baris monitoring terpilih akan dihapus dari minggu ini. Data catatan stok tidak ikut terhapus — Buat Baris Monitoring akan membuatnya kembali. Lanjutkan?"
+        message="Baris monitoring terpilih akan dihapus dari minggu ini. Baris yang stok efektifnya sudah kosong tidak akan dibawa ke minggu berikutnya; baris yang masih ada stoknya tetap dipantau. Lanjutkan?"
         confirmLabel="Ya, hapus"
         variant="danger"
         loading={bulkDeleting}
@@ -1925,7 +1925,7 @@ export default function OpnameExpiredPage() {
         onClose={() => { if (singleDeleting) return; setShowSingleDelete(false); setDeleteTargetId(null); }}
         onConfirm={confirmSingleDelete}
         title="Hapus Baris Monitoring"
-        message="Baris monitoring ini akan dihapus dari minggu ini. Data catatan stok tidak ikut terhapus — Buat Baris Monitoring akan membuatnya kembali. Lanjutkan?"
+        message="Baris monitoring ini akan dihapus dari minggu ini. Jika stok efektifnya sudah kosong, baris ini tidak akan muncul lagi di minggu berikutnya. Lanjutkan?"
         confirmLabel="Ya, hapus"
         variant="danger"
         loading={singleDeleting}
