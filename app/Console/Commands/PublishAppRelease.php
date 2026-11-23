@@ -92,6 +92,25 @@ class PublishAppRelease extends Command
         $this->line("SHA256 : {$release->sha256}");
         $this->line("Min supported code: {$release->min_supported_code}");
 
+        // Hapus rilis lama platform yang sama (version_code < versi baru) beserta
+        // file APK-nya. Rilis yang lebih baru dan platform lain tidak disentuh.
+        $oldReleases = AppRelease::query()
+            ->forPlatform((string) $this->option('platform'))
+            ->where('version_code', '<', $versionCode)
+            ->get();
+
+        foreach ($oldReleases as $old) {
+            $oldPath = "releases/onezentra-{$old->version_code}.apk";
+            if ($disk->exists($oldPath)) {
+                $disk->delete($oldPath);
+            }
+            $old->delete();
+        }
+
+        if ($oldReleases->isNotEmpty()) {
+            $this->info("Hapus rilis lama: {$oldReleases->count()} versi (beserta file APK) dihapus.");
+        }
+
         return self::SUCCESS;
     }
 }

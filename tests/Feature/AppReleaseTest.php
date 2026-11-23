@@ -147,4 +147,59 @@ class AppReleaseTest extends TestCase
             'apk' => __FILE__,
         ])->assertExitCode(1);
     }
+
+    public function test_publishing_new_release_removes_older_same_platform_releases_and_files(): void
+    {
+        Storage::disk('local')->deleteDirectory('releases');
+
+        // Dua rilis android lama — keduanya harus terhapus saat publish versi baru.
+        foreach ([2, 3] as $oldCode) {
+            Storage::disk('local')->put("releases/onezentra-{$oldCode}.apk", 'old-apk');
+            AppRelease::create([
+                'platform' => 'android',
+                'version_name' => '1.0.'.$oldCode,
+                'version_code' => $oldCode,
+                'min_supported_code' => 1,
+                'apk_url' => "https://example.test/releases/{$oldCode}",
+                'sha256' => str_repeat('a', 64),
+                'published_at' => now()->subDays(5),
+            ]);
+        }
+
+        // Rilis platform lain — tidak boleh tersentuh oleh cleanup.
+        Storage::disk('local')->put('releases/onezentra-99.apk', 'ios-apk');
+        AppRelease::create([
+            'platform' => 'ios',
+            'version_name' => '9.9.9',
+            'version_code' => 99,
+            'min_supported_code' => 99,
+            'apk_url' => 'https://example.test/ios.ipa',
+            'sha256' => str_repeat('b', 64),
+            'published_at' => now()->subDay(),
+        ]);
+
+        $apk = tempnam(sys_get_temp_dir(), 'app').'.apk';
+        file_put_contents($apk, 'apk-baru');
+
+        $this->artisan('app:release-apk', [
+            'apk' => $apk,
+            '--version-name' => '1.0.4',
+            '--version-code' => 4,
+            '--min-supported-code' => 4,
+            '--notes' => 'Rilis dengan cleanup',
+        ])->assertExitCode(0);
+        unlink($apk);
+
+        // Rilis android lama hilang dari DB; versi baru & platform lain tetap ada.
+        $this->assertDatabaseMissing('app_releases', ['platform' => 'android', 'version_code' => 2]);
+        $this->assertDatabaseMissing('app_releases', ['platform' => 'android', 'version_code' => 3]);
+        $this->assertDatabaseHas('app_releases', ['platform' => 'android', 'version_code' => 4]);
+        $this->assertDatabaseHas('app_releases', ['platform' => 'ios', 'version_code' => 99]);
+
+        // File APK lama terhapus; APK versi baru & platform lain tetap ada.
+        Storage::disk('local')->assertMissing('releases/onezentra-2.apk');
+        Storage::disk('local')->assertMissing('releases/onezentra-3.apk');
+        Storage::disk('local')->assertExists('releases/onezentra-4.apk');
+        Storage::disk('local')->assertExists('releases/onezentra-99.apk');
+    }
 }
