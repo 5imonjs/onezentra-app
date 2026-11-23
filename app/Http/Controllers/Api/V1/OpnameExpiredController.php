@@ -68,6 +68,7 @@ class OpnameExpiredController extends Controller
         $request->validate([
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
+            'stock' => 'nullable|in:kosong_crt,kosong_pcs,kosong_total',
         ]);
         if (
             $request->filled('date_from') &&
@@ -114,6 +115,8 @@ class OpnameExpiredController extends Controller
         if ($request->kode_depo && $request->user()->canAccessDepotRow($request->kode_depo)) {
             $query->where('opname_expired_waves.kode_depo', $request->kode_depo);
         }
+
+        $this->applyStockFilter($query, $request);
 
         if ($request->search) {
             $like = LikePattern::contains($request->search);
@@ -609,6 +612,7 @@ class OpnameExpiredController extends Controller
         $request->validate([
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
+            'stock' => 'nullable|in:kosong_crt,kosong_pcs,kosong_total',
         ]);
         $fromTo = $request->filled('date_from') || $request->filled('date_to');
         if ($fromTo) {
@@ -629,6 +633,7 @@ class OpnameExpiredController extends Controller
         }
 
         $this->applySourceFilter($query, $request->input('source'));
+        $this->applyStockFilter($query, $request);
 
         $filename = 'opname_expired_'.($request->week_start ?? Carbon::today()->toDateString()).'.xlsx';
         ExportGuard::ensureWithinLimit($query);
@@ -648,6 +653,25 @@ class OpnameExpiredController extends Controller
     private function emptySummary(): array
     {
         return array_fill_keys(['AMAN', 'PERHATIAN', 'KRITIS', 'EXPIRED'], ['count' => 0, 'qty_crt' => 0]);
+    }
+
+    /**
+     * Saring stok efektif = qty_ini + qty_koreksi (kolom koreksi bisa null).
+     * Dipakai index() & export() supaya daftar dan file Excel konsisten.
+     */
+    private function applyStockFilter($query, Request $request): void
+    {
+        $stock = $request->input('stock');
+        $crt = '(COALESCE(opname_expired_waves.qty_ini_crt, 0) + COALESCE(opname_expired_waves.qty_koreksi_crt, 0))';
+        $pcs = '(COALESCE(opname_expired_waves.qty_ini_pcs, 0) + COALESCE(opname_expired_waves.qty_koreksi_pcs, 0))';
+
+        if ($stock === 'kosong_crt') {
+            $query->whereRaw("{$crt} = 0");
+        } elseif ($stock === 'kosong_pcs') {
+            $query->whereRaw("{$pcs} = 0");
+        } elseif ($stock === 'kosong_total') {
+            $query->whereRaw("{$crt} = 0")->whereRaw("{$pcs} = 0");
+        }
     }
 
     /**
