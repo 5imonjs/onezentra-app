@@ -580,6 +580,7 @@ class OpnameExpiredController extends Controller
         foreach ($validated as $key => $value) {
             if ($key === 'composite_unit') {
                 OpnameSetting::set($key, ((bool) $value) ? 1 : 0);
+
                 continue;
             }
             OpnameSetting::set($key, (int) $value);

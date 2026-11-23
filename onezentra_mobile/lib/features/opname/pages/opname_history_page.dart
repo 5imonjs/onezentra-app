@@ -138,7 +138,8 @@ class _OpnameHistoryPageState extends State<OpnameHistoryPage> {
         child: ListView.separated(
           padding: const EdgeInsets.all(AppTheme.space3),
           itemCount: _sessions.length,
-          separatorBuilder: (_, index) => const SizedBox(height: AppTheme.space2),
+          separatorBuilder: (_, index) =>
+              const SizedBox(height: AppTheme.space2),
           itemBuilder: (_, index) {
             var session = _sessions[index];
             var total = session.itemsCount ?? session.items.length;
@@ -311,7 +312,10 @@ class _OpnameHistoryDetailState extends State<_OpnameHistoryDetail> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text('HASIL SESI #${detail.id}', style: OpType.title(context)),
+                      child: Text(
+                        'HASIL SESI #${detail.id}',
+                        style: OpType.title(context),
+                      ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
@@ -321,11 +325,18 @@ class _OpnameHistoryDetailState extends State<_OpnameHistoryDetail> {
                   ],
                 ),
                 if (_error != null)
-                  Text(_error!, style: OpType.secondary(context).copyWith(color: colors.danger)),
+                  Text(
+                    _error!,
+                    style: OpType.secondary(
+                      context,
+                    ).copyWith(color: colors.danger),
+                  ),
                 const SizedBox(height: AppTheme.space2),
                 Text(
                   'Petugas: ${detail.assigneeName ?? (detail.assignedTo != null ? 'Petugas #${detail.assignedTo}' : '-')}',
-                  style: OpType.body(context).copyWith(fontWeight: FontWeight.w600),
+                  style: OpType.body(
+                    context,
+                  ).copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
                   'Status: ${OpnameSessionStatus.label(detail.status)} · $done/$total batch dihitung',

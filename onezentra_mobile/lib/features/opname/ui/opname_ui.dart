@@ -91,7 +91,11 @@ extension OpToneColors on OpTone {
         OpTone.critical => (c.criticalWell, c.criticalText, c.critical),
         OpTone.danger => (c.dangerWell, c.dangerText, c.danger),
         OpTone.info => (c.infoWell, c.infoText, c.info),
-        OpTone.primary => (c.primaryWell, c.primaryWellText, c.primaryWellBorder),
+        OpTone.primary => (
+          c.primaryWell,
+          c.primaryWellText,
+          c.primaryWellBorder,
+        ),
         OpTone.neutral => (c.gray100, c.gray700, c.gray300),
       };
 
@@ -108,13 +112,14 @@ OpTone opToneForStatus(String status) => switch (status.trim().toUpperCase()) {
   _ => OpTone.neutral,
 };
 
-IconData? opIconForStatus(String status) => switch (status.trim().toUpperCase()) {
-  'EXPIRED' => Icons.error_rounded,
-  'KRITIS' => Icons.warning_amber_rounded,
-  'PERHATIAN' => Icons.schedule_rounded,
-  'AMAN' => Icons.check_circle_rounded,
-  _ => null,
-};
+IconData? opIconForStatus(String status) =>
+    switch (status.trim().toUpperCase()) {
+      'EXPIRED' => Icons.error_rounded,
+      'KRITIS' => Icons.warning_amber_rounded,
+      'PERHATIAN' => Icons.schedule_rounded,
+      'AMAN' => Icons.check_circle_rounded,
+      _ => null,
+    };
 
 /// Badge status dengan ukuran teks terbaca (11.5sp) — pengganti lokal
 /// `AppBadge` yang memakai 9sp.

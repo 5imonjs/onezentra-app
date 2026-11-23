@@ -244,9 +244,9 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
                     Text(
                       '$total batch · $risk berisiko'
                       '${weekLabel == null ? '' : ' · $weekLabel'}',
-                      style: OpType.secondary(context).copyWith(
-                        color: context.colors.textMuted,
-                      ),
+                      style: OpType.secondary(
+                        context,
+                      ).copyWith(color: context.colors.textMuted),
                     ),
                   ],
                 ),
@@ -408,11 +408,7 @@ class _OpnameExpiredPageState extends State<OpnameExpiredPage> {
     return widgets;
   }
 
-  Widget _buildClusterHeader(
-    BuildContext context,
-    String cluster,
-    int count,
-  ) {
+  Widget _buildClusterHeader(BuildContext context, String cluster, int count) {
     var theme = Theme.of(context);
     return Row(
       children: [
@@ -552,9 +548,10 @@ class _OpnameExpiredWaveCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       wave.kodeBarang ?? '-',
-                      style: OpType.code(
-                        context,
-                      ).copyWith(color: c.textMuted, fontWeight: FontWeight.w500),
+                      style: OpType.code(context).copyWith(
+                        color: c.textMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -576,12 +573,12 @@ class _OpnameExpiredWaveCard extends StatelessWidget {
       ('Depo', wave.namaDepo ?? wave.kodeDepo ?? '-', null),
       ('Sumber', _sourceLabel(wave.sourceMix), null),
       ('Tanggal expired', _formatDate(wave.expiredDateIni), null),
-      ('Sisa hari', _formatSisaHari(wave.sisaHari), _statusColor(context, wave.statusIni)),
       (
-        'Tanggal penerimaan',
-        _formatDate(wave.tanggalPenerimaan),
-        null,
+        'Sisa hari',
+        _formatSisaHari(wave.sisaHari),
+        _statusColor(context, wave.statusIni),
       ),
+      ('Tanggal penerimaan', _formatDate(wave.tanggalPenerimaan), null),
       (
         'Qty (CRT/PCS)',
         'CRT ${_formatQty(wave.effectiveCrt)} / PCS ${_formatQty(wave.effectivePcs)}',
@@ -615,9 +612,10 @@ class _OpnameExpiredWaveCard extends StatelessWidget {
                 child: Text(
                   row.$2,
                   textAlign: TextAlign.end,
-                  style: OpType.body(
-                    context,
-                  ).copyWith(color: row.$3 ?? c.foreground, fontWeight: FontWeight.w600),
+                  style: OpType.body(context).copyWith(
+                    color: row.$3 ?? c.foreground,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
