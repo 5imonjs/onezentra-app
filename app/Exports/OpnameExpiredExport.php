@@ -64,7 +64,13 @@ class OpnameExpiredExport implements FromQuery, ShouldAutoSize, WithColumnFormat
             $wave->perubahan ?? '-',
             $wave->rekomendasi ?? '-',
             $wave->sumber_material ?? '-',
-            $wave->tanggal_penerimaan?->format('d-m-Y') ?? '-',
+            // Wave lama (import/tak-pernah di-scan) belum punya
+            // `tanggal_penerimaan` — fallback ke validated_at/created_at agar
+            // export tetap menunjukkan tanggal (jangan nampilkan "-" terus).
+            $wave->tanggal_penerimaan?->format('d-m-Y')
+                ?? $wave->validated_at?->format('d-m-Y')
+                ?? $wave->created_at?->format('d-m-Y')
+                ?? '-',
         ];
     }
 
