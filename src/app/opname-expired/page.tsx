@@ -208,11 +208,12 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
       )}
       <td className="px-5 py-3 whitespace-nowrap">
         {badge(w.status_ini)}
-        {stokHabis && (
-          <span className="mt-1 inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-200 text-slate-700" title="Stok efektif CRT/BALL dan PCS keduanya 0">
-            STOK HABIS
-          </span>
-        )}
+        <span
+          className={`mt-1 inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-bold ${stokHabis ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}
+          title={stokHabis ? 'Stok efektif CRT/BALL dan PCS keduanya 0' : 'Masih ada stok efektif'}
+        >
+          {stokHabis ? 'STOK HABIS' : 'ADA STOK'}
+        </span>
       </td>
       <td className="px-5 py-3 min-w-50 max-w-80">
         <span className="block font-mono text-sm font-medium text-foreground">{w.kode_barang}</span>
@@ -223,10 +224,10 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
       <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{w.principal_1 || '-'}</td>
       <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{w.principal_2 || '-'}</td>
       <td className="px-5 py-3 text-right whitespace-nowrap">
-        <span className="text-sm font-semibold tabular-nums text-foreground">{fnum(num(w.qty_ini_crt) + num(w.qty_koreksi_crt))}</span>
+        <span className={`text-sm font-semibold tabular-nums ${stokHabis ? 'text-slate-400' : 'text-emerald-700'}`}>{fnum(num(w.qty_ini_crt) + num(w.qty_koreksi_crt))}</span>
       </td>
       <td className="px-5 py-3 text-right whitespace-nowrap">
-        <span className="text-sm tabular-nums text-foreground">
+        <span className={`text-sm tabular-nums ${stokHabis ? 'text-slate-400' : 'text-emerald-700'}`}>
           {w.composite_unit
             ? `${fnum(num(w.qty_ini_pcs) + num(w.qty_koreksi_pcs))} ${w.composite_unit}`
             : fnum(num(w.qty_ini_pcs) + num(w.qty_koreksi_pcs))}
@@ -1229,6 +1230,17 @@ export default function OpnameExpiredPage() {
 
         {/* Filter + Tabs + Table */}
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="flex flex-wrap items-center gap-3 px-5 py-2 border-b border-border bg-popover/40 text-xs">
+            <span className="inline-flex items-center gap-1.5 font-bold text-red-600">
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+              {waves.filter((w) => num(w.qty_ini_crt) + num(w.qty_koreksi_crt) === 0 && num(w.qty_ini_pcs) + num(w.qty_koreksi_pcs) === 0).length} stok habis
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-bold text-emerald-600">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              {waves.filter((w) => num(w.qty_ini_crt) + num(w.qty_koreksi_crt) !== 0 || num(w.qty_ini_pcs) + num(w.qty_koreksi_pcs) !== 0).length} masih ada stok
+            </span>
+            <span className="ml-auto text-muted-foreground">Angka Qty = stok efektif setelah koreksi</span>
+          </div>
           {/* Toolbar: minggu opname + search */}
           <div className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-border">
             <div className="flex flex-wrap items-center gap-2">
