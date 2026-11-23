@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\OpnameExpiredNotification;
 use App\Models\ApprovalHistory;
 use App\Models\Batch;
+use App\Models\OpnameExpiredDismissal;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
@@ -782,7 +783,41 @@ class OpnameExpiredController extends Controller
             );
         }
 
-        $wave->delete();
+        // Baris "stok kosong" yang dihapus harus meninggalkan penanda. Tanpa
+        // penanda, generate minggu berikutnya jatuh kembali ke snapshot lama
+        // (sebelum koreksi) dan memunculkan qty lama — stok yang sudah habis
+        // bisa hidup lagi di opname berikutnya. Baris dengan stok masih ada
+        // tidak ditandai: stoknya memang harus tetap dipantau.
+        $dismissZeroStock = $wave->effectiveCrt() == 0.0
+            && $wave->effectivePcs() == 0.0
+            && $wave->expired_date_ini !== null;
+
+        DB::transaction(function () use ($request, $wave, $dismissZeroStock): void {
+            if ($dismissZeroStock) {
+                $waveWeek = Carbon::parse($wave->week_start)
+                    ->startOfWeek(Carbon::MONDAY)
+                    ->toDateString();
+
+                $dismissal = OpnameExpiredDismissal::query()->firstOrNew([
+                    'kode_barang' => $wave->kode_barang,
+                    'kode_depo' => $wave->kode_depo ?: OpnameExpiredService::DEPO_GENERAL,
+                    'expired_date' => $wave->expired_date_ini?->toDateString(),
+                ]);
+
+                // Penghapusan berulang di minggu yang lebih baru memperluas
+                // batas snapshot yang tidak boleh dibawa lagi.
+                $dismissal->last_wave_id = max((int) $dismissal->last_wave_id, (int) $wave->id);
+                $existingWeek = $dismissal->dismissed_week_start?->toDateString();
+                if ($existingWeek === null || $waveWeek > $existingWeek) {
+                    $dismissal->dismissed_week_start = $waveWeek;
+                }
+                $dismissal->dismissed_by = $request->user()->id;
+                $dismissal->dismissed_at = now();
+                $dismissal->save();
+            }
+
+            $wave->delete();
+        });
 
         return response()->json(['message' => 'Wave deleted']);
     }

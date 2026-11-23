@@ -89,6 +89,17 @@ class OpnameExpiredTest extends TestCase
         ]);
     }
 
+    private function grantDeleteValidated(): void
+    {
+        $permission = Permission::firstOrCreate(
+            ['slug' => 'opname.delete_validated'],
+            ['name' => 'Hapus Wave Opname Tervalidasi', 'menu_group' => 'Opname', 'is_active' => true],
+        );
+        $role = Role::where('slug', 'opname_test')->firstOrFail();
+        $role->permissions()->syncWithoutDetaching([$permission->id]);
+        User::clearPermissionCache($this->user->id);
+    }
+
     /**
      * @param  array<int, array<int, mixed>>  $rows
      */
@@ -182,6 +193,131 @@ class OpnameExpiredTest extends TestCase
         $this->assertEquals(10, $wave->qty_lalu_crt);
         $this->assertEquals(10, $wave->qty_ini_crt);
         $this->assertNotNull($result);
+    }
+
+    public function test_deleting_zero_stock_wave_does_not_resurrect_previous_quantity_next_week(): void
+    {
+        $this->grantDeleteValidated();
+
+        $this->receipt('B-ZERO-01', 'Produk Nol', 50, '2027-01-01', '2026-09-09');
+        app(OpnameExpiredService::class)->generate(); // minggu 2026-09-07: qty 50
+
+        $this->travelTo('2026-09-16 10:00:00');
+        app(OpnameExpiredService::class)->generate(); // minggu 2026-09-14: carry 50
+
+        // Operator mengoreksi stok menjadi habis (50 - 50 = 0), lalu menghapus
+        // baris "stok kosong" itu dari monitoring minggu ini.
+        $wave = OpnameExpiredWave::query()
+            ->where('week_start', '2026-09-14')
+            ->where('kode_barang', 'B-ZERO-01')
+            ->firstOrFail();
+        $wave->update(['qty_koreksi_crt' => -50, 'qty_koreksi_pcs' => -50, 'koreksi_by' => $this->user->id]);
+
+        $this->deleteJson("/api/v1/opname-expired/{$wave->id}")->assertOk();
+
+        $this->assertDatabaseHas('opname_expired_dismissals', [
+            'kode_barang' => 'B-ZERO-01',
+            'kode_depo' => 'DPO',
+            'expired_date' => '2027-01-01',
+            'last_wave_id' => $wave->id,
+        ]);
+
+        $this->travelTo('2026-09-23 10:00:00');
+        app(OpnameExpiredService::class)->generate(); // minggu 2026-09-21
+
+        $this->assertDatabaseMissing('opname_expired_waves', [
+            'week_start' => '2026-09-21',
+            'kode_barang' => 'B-ZERO-01',
+        ]);
+    }
+
+    public function test_new_receipt_after_zero_stock_deletion_appears_with_only_new_quantity(): void
+    {
+        $this->grantDeleteValidated();
+
+        $this->receipt('B-ZERO-02', 'Produk Nol Susulan', 50, '2027-01-01', '2026-09-09');
+        app(OpnameExpiredService::class)->generate();
+
+        $this->travelTo('2026-09-16 10:00:00');
+        app(OpnameExpiredService::class)->generate();
+
+        $wave = OpnameExpiredWave::query()
+            ->where('week_start', '2026-09-14')
+            ->where('kode_barang', 'B-ZERO-02')
+            ->firstOrFail();
+        $wave->update(['qty_koreksi_crt' => -50, 'qty_koreksi_pcs' => -50, 'koreksi_by' => $this->user->id]);
+        $this->deleteJson("/api/v1/opname-expired/{$wave->id}")->assertOk();
+
+        // Penerimaan baru setelah penghapusan tetap harus muncul — tapi hanya
+        // qty baru, bukan 50 dari snapshot lama.
+        $this->travelTo('2026-09-23 10:00:00');
+        $this->receipt('B-ZERO-02', 'Produk Nol Susulan', 5, '2027-01-01', '2026-09-22');
+        app(OpnameExpiredService::class)->generate();
+
+        $next = OpnameExpiredWave::query()
+            ->where('week_start', '2026-09-21')
+            ->where('kode_barang', 'B-ZERO-02')
+            ->first();
+
+        $this->assertNotNull($next);
+        $this->assertEquals(0, $next->qty_lalu_crt);
+        $this->assertEquals(5, $next->qty_ini_crt);
+    }
+
+    public function test_regenerating_same_week_after_zero_stock_deletion_does_not_recreate_row(): void
+    {
+        $this->grantDeleteValidated();
+
+        $this->receipt('B-ZERO-03', 'Produk Nol Regenerate', 50, '2027-01-01', '2026-09-09');
+        app(OpnameExpiredService::class)->generate();
+
+        $this->travelTo('2026-09-16 10:00:00');
+        app(OpnameExpiredService::class)->generate();
+
+        $wave = OpnameExpiredWave::query()
+            ->where('week_start', '2026-09-14')
+            ->where('kode_barang', 'B-ZERO-03')
+            ->firstOrFail();
+        $wave->update(['qty_koreksi_crt' => -50, 'qty_koreksi_pcs' => -50, 'koreksi_by' => $this->user->id]);
+        $this->deleteJson("/api/v1/opname-expired/{$wave->id}")->assertOk();
+
+        // Menekan Generate lagi di minggu yang sama tidak boleh menghidupkan
+        // kembali baris stok kosong yang sudah dihapus.
+        app(OpnameExpiredService::class)->generate();
+
+        $this->assertDatabaseMissing('opname_expired_waves', [
+            'week_start' => '2026-09-14',
+            'kode_barang' => 'B-ZERO-03',
+        ]);
+    }
+
+    public function test_deleting_wave_with_stock_still_rolls_forward_from_previous_snapshot(): void
+    {
+        // Penanda hanya untuk stok kosong. Stok yang masih ada tetap wajib
+        // dipantau — menghapus baris minggu ini tidak boleh menghilangkannya.
+        $this->receipt('B-KEEP-01', 'Produk Masih Ada', 10, '2027-01-01', '2026-09-09');
+        app(OpnameExpiredService::class)->generate();
+
+        $wave = OpnameExpiredWave::query()
+            ->where('week_start', '2026-09-07')
+            ->where('kode_barang', 'B-KEEP-01')
+            ->firstOrFail();
+        $this->deleteJson("/api/v1/opname-expired/{$wave->id}")->assertOk();
+
+        $this->assertDatabaseMissing('opname_expired_dismissals', [
+            'kode_barang' => 'B-KEEP-01',
+        ]);
+
+        $this->travelTo('2026-09-16 10:00:00');
+        app(OpnameExpiredService::class)->generate();
+
+        $next = OpnameExpiredWave::query()
+            ->where('week_start', '2026-09-14')
+            ->where('kode_barang', 'B-KEEP-01')
+            ->first();
+
+        $this->assertNotNull($next);
+        $this->assertEquals(10, $next->qty_ini_crt);
     }
 
     public function test_generate_rolls_forward_expired_batch_until_acted_upon(): void

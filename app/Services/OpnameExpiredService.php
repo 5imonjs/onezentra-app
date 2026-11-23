@@ -6,6 +6,7 @@ use App\Models\Batch;
 use App\Models\Npn;
 use App\Models\OpnameExpiredAdjustment;
 use App\Models\OpnameExpiredBaselineImport;
+use App\Models\OpnameExpiredDismissal;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
@@ -19,13 +20,16 @@ use Illuminate\Support\Facades\DB;
 
 class OpnameExpiredService
 {
-    private const DEPO_GENERAL = 'GENERAL';
+    public const DEPO_GENERAL = 'GENERAL';
 
     /** @var array<string, array{date: Carbon, at: Carbon}>|null */
     private ?array $baselineCutoffsCache = null;
 
     /** @var array<int, array{crt: float, pcs: float}> */
     private array $adjustmentTotals = [];
+
+    /** @var array<string, array{last_wave_id: int, dismissed_week_start: string, dismissed_at: Carbon}>|null */
+    private ?array $dismissalsCache = null;
 
     /**
      * Satuan komposit untuk produk — hanya aktif saat setting global
@@ -50,6 +54,84 @@ class OpnameExpiredService
         }
 
         return $npn->stagingUom();
+    }
+
+    /**
+     * Kunci identitas satu baris monitoring: barang|depo|expired.
+     */
+    private function waveKey(string $kodeBarang, ?string $kodeDepo, ?string $expiredDate): string
+    {
+        return implode('|', [
+            $kodeBarang,
+            $kodeDepo ?: self::DEPO_GENERAL,
+            $expiredDate ?? '',
+        ]);
+    }
+
+    /**
+     * Penanda penghapusan baris stok kosong per kunci. Dimuat sekali per
+     * request agar generate/pending tidak query per baris.
+     *
+     * @return array<string, array{last_wave_id: int, dismissed_week_start: string, dismissed_at: Carbon}>
+     */
+    private function dismissals(): array
+    {
+        if ($this->dismissalsCache !== null) {
+            return $this->dismissalsCache;
+        }
+
+        $this->dismissalsCache = [];
+
+        foreach (OpnameExpiredDismissal::query()->get() as $dismissal) {
+            $this->dismissalsCache[$this->waveKey(
+                (string) $dismissal->kode_barang,
+                $dismissal->kode_depo,
+                $dismissal->expired_date?->toDateString(),
+            )] = [
+                'last_wave_id' => (int) $dismissal->last_wave_id,
+                'dismissed_week_start' => $dismissal->dismissed_week_start?->toDateString() ?? '',
+                'dismissed_at' => $dismissal->dismissed_at,
+            ];
+        }
+
+        return $this->dismissalsCache;
+    }
+
+    /**
+     * Snapshot yang dihapus operator (stok kosong) tidak boleh dibawa lagi.
+     * Batasnya `last_wave_id`: wave yang dibuat SETELAH penghapusan (mis.
+     * penerimaan susulan) tetap membawa qty-nya sendiri.
+     */
+    private function isDismissedCarried(OpnameExpiredWave $carried): bool
+    {
+        $dismissal = $this->dismissals()[$this->waveKey(
+            (string) $carried->kode_barang,
+            $carried->kode_depo,
+            $carried->expired_date_ini?->toDateString(),
+        )] ?? null;
+
+        return $dismissal !== null && (int) $carried->id <= $dismissal['last_wave_id'];
+    }
+
+    /**
+     * Baris ledger lama untuk kunci yang stok kosongnya sudah dihapus tidak
+     * boleh dihitung lagi. Penerimaan yang di-input SETELAH penghapusan tetap
+     * masuk (stok baru memang harus muncul di opname berikutnya).
+     */
+    private function dismissalExcludesItem(ReceivingItem $item, string $key, Carbon $weekStart): bool
+    {
+        $dismissal = $this->dismissals()[$key] ?? null;
+
+        if ($dismissal === null || $item->created_at === null) {
+            return false;
+        }
+
+        // Minggu lampau tetap boleh dibaca untuk audit/sesi historis.
+        if ($weekStart->toDateString() < $dismissal['dismissed_week_start']) {
+            return false;
+        }
+
+        return $item->created_at->lessThanOrEqualTo($dismissal['dismissed_at']);
     }
 
     public function generate(?Carbon $reference = null, ?User $user = null): array
@@ -78,23 +160,34 @@ class OpnameExpiredService
 
             $aggregates = $this->receivingAggregates($weekStart, $user);
 
+            $created = 0;
+
             foreach ($aggregates as $key => $agg) {
                 $carried = $batis[$key] ?? null;
+                // Stok kosong yang sudah dihapus operator: jangan bawa qty
+                // snapshot lama. Penerimaan baru di $agg tetap dihitung.
+                $dismissed = $carried !== null && $this->isDismissedCarried($carried);
 
                 $depo = $agg['kode_depo'];
                 $kodeBarang = $agg['kode_barang'];
                 $expiredDate = $agg['expired_date'];
 
-                $prevQtyCrt = $carried ? $carried->effectiveCrt() : 0;
-                $prevQtyPcs = $carried ? $carried->effectivePcs() : 0;
-                $prevStatus = $carried ? $carried->status_ini : null;
-                $prevExpired = $carried ? $carried->expired_date_ini : null;
+                $prevQtyCrt = $carried && ! $dismissed ? $carried->effectiveCrt() : 0;
+                $prevQtyPcs = $carried && ! $dismissed ? $carried->effectivePcs() : 0;
+                $prevStatus = $carried && ! $dismissed ? $carried->status_ini : null;
+                $prevExpired = $carried && ! $dismissed ? $carried->expired_date_ini : null;
 
                 // Roll-forward penuh: qty minggu ini = stok minggu lalu (termasuk
                 // yang sudah EXPIRED — tidak boleh hilang dari monitoring sampai
                 // ditindak) + penerimaan baru.
                 $qtyCrt = $prevQtyCrt + $agg['qty_crt'];
                 $qtyPcs = $prevQtyPcs + $agg['qty_pcs'];
+
+                // Baris stok kosong yang sudah dihapus tidak perlu dibentuk
+                // ulang (mis. Generate ditekan lagi di minggu yang sama).
+                if ($dismissed && $qtyCrt == 0.0 && $qtyPcs == 0.0) {
+                    continue;
+                }
 
                 $sisaHari = $this->sisaHari(Carbon::parse($expiredDate), $now);
                 $status = $this->status($sisaHari, $aman, $perhatian);
@@ -107,14 +200,14 @@ class OpnameExpiredService
                     'sumber_material' => $agg['sumber_material'],
                     'tanggal_penerimaan' => $agg['tanggal_penerimaan'],
                     'expired_date_ini' => $expiredDate,
-                    'expired_date_lalu' => $carried ? $prevExpired?->toDateString() : null,
-                    'selisih_expired_date' => $carried
+                    'expired_date_lalu' => $prevExpired?->toDateString(),
+                    'selisih_expired_date' => $prevExpired !== null
                         ? Carbon::parse($expiredDate)->diffInDays($prevExpired, false)
                         : null,
                     'sisa_hari' => $sisaHari,
                     'status_ini' => $status,
                     'status_lalu' => $prevStatus,
-                    'perubahan' => $this->perubahan($carried, $prevQtyCrt, $qtyCrt, $prevStatus, $status),
+                    'perubahan' => $this->perubahan($dismissed ? null : $carried, $prevQtyCrt, $qtyCrt, $prevStatus, $status),
                     'rekomendasi' => $this->rekomendasi($status, $sisaHari),
                     'qty_ini_crt' => $qtyCrt,
                     'qty_ini_pcs' => $qtyPcs,
@@ -122,14 +215,14 @@ class OpnameExpiredService
                     'qty_lalu_pcs' => $prevQtyPcs,
                     // Gabung jejak batch minggu ini + bawaan minggu lalu.
                     'batch_numbers' => array_values(array_unique(array_merge(
-                        $carried?->batch_numbers ?? [],
+                        $dismissed ? [] : ($carried?->batch_numbers ?? []),
                         $agg['batches'] ?? []
                     ))),
                     // Gabung komposisi sumber minggu ini + bawaan minggu lalu.
                     'source_mix' => [
-                        'sj' => ($carried?->source_mix['sj'] ?? 0) + ($agg['mix']['sj'] ?? 0),
-                        'import' => ($carried?->source_mix['import'] ?? 0) + ($agg['mix']['import'] ?? 0),
-                        'legacy' => ($carried?->source_mix['legacy'] ?? 0) + ($agg['mix']['legacy'] ?? 0),
+                        'sj' => ($dismissed ? 0 : ($carried?->source_mix['sj'] ?? 0)) + ($agg['mix']['sj'] ?? 0),
+                        'import' => ($dismissed ? 0 : ($carried?->source_mix['import'] ?? 0)) + ($agg['mix']['import'] ?? 0),
+                        'legacy' => ($dismissed ? 0 : ($carried?->source_mix['legacy'] ?? 0)) + ($agg['mix']['legacy'] ?? 0),
                     ],
                 ];
 
@@ -142,6 +235,8 @@ class OpnameExpiredService
                     ],
                     $values
                 );
+
+                $created++;
             }
 
             // Daftarkan ulang batch lama yang masih valid (roll-forward) walaupun tak ada penerimaan baru.
@@ -150,7 +245,7 @@ class OpnameExpiredService
             return [
                 'week_start' => $weekStart->toDateString(),
                 'week_end' => $weekEnd->toDateString(),
-                'batches' => count($aggregates) + $batchCount,
+                'batches' => $created + $batchCount,
                 'generated_at' => $now->toDateTimeString(),
             ];
         });
@@ -381,8 +476,21 @@ class OpnameExpiredService
                 fn ($q) => $q->whereNotIn('id', $cancelledItemIds)
             )
             ->get()
-            ->filter(function (ReceivingItem $item) use ($weekRange, $wavesByKey): bool {
+            ->filter(function (ReceivingItem $item) use ($weekRange, $weekStart, $wavesByKey): bool {
                 if ($this->isCoveredByBaseline($item)) {
+                    return false;
+                }
+
+                $key = $this->waveKey(
+                    (string) $item->kode_barang,
+                    $item->getKodeDepoFallback(),
+                    $item->expired_date?->toDateString(),
+                );
+
+                // Stok kosong yang sudah dihapus operator tidak boleh hidup
+                // lagi dari baris ledger lama; penerimaan baru (created_at
+                // setelah dismissal) tetap masuk.
+                if ($this->dismissalExcludesItem($item, $key, $weekStart)) {
                     return false;
                 }
 
@@ -399,12 +507,6 @@ class OpnameExpiredService
                 // hari ini untuk produk yang sudah dimonitor — jadi barisnya
                 // tetap masuk generate berikutnya. Baris yang sudah tercermin
                 // tetap dikecualikan agar qty tidak terhitung dua kali.
-                $key = implode('|', [
-                    $item->kode_barang,
-                    $item->getKodeDepoFallback() ?: self::DEPO_GENERAL,
-                    $item->expired_date?->toDateString(),
-                ]);
-
                 $wavesForKey = $wavesByKey[$key] ?? [];
 
                 if ($wavesForKey === []) {
@@ -678,6 +780,11 @@ class OpnameExpiredService
 
         foreach ($batis as $key => $carried) {
             if (isset($aggregates[$key])) {
+                continue;
+            }
+
+            // Stok kosong yang sudah dihapus operator tidak dibawa lagi.
+            if ($this->isDismissedCarried($carried)) {
                 continue;
             }
 
