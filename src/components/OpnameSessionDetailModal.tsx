@@ -15,6 +15,8 @@ export interface SessionDetailItem {
   wave_id: number;
   batch_id: number | null;
   batch?: { batch_number: string; barcode_label?: string | null } | null;
+  // Tanggal penerimaan per baris (dari receiving; backend show selalu return).
+  tanggal_penerimaan?: string | null;
   qty_fisik_crt: number | null;
   qty_fisik_pcs: number | null;
   condition: string | null;
@@ -83,6 +85,58 @@ const STATUS_META: Record<string, string> = {
 };
 
 const fmtDate = formatDateId;
+
+// --- Export hasil imputasi sesi (CSV) -----------------------------------
+// Sumber kebenaran imputasi: opname_expired_session_items (item dari
+// GET /opname-sessions/{id}). Export berupa CSV universal (Excel/Sheets
+// bisa langsung buka) — tanpa dependency baru atau endpoint tambahan.
+function csvCell(value: string | number | null | undefined): string {
+  const s = value == null ? '' : String(value);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function sessionResultsCsv(detail: SessionDetail): string {
+  const header = [
+    'id', 'kode_barang', 'nama_barang', 'batch_number', 'barcode_label',
+    'tanggal_penerimaan', 'tanggal_kedaluwarsa', 'status_wave',
+    'qty_acuan_crt', 'qty_acuan_pcs', 'qty_fisik_crt', 'qty_fisik_pcs', 'selisih_crt',
+    'condition', 'disposition', 'notes',
+    'verified_at', 'verified_via', 'verified_by',
+  ];
+  const rows = (detail.items ?? []).map((it) => {
+    const acuanCrt = it.expected_crt != null ? Number(it.expected_crt) : null;
+    const acuanPcs = it.expected_pcs != null ? Number(it.expected_pcs) : null;
+    const fisikCrt = it.qty_fisik_crt;
+    const fisikPcs = it.qty_fisik_pcs;
+    const selisihCrt = acuanCrt != null && fisikCrt != null ? fisikCrt - acuanCrt : null;
+    return [
+      it.id,
+      it.wave?.kode_barang ?? '',
+      it.wave?.nama_barang ?? it.wave?.kode_barang ?? '',
+      it.batch?.batch_number ?? '',
+      it.batch?.barcode_label ?? '',
+      it.tanggal_penerimaan ?? '',
+      it.wave ? fmtDate(it.wave.expired_date_ini) : '',
+      it.wave?.status_ini ?? '',
+      acuanCrt, acuanPcs, fisikCrt, fisikPcs, selisihCrt,
+      it.condition ?? '', it.disposition ?? '', it.notes ?? '',
+      it.verified_at ?? '', it.verified_via ?? '', it.verified_by ?? '',
+    ];
+  });
+  return [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n');
+}
+
+function downloadSessionCsv(detail: SessionDetail): void {
+  const csv = sessionResultsCsv(detail);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `opname-sesi-${detail.id}-imputasi.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  notifyGlobal('Hasil imputasi sesi berhasil diunduh.', 'success');
+}
 
 interface SessionHistoryEntry {
   id: number;
@@ -378,6 +432,14 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold ${STATUS_META[detail.status] || STATUS_META.OPEN}`}>{detail.status}</span>
+                <button
+                  type="button"
+                  onClick={() => downloadSessionCsv(detail)}
+                  className="btn-secondary text-sm disabled:opacity-50"
+                  title="Download hasil imputasi sesi (CSV)"
+                >
+                  Export Excel/CSV
+                </button>
               {detail.input_completed_at && (
                 <span
                   className="inline-flex px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700"
