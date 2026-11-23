@@ -19,6 +19,7 @@ type DepotProgress = {
   item_total?: number;
   item_counted?: number;
   item_pct?: number;
+  has_open_session?: boolean;
 };
 
 const ICON_ACTIVITY = <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />;
@@ -193,6 +194,8 @@ function ProgressRing({ depots, onOpen }: { depots: DepotProgress[]; onOpen: () 
   const total = depots.reduce((a, d) => a + (d.item_total ?? d.total), 0);
   const counted = depots.reduce((a, d) => a + (d.item_counted ?? d.validated), 0);
   const pct = total > 0 ? Math.round((counted / total) * 100) : 0;
+  const sisa = Math.max(total - counted, 0);
+  const hasRunningSession = depots.some((d) => d.has_open_session);
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
 
@@ -211,6 +214,7 @@ function ProgressRing({ depots, onOpen }: { depots: DepotProgress[]; onOpen: () 
         </div>
       </div>
       <div className="flex-1">
+        <p className="text-base font-black tabular-nums text-foreground">{counted}/{total} terhitung{sisa > 0 ? ` · ${sisa} sisa` : ''}</p>
         <p className="text-sm font-bold tabular-nums text-foreground">{counted} / {total} batch dihitung</p>
         <p className="text-[11px] text-muted-foreground">{depots.filter((d) => (d.item_total ?? d.total) > 0 && (d.item_counted ?? d.validated) >= (d.item_total ?? d.total)).length} dari {depots.length} depo tuntas hitung</p>
         <ul className="mt-2 space-y-1">
@@ -221,6 +225,11 @@ function ProgressRing({ depots, onOpen }: { depots: DepotProgress[]; onOpen: () 
             </li>
           ))}
         </ul>
+        {hasRunningSession && (
+          <p className="mt-2 text-[11px] font-semibold text-emerald-600">
+            Sesi berjalan sedang dicatat — lihat per baris imputasi.
+          </p>
+        )}
       </div>
     </button>
   );
