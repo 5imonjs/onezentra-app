@@ -227,6 +227,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/{biayaRetribusi}/rfah-approve', [BiayaRetribusiController::class, 'rfahApprove'])->middleware('permission:approval.rfah');
         Route::post('/{biayaRetribusi}/reject', [BiayaRetribusiController::class, 'reject'])->middleware('permission:approval.reject');
         Route::post('/{biayaRetribusi}/revise', [BiayaRetribusiController::class, 'revise'])->middleware('permission:approval.revise');
+        Route::post('/{biayaRetribusi}/refresh', [BiayaRetribusiController::class, 'refresh'])->middleware('permission:biaya_retribusi.edit');
         Route::get('/{biayaRetribusi}/pdf', [BiayaRetribusiController::class, 'pdf'])->middleware('permission:biaya_retribusi.view');
         Route::get('/{biayaRetribusi}', [BiayaRetribusiController::class, 'show'])->middleware('permission:biaya_retribusi.view');
         Route::put('/{biayaRetribusi}', [BiayaRetribusiController::class, 'update'])->middleware('permission:biaya_retribusi.edit');

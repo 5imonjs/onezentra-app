@@ -1330,6 +1330,24 @@ export default function BiayaRetribusiPage() {
     setOpenModal(true);
   };
 
+  const refreshRetribusi = async () => {
+    if (!editingId) return;
+    setBusy(true);
+    try {
+      const res = await biayaRetribusi.refresh(editingId);
+      const fresh = res.data?.data as { details?: DetailRow[] } | undefined;
+      if (fresh && Array.isArray(fresh.details)) {
+        setFormData((prev) => ({ ...prev, details: fresh.details!.map((d) => ({ ...d })) }));
+      }
+      notifyGlobal('Qty & nominal retribusi diperbarui dari penerimaan.', 'success');
+      await fetchItems();
+    } catch (e) {
+      notifyGlobal(retribusiErrorMessage(e, 'Gagal refresh qty retribusi.'), 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const openViewModal = (item: BiayaRetribusiItem) => {
     setViewItem(normalizeBiayaRetribusiItem(item));
   };
@@ -1697,6 +1715,7 @@ export default function BiayaRetribusiPage() {
           candidateNominals={candidateNominals}
           setCandidateNominals={setCandidateNominals}
           fetchCandidates={fetchCandidates}
+          onRefresh={refreshRetribusi}
           startDocument={startDocument}
           updateDocument={updateDocument}
           removeDocument={removeDocument}

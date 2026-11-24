@@ -833,6 +833,7 @@ export const biayaRetribusi = {
   list: (params?: Record<string, unknown>) => apiClient.get('/biaya-retribusi', { params }),
   candidates: (params?: Record<string, unknown>) => apiClient.get('/biaya-retribusi/candidates', { params }),
   get: (id: number) => apiClient.get(`/biaya-retribusi/${id}`),
+  refresh: (id: number) => apiClient.post(`/biaya-retribusi/${id}/refresh`),
   create: (data: Record<string, unknown> | FormData) => {
     const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' }, timeout: UPLOAD_TIMEOUT_MS } : {};
     return apiClient.post('/biaya-retribusi', data, config);

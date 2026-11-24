@@ -20,6 +20,7 @@ use App\Services\Biaya\BiayaPdfRenderer;
 use App\Services\Biaya\BiayaQueueSummary;
 use App\Services\Biaya\BiayaRetribusiCalculator;
 use App\Services\Biaya\BiayaRetribusiReferenceValidator;
+use App\Services\Biaya\BiayaRetribusiSyncService;
 use App\Services\BiayaApprovalService;
 use App\Services\ExportGuard;
 use App\Support\EvidenceStorage;
@@ -285,6 +286,24 @@ class BiayaRetribusiController extends Controller
         );
 
         return response()->json(['data' => (new BiayaRetribusiResource($biayaRetribusi))->withApprovalSections()]);
+    }
+
+    /**
+     * Refresh (reambahan) qty & nominal dari penerimaan untuk pengajuan yang
+     * sudah exist — untuk baris retribusi yang sebelumnya terkait receiving
+     * tapi qtynya sudah menyimpang dari ledger.
+     */
+    public function refresh(BiayaRetribusiSyncService $sync, BiayaRetribusi $biayaRetribusi)
+    {
+        $this->authorizeCreator($biayaRetribusi);
+
+        $sync->resyncFromLedger($biayaRetribusi->id);
+        $biayaRetribusi->refresh();
+
+        return response()->json([
+            'message' => 'Qty & nominal retribusi diperbarui dari penerimaan.',
+            'data' => $biayaRetribusi->load('details'),
+        ]);
     }
 
     public function update(Request $request, BiayaRetribusi $biayaRetribusi)
