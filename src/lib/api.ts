@@ -614,8 +614,10 @@ export const opnameExpired = {
 };
 
 export const rencanaKirim = {
-  list: (params?: Record<string, unknown>) => apiClient.get('/rencana-kirim', { params }),
-  stats: (kodeDepo?: string) => apiClient.get('/rencana-kirim/stats', { params: kodeDepo ? { kode_depo: kodeDepo } : {} }),
+  // Tanpa angkat timeout di sini, jeda server jangka panjang di saat koneksi
+  // tersambung lambat bisa langsung abort lewat default 15s axios.
+  list: (params?: Record<string, unknown>) => apiClient.get('/rencana-kirim', { params, timeout: 30000 }),
+  stats: (kodeDepo?: string) => apiClient.get('/rencana-kirim/stats', { params: kodeDepo ? { kode_depo: kodeDepo } : {}, timeout: 30000 }),
   create: (data: Record<string, unknown>) => apiClient.post('/rencana-kirim', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/rencana-kirim/${id}`, data),
   delete: (id: number) => apiClient.delete(`/rencana-kirim/${id}`),
