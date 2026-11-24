@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef, useCallback, Fragment } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/app/dashboard/layout';
-import { rencanaKirim, depo, depotSettings, getErrorMessage } from '@/lib/api';
+import { rencanaKirim, depo, depotSettings, getErrorMessage, reports } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
 import { type RencanaKirimData } from '@/lib/suratJalanPdf';
 import SearchInput from '@/components/SearchInput';
@@ -228,6 +228,7 @@ export default function RencanaKirimPage() {
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [viewItem, setViewItem] = useState<RencanaKirim | null>(null);
+  const [excelExporting, setExcelExporting] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<Partial<RencanaKirim>>({ ...emptyForm });
   const [createItems, setCreateItems] = useState<RencanaKirimItem[]>([{ ...emptyItem }]);
@@ -497,6 +498,31 @@ export default function RencanaKirimPage() {
     setDateFrom(date);
     setDateTo(date);
     setPage(1);
+  };
+
+  const handleDownloadExcel = async () => {
+    if (!viewItem) return;
+    setExcelExporting(true);
+    try {
+      const res = await reports.rencanaKirimDetailExport(viewItem.id);
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const safePo = String(viewItem.po_transporter).replace(/[^A-Za-z0-9_-]/g, '_') || 'rencana-kirim';
+      const filename = `rencana-kirim-detail-${safePo}-${stamp}.xlsx`;
+      const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal generate Excel.'), 'error');
+    } finally {
+      setExcelExporting(false);
+    }
   };
 
   const handleEdit = (item: RencanaKirim) => {
@@ -1276,11 +1302,17 @@ export default function RencanaKirimPage() {
                 Preview
               </button>
               )}
+              {hasPermission('reports.rencana_kirim') && (
+                <button onClick={() => void handleDownloadExcel()} disabled={excelExporting} title="Export detail rencana kirim ke Excel (detailReplenishment)" aria-label="Download Excel" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-card border border-border text-sm font-bold text-foreground hover:bg-popover disabled:opacity-50 disabled:cursor-not-allowed">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v2m0 0H7a2 2 0 01-2-2v-4a2 2 0 012-2h10a2 2 0 012 2v4a2 2 0 01-2 2h-2m0 0L15 17m0 0l2-2m-2 2l2 2m-2-2v-3m0 0v-3l1.5-1.5a2 2 0 013.004 0l1.5 1.5a2 2 0 010 3.004V21" /></svg>
+                  {excelExporting ? 'Mengekspor...' : 'Download Excel'}
+                </button>
+              )}
               {hasPermission('rencana_kirim.view') && (
-              <button onClick={() => viewItem && downloadSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 shadow-lg">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                Download PDF
-              </button>
+                <button onClick={() => viewItem && downloadSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 shadow-lg">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                  Download PDF
+                </button>
               )}
             </div>
             <button onClick={() => setViewItem(null)} className="px-4 py-2 rounded-xl bg-card border border-border text-sm font-bold text-foreground hover:bg-popover">Tutup</button>
