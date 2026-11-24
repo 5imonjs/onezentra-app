@@ -22,7 +22,7 @@ class BiayaRetribusiRefreshTest extends TestCase
     {
         $permissions = collect([
             'biaya_retribusi.create', 'biaya_retribusi.view', 'biaya_retribusi.edit',
-            'penerimaan.edit', 'depot.view_all',
+            'penerimaan.edit', 'penerimaan.delete', 'receiving.delete', 'rencana_kirim.delete', 'depot.view_all',
         ])->map(fn (string $slug): Permission => Permission::firstOrCreate(
             ['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test'],
         ));
@@ -102,5 +102,42 @@ class BiayaRetribusiRefreshTest extends TestCase
         $this->postJson("/api/v1/biaya-retribusi/{$biaya->id}/refresh")->assertOk();
 
         $this->assertSame(777000.0, (float) $biaya->details()->first()->nominal_biaya);
+    }
+
+    public function test_menghapus_receiving_dicegah_saat_dipakai_detail_retribusi(): void
+    {
+        $user = $this->actingUser();
+        RetribusiRate::create([
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo DPO', 'mode' => 'koli',
+            'rate_zak' => 1500, 'rate_crt' => 2500, 'is_active' => true,
+        ]);
+        $rencana = RencanaKirim::create([
+            'po_transporter' => 'PO-HAPUS-1', 'kode_depo' => 'DPO', 'nama_depo' => 'Depo DPO', 'status' => 'DRAFT',
+        ]);
+        $receiving = Receiving::create([
+            'rencana_kirim_id' => $rencana->id, 'status' => 'COMPLETED', 'checked_by' => $user->id,
+        ]);
+        ReceivingItem::create([
+            'receiving_id' => $receiving->id, 'kode_barang' => 'SKU-HAPUS', 'nama_barang' => 'Barang',
+            'expected_qty' => 2, 'actual_qty' => 2, 'satuan' => 'CRT',
+            'condition' => 'FISIK_BAGUS', 'source' => ReceivingItem::SOURCE_VALIDASI,
+        ]);
+
+        $created = $this->postJson('/api/v1/biaya-retribusi', [
+            'tanggal_pengajuan' => '2026-11-01',
+            'details' => [[
+                'receiving_id' => $receiving->id,
+                'nopol_kendaraan' => 'KB 1234 XX', 'type_kendaraan' => 'CDD',
+                'qty_zak' => 0, 'qty_crt' => 2, 'nominal_biaya' => 0,
+            ]],
+        ])->assertCreated();
+        $biayaId = $created->json('data.id');
+
+        $this->deleteJson("/api/v1/receivings/{$receiving->id}")->assertStatus(422);
+
+        $this->deleteJson("/api/v1/rencana-kirim/{$rencana->id}")->assertStatus(422);
+
+        $this->assertNotNull(BiayaRetribusi::find($biayaId));
+        $this->assertNotNull($receiving->fresh());
     }
 }

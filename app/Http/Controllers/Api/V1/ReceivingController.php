@@ -9,6 +9,7 @@ use App\Imports\ReceivingImport;
 use App\Imports\ReceivingImportFailed;
 use App\Mail\ReceivingCompleted;
 use App\Models\Batch;
+use App\Models\BiayaRetribusiDetail;
 use App\Models\DepotSetting;
 use App\Models\Dock;
 use App\Models\GateTransaction;
@@ -770,6 +771,14 @@ class ReceivingController extends Controller
             $receiving->status !== 'COMPLETED',
             422,
             'Receiving yang sudah COMPLETED tidak dapat dihapus. Batalkan sebelum selesai bila memang salah input.'
+        );
+        // FK biaya_retribusi_details.receiving_id = ON DELETE SET NULL. Tanpa
+        // penjaga ini, menghapus receiving mengubah baris retribusi jadi
+        // "manual" dan qty-nya tidak bisa disinkronkan lagi dari ledger.
+        abort_if(
+            BiayaRetribusiDetail::where('receiving_id', $receiving->id)->exists(),
+            422,
+            'Receiving ini dipakai baris Biaya Retribusi. Ubah/hapus baris retribusi dulu agar qty tidak kehilangan sumbernya.'
         );
 
         DB::transaction(function () use ($receiving) {

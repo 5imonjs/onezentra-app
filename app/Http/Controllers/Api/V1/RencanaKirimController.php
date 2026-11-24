@@ -10,7 +10,9 @@ use App\Imports\RencanaKirimImport;
 use App\Imports\RencanaKirimItemImport;
 use App\Mail\RencanaKirimCancelled;
 use App\Mail\RencanaKirimCreated;
+use App\Models\BiayaRetribusiDetail;
 use App\Models\Npn;
+use App\Models\Receiving;
 use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
 use App\Models\SjValidation;
@@ -448,6 +450,16 @@ class RencanaKirimController extends Controller
             in_array($rencanaKirim->status, ['DRAFT', 'CANCELLED'], true),
             422,
             "Rencana kirim berstatus {$rencanaKirim->status} tidak dapat dihapus."
+        );
+        // Menghapus RK ikut menghapus receivings (CASCADE), yang akan
+        // meng-null-kan receiving_id baris retribusi via ON DELETE SET NULL.
+        // Cegah sebelum terjadi agar qty retribusi tetap punya sumber ledger.
+        $claimedReceivingIds = Receiving::where('rencana_kirim_id', $rencanaKirim->id)->pluck('id');
+        abort_if(
+            $claimedReceivingIds->isNotEmpty()
+                && BiayaRetribusiDetail::whereIn('receiving_id', $claimedReceivingIds)->exists(),
+            422,
+            'Rencana kirim ini dipakai baris Biaya Retribusi. Ubah/hapus baris retribusi dulu sebelum menghapus rencana kirim.'
         );
 
         DB::transaction(function () use ($rencanaKirim): void {
