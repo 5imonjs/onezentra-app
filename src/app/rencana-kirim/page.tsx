@@ -187,6 +187,13 @@ function NamaDepoInput({
 const toYmd = (d: Date): string =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+/** Konversi string tanggal ISO dari API (UTC, mis. `2026-11-30T17:00:00.000000Z`) ke tanggal lokal `Y-m-d`. */
+const toLocalYmd = (iso?: string | null): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso.split('T')[0] : toYmd(d);
+};
+
 const addDaysYmd = (ymd: string, days: number): string => {
   const d = new Date(`${ymd}T00:00:00`);
   d.setDate(d.getDate() + days);
@@ -495,11 +502,11 @@ export default function RencanaKirimPage() {
   const handleEdit = (item: RencanaKirim) => {
     setEditingId(item.id);
     setEditingStatus(item.status ?? '');
-    setSelectedDate(item.rkh_date);
+    setSelectedDate(toLocalYmd(item.rkh_date));
     setTypingItems(new Set());
     setCurrentStep(1);
     const editForm = {
-      rkh_date: item.rkh_date?.split('T')[0] ?? '', eta_date: item.eta_date?.split('T')[0] ?? '', po_transporter: item.po_transporter ?? '',
+      rkh_date: toLocalYmd(item.rkh_date), eta_date: toLocalYmd(item.eta_date), po_transporter: item.po_transporter ?? '',
       driver_name: item.driver_name ?? '', nopol: item.nopol ?? '',
       jenis_kendaraan: item.jenis_kendaraan ?? '', expedisi: item.expedisi ?? '',
       shipper_name: item.shipper_name ?? '', shipper_address: item.shipper_address ?? '', shipper_phone: item.shipper_phone ?? '',
@@ -1026,10 +1033,10 @@ export default function RencanaKirimPage() {
                   </>
                 )}
                 {items.map((item, index) => {
-                  const groupKey = item.rkh_date?.split('T')[0] || '-';
-                  const previousKey = items[index - 1]?.rkh_date?.split('T')[0] || '-';
+                  const groupKey = toLocalYmd(item.rkh_date) || '-';
+                  const previousKey = toLocalYmd(items[index - 1]?.rkh_date) || '-';
                   const showGroup = index === 0 || groupKey !== previousKey;
-                  const groupCount = items.filter((it) => (it.rkh_date?.split('T')[0] || '-') === groupKey).length;
+                  const groupCount = items.filter((it) => (toLocalYmd(it.rkh_date) || '-') === groupKey).length;
                   return (
                     <Fragment key={item.id}>
                       {showGroup && (
@@ -1043,8 +1050,8 @@ export default function RencanaKirimPage() {
                     <td className="px-5 py-3.5 text-sm text-muted-foreground whitespace-nowrap">{(page - 1) * 20 + index + 1}</td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{item.created_at?.split('T')[0] || '-'}</span></td>
                     <td className="px-5 py-3.5 text-sm text-foreground font-medium whitespace-nowrap"><span className="font-mono">{fmt(item.po_transporter)}</span></td>
-                    <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{fmt(item.rkh_date?.split('T')[0])}</span></td>
-                    <td className="px-5 py-3.5 text-sm whitespace-nowrap"><span className="inline-flex items-center gap-1 font-mono font-semibold text-info">{item.eta_date ? fmt(item.eta_date.split('T')[0]) : '-'}</span></td>
+                    <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{fmt(toLocalYmd(item.rkh_date))}</span></td>
+                    <td className="px-5 py-3.5 text-sm whitespace-nowrap"><span className="inline-flex items-center gap-1 font-mono font-semibold text-info">{item.eta_date ? fmt(toLocalYmd(item.eta_date)) : '-'}</span></td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap">{fmt(item.driver_name)}</td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{fmt(item.nopol)}</span></td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap">{fmt(item.expedisi)}</td>
@@ -1166,7 +1173,7 @@ export default function RencanaKirimPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-mono text-sm font-bold text-foreground truncate">{fmt(item.po_transporter)}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">Kirim {item.rkh_date?.split('T')[0] || '-'} • Tiba <span className="font-semibold text-info">{item.eta_date?.split('T')[0] || '-'}</span> • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Kirim {toLocalYmd(item.rkh_date) || '-'} • Tiba <span className="font-semibold text-info">{toLocalYmd(item.eta_date) || '-'}</span> • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
                     </div>
                     <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${st?.bg || 'bg-card'} ${st?.color || 'text-foreground'} ${st?.border || 'border-border'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-muted-foreground'}`} />
@@ -1289,7 +1296,7 @@ export default function RencanaKirimPage() {
                 <div>
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">PO Transporter</p>
                   <h3 className="mt-1 text-xl font-black tracking-tight">{fmt(viewItem.po_transporter)}</h3>
-                  <p className="mt-1 text-xs text-white/70"><span className="font-semibold">Rencana kirim:</span> {fmtDateId(viewItem.rkh_date?.split('T')[0])} <span className="text-white/40">•</span> <span className="font-semibold text-info">Rencana tiba:</span> {viewItem.eta_date ? fmtDateId(viewItem.eta_date.split('T')[0]) : '-'} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
+                  <p className="mt-1 text-xs text-white/70"><span className="font-semibold">Rencana kirim:</span> {fmtDateId(toLocalYmd(viewItem.rkh_date))} <span className="text-white/40">•</span> <span className="font-semibold text-info">Rencana tiba:</span> {viewItem.eta_date ? fmtDateId(toLocalYmd(viewItem.eta_date)) : '-'} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white ring-1 ring-inset ring-white/20">
                   <span className={`w-2 h-2 rounded-full ${statusConfig[viewItem.status]?.dot || 'bg-slate-400'}`} />{statusConfig[viewItem.status]?.label || viewItem.status}
