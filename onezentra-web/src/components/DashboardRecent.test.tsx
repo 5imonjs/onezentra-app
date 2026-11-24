@@ -79,6 +79,7 @@ describe('DashboardRecent — log aktivitas', () => {
     expect(screen.getByText(/Siti Admin/)).toBeInTheDocument();
     expect(screen.getByText('Memproses Opname Expired')).toBeInTheDocument();
     expect(screen.getByText('Budi Petugas · Singkawang · staff_logistic')).toBeInTheDocument();
+    expect(screen.getByLabelText('Daftar aktivitas terbaru')).toHaveClass('overflow-y-auto');
     expect(liveActivity).toHaveBeenCalledWith(0, '0127');
   });
 
