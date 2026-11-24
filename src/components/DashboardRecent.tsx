@@ -144,6 +144,7 @@ export default function DashboardRecent({ kodeDepo }: { kodeDepo?: string }) {
       badge={<span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-600 ring-1 ring-emerald-500/20 ring-offset-1">LIVE</span>}
       icon={HISTORY_ICON}
     >
+      <div className="max-h-[360px] overflow-y-auto overscroll-contain scroll-smooth" aria-label="Daftar aktivitas terbaru">
       <ul className="space-y-1 px-3 py-3">
         {events.map((event) => (
           <li key={event.id} className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-popover/70">
@@ -164,6 +165,7 @@ export default function DashboardRecent({ kodeDepo }: { kodeDepo?: string }) {
           </li>
         ))}
       </ul>
+      </div>
     </DashboardPanel>
   );
 }
