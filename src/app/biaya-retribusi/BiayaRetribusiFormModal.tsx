@@ -108,7 +108,7 @@ export default function BiayaRetribusiFormModal({
               <p className="text-xs font-semibold text-amber-600 sm:mr-auto">Belum bisa dikirim: {submitBlockers.slice(0, 2).join(' · ')}{submitBlockers.length > 2 ? ` (+${submitBlockers.length - 2})` : ''}</p>
             )}
             <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">Batal</button>
-            {editingId && sourceType === 'receiving' && isKoliMode && hasPermission('biaya_retribusi.edit') && (
+            {editingId && isKoliMode && formData.details.some((d) => d.receiving_id) && hasPermission('biaya_retribusi.edit') && (
               <button type="button" onClick={onRefresh} disabled={busy} title="Ambil ulang qty zak/crt & nominal dari penerimaan terkait" aria-label="Refresh dari penerimaan" className="btn-secondary w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed">
                 Refresh dari penerimaan
               </button>
