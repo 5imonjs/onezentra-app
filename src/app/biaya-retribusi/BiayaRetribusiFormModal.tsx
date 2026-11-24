@@ -62,6 +62,7 @@ interface BiayaRetribusiFormModalProps {
   candidateNominals: Record<number, number>;
   setCandidateNominals: Dispatch<SetStateAction<Record<number, number>>>;
   fetchCandidates: () => void;
+  onRefresh: () => void;
   startDocument: (field: 'document_type' | 'file', value: string | File) => void;
   updateDocument: (index: number, field: keyof DocumentRow, value: string | File | null) => void;
   removeDocument: (index: number) => void;
@@ -89,7 +90,7 @@ export default function BiayaRetribusiFormModal({
   isRfahRequired, biayaConfig, effectiveKode, rateDraft, setRateDraft, rateSaving, tariffOpen, setTariffOpen, saveRates,
   formData, setFormData, setSelectedCandidates, duplicateSelectedPos, manualDetails, updateExistingDetail, removeExistingDetail, updateManualDetail, removeManualDetail,
   addManualDetail, startManualRow, existingNominal, manualNominal, candidateNominal, candidates, selectedCandidates,
-  toggleCandidate, candidateNominals, setCandidateNominals, fetchCandidates, startDocument, updateDocument,
+  toggleCandidate, candidateNominals, setCandidateNominals, fetchCandidates, onRefresh, startDocument, updateDocument,
   removeDocument, addDocument, handleDocFile, goBack, goNext, previewRetribusi, handleCreate, handleCreateAndSubmit,
   handleUpdate, handleUpdateAndSubmit, totalNominal, selectedRowCount, blockerReasons, step2Blockers, step3Blockers,
   submitBlockers, hasPermission,
@@ -107,6 +108,11 @@ export default function BiayaRetribusiFormModal({
               <p className="text-xs font-semibold text-amber-600 sm:mr-auto">Belum bisa dikirim: {submitBlockers.slice(0, 2).join(' · ')}{submitBlockers.length > 2 ? ` (+${submitBlockers.length - 2})` : ''}</p>
             )}
             <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">Batal</button>
+            {editingId && sourceType === 'receiving' && isKoliMode && hasPermission('biaya_retribusi.edit') && (
+              <button type="button" onClick={onRefresh} disabled={busy} title="Ambil ulang qty zak/crt & nominal dari penerimaan terkait" aria-label="Refresh dari penerimaan" className="btn-secondary w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed">
+                Refresh dari penerimaan
+              </button>
+            )}
             {formStep > minStep && (
               <button type="button" onClick={goBack} disabled={busy} className="btn-secondary w-full sm:w-auto">‹ Kembali</button>
             )}
