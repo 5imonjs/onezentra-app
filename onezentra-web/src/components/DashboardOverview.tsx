@@ -60,7 +60,7 @@ export default function DashboardOverview() {
       href: '/reports/rencana-kirim', tone: 'text-foreground', permission: 'receiving.view',
     },
     {
-      label: 'Barang expired', value: (alerts.expired_total ?? 0).toLocaleString('id-ID'), sub: `${alerts.expired_kritis ?? 0} kritis`,
+      label: 'Kritis + Expired', value: (alerts.expired_total ?? 0).toLocaleString('id-ID'), sub: `${alerts.expired_kritis ?? 0} kritis · ${summary.opname_at_risk?.expired_rows ?? 0} expired`,
       href: '/opname-expired', tone: 'text-red-600', permission: 'opname.view',
     },
     {
