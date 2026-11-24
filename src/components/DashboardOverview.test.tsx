@@ -17,7 +17,7 @@ const summary = {
   activity_trend: { current_7d: 80, prev_7d: 40 },
   totals: {},
   new_7d: {},
-  opname_at_risk: null,
+  opname_at_risk: { week_start: '2026-11-23', kritis_rows: 1, expired_rows: 4, pcs: 100, crt: 50 },
   quality: { npn_no_volume: 0, npn_no_umur: 0 },
   inbound_selisih: { items: 0, kurang: 0, lebih: 0 },
   recent: [],
@@ -42,11 +42,13 @@ describe('DashboardOverview', () => {
     expect(screen.getAllByText('2').length).toBeGreaterThan(0);
     expect(screen.getByText('1j 15m')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Lewat ETA/ })).toHaveAttribute('href', '/rencana-kirim?eta=overdue');
+    expect(screen.getByRole('link', { name: /Kritis \+ Expired/ })).toBeInTheDocument();
+    expect(screen.getByText('1 kritis · 4 expired')).toBeInTheDocument();
   });
 
   it('menyembunyikan KPI tanpa izin modul', () => {
     hasPermission.mockImplementation((p: string) => p !== 'opname.view');
     render(<DashboardOverview />);
-    expect(screen.queryByRole('link', { name: /Barang expired/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Kritis \+ Expired/ })).not.toBeInTheDocument();
   });
 });

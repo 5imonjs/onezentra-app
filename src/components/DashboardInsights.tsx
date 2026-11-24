@@ -310,7 +310,7 @@ export default function DashboardInsights({ kodeDepo }: { kodeDepo?: string }) {
     { label: 'Standarisasi pending', count: alerts.standarisasi_pending, color: 'text-amber-500', href: '/standarisasi' },
     { label: 'Barang luar rencana', count: alerts.extra_item_pending, color: 'text-orange-500', href: '/validasi-sj' },
     { label: 'SJ belum divalidasi', count: summary.sla?.sj_open_count ?? 0, color: 'text-blue-500', href: '/validasi-sj' },
-    { label: 'Barang expired', count: alerts.expired_total, color: 'text-red-600', href: '/opname-expired' },
+    { label: 'Kritis + Expired', count: alerts.expired_total, color: 'text-red-600', href: '/opname-expired' },
   ];
 
   if (!canActivity && !canRencana && !canOpname) return null;
