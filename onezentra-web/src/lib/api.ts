@@ -354,6 +354,15 @@ export const auth = {
 export const dashboard = {
   activity: (days = 30, kodeDepo?: string, signal?: AbortSignal) => apiClient.get('/dashboard/activity', { params: { days, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) }, signal }),
   liveActivity: (afterId = 0, kodeDepo?: string, signal?: AbortSignal) => apiClient.get('/dashboard/activity/live', { params: { after_id: afterId, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) }, signal }),
+  history: (params: {
+    page?: number;
+    per_page?: number;
+    module?: string;
+    search?: string;
+    date_from?: string;
+    date_to?: string;
+    kode_depo?: string;
+  } = {}, signal?: AbortSignal) => apiClient.get('/dashboard/activity/history', { params, signal }),
   summary: (kodeDepo?: string) => apiClient.get('/dashboard/summary', { params: kodeDepo ? { kode_depo: kodeDepo } : {} }),
   reminders: (kodeDepo?: string) => apiClient.get('/reminders', { params: kodeDepo ? { kode_depo: kodeDepo } : {} }),
 };

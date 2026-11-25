@@ -157,6 +157,109 @@ class DashboardActivityTest extends TestCase
         ]);
     }
 
+    public function test_activity_history_lists_actor_module_and_action(): void
+    {
+        $user = $this->liveActivityUser('history@example.com');
+        $other = User::create([
+            'email' => 'history-other@example.com',
+            'password' => 'password',
+            'full_name' => 'Other Operator',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'level' => 'cheker',
+            'status' => 'active',
+        ]);
+
+        UserActivityLog::create([
+            'user_id' => $user->id,
+            'method' => 'POST',
+            'route' => 'api/v1/rencana-kirim',
+            'occurred_at' => now()->subMinute(),
+        ]);
+        UserActivityLog::create([
+            'user_id' => $other->id,
+            'method' => 'GET',
+            'route' => 'api/v1/npn',
+            'occurred_at' => now(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/dashboard/activity/history')
+            ->assertOk()
+            ->assertJsonPath('total', 2)
+            ->assertJsonPath('data.0.user_name', 'Other Operator')
+            ->assertJsonPath('data.0.module', 'NPN')
+            ->assertJsonPath('data.0.action', 'Melihat NPN')
+            ->assertJsonPath('data.1.user_name', 'Live Operator')
+            ->assertJsonPath('data.1.module', 'Rencana Kirim')
+            ->assertJsonPath('data.1.action', 'Memproses Rencana Kirim');
+    }
+
+    public function test_activity_history_filters_by_module_and_date(): void
+    {
+        $user = $this->liveActivityUser('history-filter@example.com');
+
+        UserActivityLog::create([
+            'user_id' => $user->id,
+            'method' => 'POST',
+            'route' => 'api/v1/rencana-kirim',
+            'occurred_at' => now()->subDays(2),
+        ]);
+        UserActivityLog::create([
+            'user_id' => $user->id,
+            'method' => 'LOGIN',
+            'route' => 'auth.login',
+            'occurred_at' => now(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/dashboard/activity/history?module=Login%20%26%20Logout')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.module', 'Login & Logout');
+
+        $this->getJson('/api/v1/dashboard/activity/history?date_from='.now()->toDateString())
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.action', 'Login ke sistem');
+    }
+
+    public function test_activity_history_respects_depot_scope(): void
+    {
+        $user = $this->liveActivityUser('history-scope@example.com');
+        $outside = User::create([
+            'email' => 'history-outside@example.com',
+            'password' => 'password',
+            'full_name' => 'Outside Operator',
+            'kode_depo' => 'OTHER',
+            'nama_depo' => 'Depo Lain',
+            'level' => 'operator',
+            'status' => 'active',
+        ]);
+
+        UserActivityLog::create([
+            'user_id' => $user->id,
+            'method' => 'GET',
+            'route' => 'api/v1/rencana-kirim',
+            'occurred_at' => now(),
+        ]);
+        UserActivityLog::create([
+            'user_id' => $outside->id,
+            'method' => 'GET',
+            'route' => 'api/v1/rencana-kirim',
+            'occurred_at' => now(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/dashboard/activity/history')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.user_name', 'Live Operator');
+    }
+
     public function test_live_activity_after_id_only_returns_new_events(): void
     {
         $user = $this->liveActivityUser('live-after@example.com');

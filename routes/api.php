@@ -108,6 +108,11 @@ Route::prefix('v1')->group(function () {
     Route::get('dashboard/activity/live', [DashboardController::class, 'liveActivity'])
         ->middleware(['auth:sanctum', 'permission:activity.view', 'throttle:600,1,api']);
 
+    // Riwayat aktivitas berhalaman untuk halaman "Riwayat Aktivitas": web &
+    // mobile, login/logout, dengan filter modul/tanggal/kata kunci.
+    Route::get('dashboard/activity/history', [DashboardController::class, 'history'])
+        ->middleware(['auth:sanctum', 'permission:activity.view', 'throttle:600,1,api']);
+
     Route::get('dashboard/summary', [DashboardController::class, 'summary'])
         ->middleware(['auth:sanctum', 'permission:dashboard.view', 'throttle:600,1,api']);
 

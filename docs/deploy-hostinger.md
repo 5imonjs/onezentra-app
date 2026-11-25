@@ -154,6 +154,7 @@ Buat DB MySQL di hPanel (hPanel → Databases → MySQL Databases), lalu isi
 APP_NAME=Laravel
 APP_ENV=production
 APP_DEBUG=false
+APP_TIMEZONE=Asia/Jakarta   # WAJIB: tanpa ini config/app.php jatuh ke UTC dan semua jam di Riwayat Aktivitas tergeser 7 jam
 APP_KEY=                       # diisi oleh: php artisan key:generate
 APP_URL=https://api.onezentra.sbs
 FRONTEND_URL=https://onezentra.sbs

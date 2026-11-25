@@ -25,6 +25,7 @@ const MENU_FALLBACK: [string, string[]][] = [
   ['/standarisasi', ['standarisasi.view']],
   ['/roles', ['roles.view']],
   ['/users', ['users.view']],
+  ['/activity', ['activity.view']],
   ['/email-settings', ['emails.view']],
   ['/email-recipients', ['emails.view']],
   ['/reports/rencana-kirim', ['reports.rencana_kirim']],

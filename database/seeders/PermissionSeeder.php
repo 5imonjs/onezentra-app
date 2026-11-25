@@ -73,6 +73,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'Roles Template', 'slug' => 'roles.template', 'menu_group' => 'Sistem', 'icon' => 'file-template', 'route' => 'roles.template', 'sort_order' => 413],
             ['name' => 'Email Setting View', 'slug' => 'emails.view', 'menu_group' => 'Sistem', 'icon' => 'mail', 'route' => 'email.index', 'sort_order' => 420],
             ['name' => 'Email Setting Edit', 'slug' => 'emails.edit', 'menu_group' => 'Sistem', 'icon' => 'mail-edit', 'route' => 'email.update', 'sort_order' => 430],
+            ['name' => 'Lihat Log Aktivitas', 'slug' => 'activity.view', 'menu_group' => 'Pengaturan', 'icon' => 'history', 'route' => null, 'sort_order' => 300, 'description' => 'Melihat riwayat aktivitas lintas modul (termasuk aksi mobile dan login/logout).'],
             // Reset Data Operasional hanya untuk admin_master: tidak masuk
             // peta role lain di bawah, dan controller meng-gate ulang level.
             ['name' => 'Reset Data Operasional', 'slug' => 'database.purge', 'menu_group' => 'Sistem', 'icon' => 'trash', 'route' => 'admin.database', 'sort_order' => 435],
@@ -282,6 +283,15 @@ class PermissionSeeder extends Seeder
                 'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view',
             ],
         ];
+
+        // Riwayat aktivitas dapat dilihat semua user yang login. Grant ini
+        // mengikuti migration grant_activity_view_to_all_roles; admin tetap
+        // bisa mencabutnya per role lewat Roles & Permissions.
+        foreach (array_keys($rolePermMap) as $roleSlug) {
+            if (! in_array('activity.view', $rolePermMap[$roleSlug], true)) {
+                $rolePermMap[$roleSlug][] = 'activity.view';
+            }
+        }
 
         // Export mengikuti view: role yang boleh melihat modul biaya juga
         // diberi biaya_*.export (sama dengan grant di migration

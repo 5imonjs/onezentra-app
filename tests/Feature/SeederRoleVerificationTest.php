@@ -354,6 +354,7 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertNotEmpty($ga, 'Role ga tidak boleh nol permission (lockout)');
         $expectedGa = [
             'dashboard.view',
+            'activity.view',
             'rencana_kirim.view', 'gate.view', 'sj_validation.view', 'receiving.view',
             'penerimaan.view', 'npn.view', 'standar_umur.view', 'standarisasi.view',
             'biaya_thl.view', 'biaya_thl.export',
@@ -388,11 +389,11 @@ class SeederRoleVerificationTest extends TestCase
         // role-permission mencakup grant turunan lain.
         // admin_planner & bh tidak lagi punya depot.view_all (fix 2026-10-22)
         $this->assertSame(14, Role::count());
-        // activity.view (log aktivitas lintas modul). Grant admin_master sudah
-        // tercakup dalam setelan "all permissions" seeder, jadi pivot tidak
-        // bertambah.
+        // activity.view (log aktivitas lintas modul) kini di-grant ke semua 14
+        // role: 14 × 1 permission = 14 baris pivot tambahan (sebelumnya hanya
+        // admin_master, yang sudah tercakup "all permissions" sehingga nol).
         $this->assertSame(114, Permission::count());
-        $this->assertSame(572, DB::table('role_permission')->count());
+        $this->assertSame(586, DB::table('role_permission')->count());
     }
 
     private function seedRoles(): void

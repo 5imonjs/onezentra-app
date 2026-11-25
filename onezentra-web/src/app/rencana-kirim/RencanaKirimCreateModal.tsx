@@ -26,6 +26,13 @@ export interface RencanaKirimItem {
   npn?: NpnProduct | null;
 }
 
+export interface RencanaKirimCreator {
+  id: number;
+  full_name: string;
+  email: string;
+  level: string;
+}
+
 export interface RencanaKirim {
   id: number;
   rkh_date: string;
@@ -52,6 +59,8 @@ export interface RencanaKirim {
   verified_at: string;
   completed_at: string;
   items: RencanaKirimItem[];
+  created_by?: number | null;
+  creator?: RencanaKirimCreator | null;
   created_at: string;
 }
 

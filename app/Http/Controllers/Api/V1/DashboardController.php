@@ -15,6 +15,7 @@ use App\Models\StandarisasiTumpukan;
 use App\Models\StandarUmurProduk;
 use App\Models\User;
 use App\Models\UserActivityLog;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -62,29 +63,8 @@ class DashboardController extends Controller
         })->values();
 
         // Klasifikasi modul dilakukan di SQL agar tetap ringan untuk 90 hari.
-        // Urutan CASE penting: modul spesifik lebih dulu, auth paling akhir
-        // supaya route login/logout tidak jatuh ke "Lainnya".
-        // Normalisasi hyphen route path (mis. `standar-umur`, `sj-validation`)
-        // agar pola modul sama untuk route name (underscore) dan path (hyphen).
-        $routeKey = "REPLACE(LOWER(COALESCE(route, '')), '-', '_')";
-        $moduleCase = "CASE
-            WHEN {$routeKey} LIKE '%report%' THEN 'Laporan'
-            WHEN {$routeKey} LIKE '%rencana%' THEN 'Rencana Kirim'
-            WHEN {$routeKey} LIKE '%gate%' THEN 'Gate Check'
-            WHEN {$routeKey} LIKE '%penerimaan%' THEN 'Penerimaan'
-            WHEN {$routeKey} LIKE '%receiving%' THEN 'Receiving'
-            WHEN {$routeKey} LIKE '%validasi%' OR {$routeKey} LIKE '%sj_validation%' THEN 'Validasi SJ'
-            WHEN {$routeKey} LIKE '%npn%' THEN 'NPN'
-            WHEN {$routeKey} LIKE '%standar_umur%' THEN 'Standar Umur'
-            WHEN {$routeKey} LIKE '%standarisasi%' THEN 'Standarisasi'
-            WHEN {$routeKey} LIKE '%opname%' THEN 'Opname Expired'
-            WHEN {$routeKey} LIKE '%biaya%' THEN 'Biaya'
-            WHEN {$routeKey} LIKE '%role%' THEN 'Role & Permission'
-            WHEN {$routeKey} LIKE '%user%' THEN 'Pengguna'
-            WHEN {$routeKey} LIKE '%dashboard%' THEN 'Dashboard'
-            WHEN method IN ('LOGIN', 'LOGOUT') OR {$routeKey} LIKE '%login%' OR {$routeKey} LIKE '%logout%' THEN 'Login & Logout'
-            ELSE 'Lainnya'
-        END";
+        // Satu definisi dipakai ulang oleh agregasi modul & riwayat aktivitas.
+        $moduleCase = $this->activityModuleCaseSql();
 
         $topModules = $activityQuery()
             ->selectRaw("{$moduleCase} as module, COUNT(*) as total")
@@ -185,6 +165,83 @@ class DashboardController extends Controller
                 'server_time' => now()->toIso8601String(),
             ],
         ]);
+    }
+
+    /**
+     * Riwayat aktivitas lengkap (berhalaman) untuk halaman "Riwayat Aktivitas".
+     *
+     * Mencakup aksi web & mobile, termasuk LOGIN/LOGOUT. Scope depo mengikuti
+     * user yang login: user depo hanya melihat aktivitas deponya, user global
+     * (depot.view_all) boleh memfilter satu depo lewat `kode_depo`.
+     */
+    public function history(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'module' => 'nullable|string|max:50',
+            'search' => 'nullable|string|max:100',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'kode_depo' => 'nullable|string|max:20',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $user = $request->user();
+        $depotInput = trim((string) ($validated['kode_depo'] ?? ''));
+        $depot = $user->isDepotScoped() ? null : ($depotInput === '' ? null : $depotInput);
+        $moduleCase = $this->activityModuleCaseSql();
+
+        $query = UserActivityLog::query()
+            ->with(['user:id,full_name,email,level,kode_depo,nama_depo'])
+            ->whereHas('user', fn ($query) => $query->forUserDepot($user)
+                ->when($depot, fn ($q) => $q->where('users.kode_depo', $depot)))
+            ->when(! empty($validated['module']), fn ($query) => $query->whereRaw(
+                "({$moduleCase}) = ?",
+                [$validated['module']]
+            ))
+            ->when(! empty($validated['date_from']), fn ($query) => $query->where(
+                'occurred_at',
+                '>=',
+                $request->date('date_from')->startOfDay()
+            ))
+            ->when(! empty($validated['date_to']), fn ($query) => $query->where(
+                'occurred_at',
+                '<=',
+                $request->date('date_to')->endOfDay()
+            ));
+
+        if (! empty($validated['search'])) {
+            $like = LikePattern::contains($validated['search']);
+            $query->where(function ($query) use ($like): void {
+                $query->whereRaw('LOWER(route) LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereHas('user', function ($userQuery) use ($like): void {
+                        $userQuery->whereRaw('LOWER(full_name) LIKE ? ESCAPE ?', [$like, '\\'])
+                            ->orWhereRaw('LOWER(email) LIKE ? ESCAPE ?', [$like, '\\']);
+                    });
+            });
+        }
+
+        $perPage = min(max((int) ($validated['per_page'] ?? 25), 1), 100);
+        $logs = $query->orderByDesc('id')->paginate($perPage);
+
+        $logs->getCollection()->transform(function (UserActivityLog $log): array {
+            $actor = $log->user;
+
+            return [
+                'id' => $log->id,
+                'user_id' => $log->user_id,
+                'user_name' => $actor?->full_name ?: ($actor?->email ?? 'Sistem'),
+                'level' => $actor?->level,
+                'kode_depo' => $actor?->kode_depo,
+                'nama_depo' => $actor?->nama_depo,
+                'method' => $log->method,
+                'route' => $log->route,
+                'module' => $this->activityModule($log->route),
+                'action' => $this->activityAction($log->method, $log->route),
+                'occurred_at' => $log->occurred_at?->toIso8601String(),
+            ];
+        });
+
+        return response()->json($logs);
     }
 
     /**
@@ -588,8 +645,42 @@ class DashboardController extends Controller
     }
 
     /**
-     * Label modul untuk feed real-time. Urutannya harus sama dengan CASE di
-     * activity() agar angka agregat dan feed memakai istilah yang konsisten.
+     * Ekspresi SQL klasifikasi modul. Satu definisi dipakai agregasi dashboard
+     * dan filter riwayat aktivitas agar labelnya tidak pernah berbeda.
+     *
+     * Normalisasi hyphen route path (mis. `standar-umur`, `sj-validation`)
+     * agar pola modul sama untuk route name (underscore) dan path (hyphen).
+     * Urutan CASE penting: modul spesifik lebih dulu, auth paling akhir supaya
+     * route login/logout tidak jatuh ke "Lainnya".
+     */
+    private function activityModuleCaseSql(): string
+    {
+        $routeKey = "REPLACE(LOWER(COALESCE(route, '')), '-', '_')";
+
+        return "CASE
+            WHEN {$routeKey} LIKE '%report%' THEN 'Laporan'
+            WHEN {$routeKey} LIKE '%rencana%' THEN 'Rencana Kirim'
+            WHEN {$routeKey} LIKE '%gate%' THEN 'Gate Check'
+            WHEN {$routeKey} LIKE '%penerimaan%' THEN 'Penerimaan'
+            WHEN {$routeKey} LIKE '%receiving%' THEN 'Receiving'
+            WHEN {$routeKey} LIKE '%validasi%' OR {$routeKey} LIKE '%sj_validation%' THEN 'Validasi SJ'
+            WHEN {$routeKey} LIKE '%npn%' THEN 'NPN'
+            WHEN {$routeKey} LIKE '%standar_umur%' THEN 'Standar Umur'
+            WHEN {$routeKey} LIKE '%standarisasi%' THEN 'Standarisasi'
+            WHEN {$routeKey} LIKE '%opname%' THEN 'Opname Expired'
+            WHEN {$routeKey} LIKE '%biaya%' THEN 'Biaya'
+            WHEN {$routeKey} LIKE '%role%' THEN 'Role & Permission'
+            WHEN {$routeKey} LIKE '%user%' THEN 'Pengguna'
+            WHEN {$routeKey} LIKE '%dashboard%' THEN 'Dashboard'
+            WHEN method IN ('LOGIN', 'LOGOUT') OR {$routeKey} LIKE '%login%' OR {$routeKey} LIKE '%logout%' THEN 'Login & Logout'
+            ELSE 'Lainnya'
+        END";
+    }
+
+    /**
+     * Label modul untuk feed real-time. Urutannya harus sama dengan
+     * activityModuleCaseSql() agar angka agregat dan feed memakai istilah yang
+     * konsisten.
      */
     private function activityModule(?string $route): string
     {

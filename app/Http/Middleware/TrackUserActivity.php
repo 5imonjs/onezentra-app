@@ -29,17 +29,35 @@ class TrackUserActivity
             'api/*/mobile/logout',
         );
 
-        // Polling feed real-time tidak boleh mencatat dirinya sendiri: setiap
-        // 5 detik per penonton akan membanjiri feed dan metrik aktivitas.
-        $isLiveActivityPoll = $request->is('api/*/dashboard/activity/live');
+        // Activity feed & halaman riwayat tidak boleh mencatat dirinya sendiri:
+        // polling 5 detik dan paginasi akan membanjiri log dengan request baca
+        // yang tidak mengubah data. Cocokkan segmen path secara eksplisit (bukan
+        // wildcard `*` yang juga menangkap `v2`) agar benar bila versi API berubah.
+        $pathSegments = $request->segments();
+        $isActivityRead = count($pathSegments) >= 2
+            && $pathSegments[0] === 'api'
+            && $pathSegments[1] === 'v1'
+            && ($pathSegments[2] ?? null) === 'dashboard'
+            && ($pathSegments[3] ?? null) === 'activity'
+            && in_array($pathSegments[4] ?? null, ['live', 'history'], true);
 
-        if ($user !== null && ! $isAuthEvent && ! $isLiveActivityPoll && $request->is('api/*') && $request->method() !== 'OPTIONS') {
-            // Queue async agar tidak menambah latency API (fix P-1/S-8).
-            // Fallback sync jika queue driver = sync/array (testing).
+        if ($user !== null && ! $isAuthEvent && ! $isActivityRead && $request->is('api/*') && $request->method() !== 'OPTIONS') {
+            // Nama route otomatis (`generated::...`) tidak bisa dibaca manusia
+            // dan berubah setiap route:cache dibangun ulang. Simpan PATH agar
+            // modul aktivitas (rencana-kirim, gate, receiving, ...) tetap bisa
+            // diklasifikasikan dan riwayat tidak kehilangan konteks.
+            $routeName = $request->route()?->getName();
+            $route = ($routeName !== null && ! str_starts_with($routeName, 'generated::'))
+                ? $routeName
+                : $request->path();
+
+            // afterResponse() mengeksekusi job secara sinkron SETELAH respons
+            // terkirim (bukan lewat antrean), jadi log tetap tercatat walau
+            // queue worker tidak berjalan dan latency API tidak bertambah.
             dispatch(new LogUserActivity(
                 $user->id,
                 $request->method(),
-                $request->route()?->getName() ?? $request->path(),
+                $route,
                 now()->toDateTimeString(),
             ))->afterResponse();
         }
