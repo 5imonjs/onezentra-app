@@ -222,6 +222,8 @@ class RencanaKirimController extends Controller
         ], [
             'po_transporter.unique' => 'PO Transporter ini sudah dipakai pada rencana kirim lain di depo yang sama.',
             'rkh_date.after_or_equal' => 'Tanggal RKH tidak boleh di masa lalu.',
+            'items.*.jumlah.min' => 'Jumlah barang minimal 1 per baris.',
+            'items.*.jumlah.numeric' => 'Jumlah barang harus berupa angka.',
         ]);
 
         if (! empty($validated['eta_date']) && ! empty($validated['rkh_date'])
@@ -366,6 +368,9 @@ class RencanaKirimController extends Controller
             'items.*.jumlah' => 'required_with:items|numeric|min:1',
             'items.*.satuan' => 'nullable|string|max:20',
             'items.*.keterangan' => 'nullable|string',
+        ], [
+            'items.*.jumlah.min' => 'Jumlah barang minimal 1 per baris.',
+            'items.*.jumlah.numeric' => 'Jumlah barang harus berupa angka.',
         ]);
 
         // rkh_date: hapus dulu dari validated (tanggal lampau yang tersimpan

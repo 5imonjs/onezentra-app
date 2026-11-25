@@ -205,4 +205,49 @@ class RencanaKirimValidationTest extends TestCase
         $this->deleteJson("/api/v1/rencana-kirim/{$draft->id}")->assertOk();
         $this->assertDatabaseMissing('rencana_kirim', ['id' => $draft->id]);
     }
+
+    public function test_store_rejects_fractional_jumlah_with_readable_message(): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson('/api/v1/rencana-kirim', [
+            'po_transporter' => 'PO-FRAKSI',
+            'rkh_date' => now()->toDateString(),
+            'items' => [
+                [
+                    'item_number' => 1,
+                    'nama_barang' => 'Barang Setengah',
+                    'jumlah' => 0.5,
+                    'satuan' => 'CRT',
+                ],
+            ],
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['items.0.jumlah'])
+            ->assertJsonFragment(['Jumlah barang minimal 1 per baris.']);
+    }
+
+    public function test_update_rejects_fractional_jumlah_with_readable_message(): void
+    {
+        Sanctum::actingAs($admin = $this->admin());
+
+        $rk = $this->withItems(RencanaKirim::create([
+            'po_transporter' => 'PO-FRAKSI-EDIT', 'status' => 'DRAFT',
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $admin->id,
+        ]), $admin);
+
+        $this->putJson("/api/v1/rencana-kirim/{$rk->id}", [
+            'items' => [
+                [
+                    'item_number' => 1,
+                    'nama_barang' => 'Barang Setengah',
+                    'jumlah' => 0.5,
+                    'satuan' => 'CRT',
+                ],
+            ],
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['items.0.jumlah'])
+            ->assertJsonFragment(['Jumlah barang minimal 1 per baris.']);
+    }
 }

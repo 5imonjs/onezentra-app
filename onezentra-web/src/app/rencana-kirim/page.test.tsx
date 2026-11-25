@@ -513,6 +513,35 @@ describe('Rencana Kirim — PO duplikat', () => {
   });
 });
 
+describe('Rencana Kirim — jumlah barang minimal 1', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
+    depoList.mockResolvedValue({ data: { data: [{ kode_depo: '0127', nama_depo: 'Singkawang' }] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [product('B-QTY', 'MINYAK QTY')], total: 1 } });
+    list.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    create.mockResolvedValue({ data: { data: {} } });
+  });
+
+  it('menolak jumlah 0.5 sebelum mengirim ke backend', async () => {
+    const input = await openItemsModal();
+    fireEvent.change(input, { target: { value: 'minyak' } });
+    fireEvent.click(await screen.findByRole('button', { name: /MINYAK QTY/ }));
+
+    const jumlah = document.querySelector('#item-jumlah-0') as HTMLInputElement;
+    expect(jumlah).not.toBeNull();
+    fireEvent.change(jumlah, { target: { value: '0.5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Selesai' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Simpan Rencana' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ya, Barang Sudah Benar' }));
+
+    expect(notifyGlobal).toHaveBeenCalledWith(expect.stringContaining('minimal 1'), 'error');
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
 describe('Rencana Kirim — pembuat dokumen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
