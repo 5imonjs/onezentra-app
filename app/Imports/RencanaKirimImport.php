@@ -132,12 +132,13 @@ class RencanaKirimImport implements ToCollection, WithHeadingRow
 
                 continue;
             }
-            // Tolak qty nol/negatif per baris (catat, skip) — qty invalid tidak
-            // boleh melahirkan item rencana kirim fiktif.
-            if (! isset($item['jumlah']) || (float) $item['jumlah'] <= 0) {
+            // Tolak qty < 1 per baris (catat, skip) — backend memakai min:1,
+            // sehingga qty pecahan tidak boleh melahirkan item fiktif maupun
+            // memicu 422 "items.N.jumlah" saat dokumen disimpan.
+            if (! isset($item['jumlah']) || (float) $item['jumlah'] < 1) {
                 $this->errors[] = [
                     'po_transporter' => $header['po_transporter'] ?? null,
-                    'errors' => 'Qty harus > 0 untuk barang '.($item['kode_barang'] ?? $item['nama_barang'] ?? '-'),
+                    'errors' => 'Qty minimal 1 untuk barang '.($item['kode_barang'] ?? $item['nama_barang'] ?? '-'),
                 ];
                 $this->skipped++;
 

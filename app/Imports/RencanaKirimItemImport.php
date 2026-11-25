@@ -18,6 +18,9 @@ class RencanaKirimItemImport implements ToCollection, WithHeadingRow
 
     public array $items = [];
 
+    /** @var list<array{row: int, message: string}> */
+    public array $errors = [];
+
     private array $headingMap = [
         'kode_barang' => 'kode_barang',
         'kode_produk' => 'kode_barang',
@@ -32,8 +35,10 @@ class RencanaKirimItemImport implements ToCollection, WithHeadingRow
     public function collection(Collection $collection): void
     {
         $this->totalRows = $collection->count();
+        $rowNumber = 1;
 
         foreach ($collection as $row) {
+            $rowNumber++;
             $data = $this->parseRow($row);
 
             if ($data === []) {
@@ -44,12 +49,27 @@ class RencanaKirimItemImport implements ToCollection, WithHeadingRow
 
             $resolved = $this->resolveFromNpn($data);
 
-            if ($resolved !== null) {
-                $this->items[] = $resolved;
-                $this->matched++;
-            } else {
+            if ($resolved === null) {
                 $this->skipped++;
+
+                continue;
             }
+
+            // Backend menyimpan items.*.jumlah dengan min:1. Tolak di sini
+            // supaya qty pecahan (mis. 0.5) tidak masuk form dan memicu 422
+            // "items.N.jumlah must be at least 1" saat rencana disimpan.
+            if ((float) ($resolved['jumlah'] ?? 0) < 1) {
+                $this->errors[] = [
+                    'row' => $rowNumber,
+                    'message' => 'Qty minimal 1 untuk barang '.($resolved['kode_barang'] ?: ($resolved['nama_barang'] ?: '-')).' (baris '.$rowNumber.')',
+                ];
+                $this->skipped++;
+
+                continue;
+            }
+
+            $this->items[] = $resolved;
+            $this->matched++;
         }
     }
 

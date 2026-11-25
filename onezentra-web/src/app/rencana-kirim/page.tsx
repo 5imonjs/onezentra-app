@@ -289,7 +289,14 @@ export default function RencanaKirimPage() {
   const [statusBusyId, setStatusBusyId] = useState<number | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ message: string; ok?: boolean; total_rows?: number; matched?: number; skipped?: number } | null>(null);
+  const [importResult, setImportResult] = useState<{
+    message: string;
+    ok?: boolean;
+    total_rows?: number;
+    matched?: number;
+    skipped?: number;
+    errors?: Array<{ row: number; message: string }>;
+  } | null>(null);
   const [showBarangModal, setShowBarangModal] = useState(false);
   const [loading, setLoading] = useState(true);
 

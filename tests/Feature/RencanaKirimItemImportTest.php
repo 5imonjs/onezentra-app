@@ -53,4 +53,26 @@ class RencanaKirimItemImportTest extends TestCase
         $this->assertSame(1, $import->matched);
         $this->assertSame('CSP4OP NEW', $import->items[0]['nama_barang']);
     }
+
+    public function test_import_skips_quantity_below_one_and_records_row_error(): void
+    {
+        Npn::create([
+            'BOSnetszProductId' => 'B-FRAKSI',
+            'szNickName' => 'BARANG FRAKSI',
+            'szStatus' => 'EXISTING',
+        ]);
+
+        $import = new RencanaKirimItemImport;
+        $import->collection(new Collection([
+            ['kode_barang' => 'B-FRAKSI', 'jumlah' => 0.5, 'satuan' => 'CRT'],
+            ['kode_barang' => 'B-FRAKSI', 'jumlah' => 1, 'satuan' => 'CRT'],
+        ]));
+
+        $this->assertSame(1, $import->matched);
+        $this->assertSame(1, $import->skipped);
+        $this->assertCount(1, $import->errors);
+        $this->assertSame(2, $import->errors[0]['row']);
+        $this->assertStringContainsString('Qty minimal 1', $import->errors[0]['message']);
+        $this->assertSame(1.0, (float) $import->items[0]['jumlah']);
+    }
 }

@@ -837,6 +837,7 @@ class RencanaKirimController extends Controller
                 'total_rows' => $import->totalRows,
                 'matched' => $import->matched,
                 'skipped' => $import->skipped,
+                'errors' => $import->errors,
                 'items' => $import->items,
             ],
         ]);

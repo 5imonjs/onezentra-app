@@ -9,8 +9,22 @@ interface RencanaKirimImportModalProps {
   importing: boolean;
   selectedFile: File | null;
   setSelectedFile: Dispatch<SetStateAction<File | null>>;
-  importResult: { message: string; ok?: boolean; total_rows?: number; matched?: number; skipped?: number } | null;
-  setImportResult: Dispatch<SetStateAction<{ message: string; ok?: boolean; total_rows?: number; matched?: number; skipped?: number } | null>>;
+  importResult: {
+    message: string;
+    ok?: boolean;
+    total_rows?: number;
+    matched?: number;
+    skipped?: number;
+    errors?: Array<{ row: number; message: string }>;
+  } | null;
+  setImportResult: Dispatch<SetStateAction<{
+    message: string;
+    ok?: boolean;
+    total_rows?: number;
+    matched?: number;
+    skipped?: number;
+    errors?: Array<{ row: number; message: string }>;
+  } | null>>;
   fileInputRef: RefObject<HTMLInputElement | null>;
   handleImportItems: () => void;
   handleItemTemplate: () => void;
@@ -78,7 +92,7 @@ export default function RencanaKirimImportModal({
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">Format: 1 baris = 1 barang. Kolom: Kode Barang, Nama Barang, Jumlah, Satuan, Keterangan. Barang akan dicocokkan dengan data NPN.</p>
+          <p className="text-xs text-muted-foreground">Format: 1 baris = 1 barang. Kolom: Kode Barang, Nama Barang, Jumlah, Satuan, Keterangan. Qty minimal 1 — baris dengan qty di bawah 1 dilewati. Barang akan dicocokkan dengan data NPN.</p>
 
           {importResult && (
             <div className={`p-4 rounded-xl animate-fade-in ${importResult.ok ? 'bg-success/10 border border-success/30' : 'bg-destructive/10 border border-destructive/30'}`}>
@@ -98,6 +112,15 @@ export default function RencanaKirimImportModal({
                       <span className="badge badge-info">Total: {importResult.total_rows} baris</span>
                       <span className="badge badge-warning">Skip: {importResult.skipped}</span>
                     </div>
+                  )}
+                  {importResult.errors && importResult.errors.length > 0 && (
+                    <ul className="mt-3 space-y-1" aria-label="Baris yang dilewati saat import">
+                      {importResult.errors.map((error, i) => (
+                        <li key={`${error.row}-${i}`} className="text-xs text-destructive">
+                          Baris {error.row}: {error.message}
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               </div>
