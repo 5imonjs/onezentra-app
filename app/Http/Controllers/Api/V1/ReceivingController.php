@@ -20,6 +20,7 @@ use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
 use App\Models\SjValidation;
 use App\Models\User;
+use App\Services\Biaya\BiayaRetribusiSyncService;
 use App\Services\EmailNotificationService;
 use App\Services\ExportGuard;
 use App\Services\OpnameExpiredService;
@@ -633,6 +634,12 @@ class ReceivingController extends Controller
                 'status' => 'COMPLETED',
                 'completed_at' => now(),
             ]);
+
+            // Mobile "Bongkar Selesai" adalah titik terakhir qty berubah.
+            // Pengajuan retribusi yang masih draft wajib mengikuti angka final
+            // ini — jangan membiarkan nominal lama dari Validasi SJ.
+            app(BiayaRetribusiSyncService::class)->syncForReceiving((int) $lockedReceiving->id);
+            app(ReceivedQtySyncService::class)->sync((int) $lockedReceiving->rencana_kirim_id, validatedOnly: true);
 
             return 'completed';
         });

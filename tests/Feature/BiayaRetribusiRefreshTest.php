@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\BiayaRetribusi;
+use App\Models\BiayaRetribusiDetail;
 use App\Models\Permission;
 use App\Models\Receiving;
 use App\Models\ReceivingItem;
@@ -22,7 +23,8 @@ class BiayaRetribusiRefreshTest extends TestCase
     {
         $permissions = collect([
             'biaya_retribusi.create', 'biaya_retribusi.view', 'biaya_retribusi.edit',
-            'penerimaan.edit', 'penerimaan.delete', 'receiving.delete', 'rencana_kirim.delete', 'depot.view_all',
+            'penerimaan.edit', 'penerimaan.delete', 'receiving.edit', 'receiving.delete',
+            'rencana_kirim.delete', 'depot.view_all',
         ])->map(fn (string $slug): Permission => Permission::firstOrCreate(
             ['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test'],
         ));
@@ -80,6 +82,51 @@ class BiayaRetribusiRefreshTest extends TestCase
         $this->assertSame(9.0, (float) $detail->qty_crt);
         $this->assertSame(22500.0, (float) $detail->nominal_biaya);
         $this->assertSame(22500.0, (float) $biaya->nominal_biaya);
+    }
+
+    public function test_bongkar_selesai_menyinkronkan_draft_retribusi_dengan_qty_final(): void
+    {
+        $user = $this->actingUser();
+        RetribusiRate::create([
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo DPO', 'mode' => 'koli',
+            'rate_zak' => 1500, 'rate_crt' => 2500, 'is_active' => true,
+        ]);
+
+        $rencana = RencanaKirim::create([
+            'po_transporter' => 'PO-BONGKAR-1', 'kode_depo' => 'DPO', 'nama_depo' => 'Depo DPO',
+            'status' => 'IN_PROGRESS', 'checked_by' => $user->id,
+        ]);
+        $receiving = Receiving::create([
+            'rencana_kirim_id' => $rencana->id, 'status' => 'IN_PROGRESS', 'checked_by' => $user->id,
+        ]);
+        $item = ReceivingItem::create([
+            'receiving_id' => $receiving->id, 'kode_barang' => 'SKU-BONGKAR', 'nama_barang' => 'Barang Bongkar',
+            'expected_qty' => 10, 'actual_qty' => 4, 'satuan' => 'CRT',
+            'condition' => 'FISIK_BAGUS', 'source' => ReceivingItem::SOURCE_VALIDASI,
+        ]);
+
+        // Klaim dibuat lebih awal (draft), sebelum receiving ditutup mobile.
+        $biaya = BiayaRetribusi::create([
+            'tanggal_pengajuan' => '2026-11-01', 'kode_depo' => 'DPO', 'nama_depo' => 'Depo DPO',
+            'nominal_biaya' => 25000, 'status' => 'draft', 'created_by' => $user->id,
+            'approval_pengajuan' => $user->full_name, 'approval_pengajuan_level' => $user->level,
+        ]);
+        BiayaRetribusiDetail::create([
+            'biaya_retribusi_id' => $biaya->id, 'receiving_id' => $receiving->id,
+            'nopol_kendaraan' => 'KB 1234 XX', 'type_kendaraan' => 'CDD',
+            'qty_zak' => 0, 'qty_crt' => 10, 'nominal_biaya' => 25000,
+        ]);
+
+        // Mobile mengubah qty sebelum menekan "Bongkar Selesai".
+        $item->update(['actual_qty' => 7]);
+
+        $this->postJson("/api/v1/receivings/{$receiving->id}/complete", ['barcode' => 'PO-BONGKAR-1'])
+            ->assertOk();
+
+        $detail = $biaya->details()->first();
+        $this->assertSame(7.0, (float) $detail->qty_crt);
+        $this->assertSame(17500.0, (float) $detail->nominal_biaya);
+        $this->assertSame(17500.0, (float) $biaya->fresh()->nominal_biaya);
     }
 
     public function test_refresh_tidak_mengubah_baris_manual_tanpa_receiving(): void
