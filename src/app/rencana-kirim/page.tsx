@@ -683,16 +683,21 @@ export default function RencanaKirimPage() {
   const handleCreate = async () => {
     const incompleteItem = createItems.some(item => item.nama_barang.trim() && !item.kode_barang);
     const typingItem = [...typingItems].some(index => createItems[index] && !createItems[index].kode_barang);
-    const validItems = createItems.filter(item => item.kode_barang && Number(item.jumlah) > 0);
-    const zeroQtyItem = createItems.some(item => item.kode_barang && !(Number(item.jumlah) > 0));
+    // Backend memakai `min:1` untuk setiap items.*.jumlah. Filter lama hanya
+    // menolak <= 0 sehingga nilai pecahan (mis. 0.5 dari import Excel) lolos
+    // dan memicu 422 "items.N.jumlah must be at least 1" saat simpan.
+    const validItems = createItems.filter(item => item.kode_barang && Number(item.jumlah) >= 1);
+    const invalidQtyItem = createItems.some(item => item.kode_barang && !(Number(item.jumlah) >= 1));
 
     if (typingItem) {
       notifyGlobal('Barang belum dipilih dari hasil pencarian NPN. Pilih produk dari daftar sebelum menyimpan.', 'error');
       return;
     }
 
-    if (incompleteItem || validItems.length === 0 || zeroQtyItem) {
-      notifyGlobal(zeroQtyItem ? 'Setiap barang harus memiliki jumlah lebih dari 0.' : 'Maaf, nama barang dengan kode produk yang dicari tidak ditemukan. Silakan hubungi administrator untuk menambahkan barang yang diinput.', 'error');
+    if (incompleteItem || validItems.length === 0 || invalidQtyItem) {
+      notifyGlobal(invalidQtyItem
+        ? 'Jumlah setiap barang harus minimal 1. Periksa kembali qty yang diinput.'
+        : 'Maaf, nama barang dengan kode produk yang dicari tidak ditemukan. Silakan hubungi administrator untuk menambahkan barang yang diinput.', 'error');
       return;
     }
 
