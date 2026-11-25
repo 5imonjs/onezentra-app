@@ -457,6 +457,32 @@ describe('Rencana Kirim — filter ETA mengikuti URL', () => {
   });
 });
 
+describe('Rencana Kirim — pembuat dokumen', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
+    list.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    depoList.mockResolvedValue({ data: { data: [] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [], total: 0 } });
+  });
+
+  it('menampilkan nama user pembuat agar PO seperti "tes" bisa ditelusuri', async () => {
+    list.mockResolvedValue({ data: { data: [
+      {
+        id: 99, po_transporter: 'tes', rkh_date: '2026-11-21T00:00:00',
+        eta_date: '2026-11-22T00:00:00', status: 'DRAFT', created_at: '2026-11-20T08:00:00',
+        created_by: 7,
+        creator: { id: 7, full_name: 'Budi Planner', email: 'budi@example.com', level: 'admin_planner' },
+      },
+    ], last_page: 1 } });
+
+    render(<RencanaKirimPage />);
+
+    expect((await screen.findAllByText('Budi Planner')).length).toBeGreaterThan(0);
+  });
+});
+
 describe('Rencana Kirim — kubikasi belum terhubung NPN', () => {
   beforeEach(() => {
     vi.clearAllMocks();

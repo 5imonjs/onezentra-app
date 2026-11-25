@@ -21,7 +21,7 @@ const DynRencanaKirimBarangModal = dynamic(() => import('./RencanaKirimBarangMod
 const DynRencanaKirimImportModal = dynamic(() => import('./RencanaKirimImportModal'));
 const DynRencanaKirimSavePreviewModal = dynamic(() => import('./RencanaKirimSavePreviewModal'));
 
-import type { DepoOption, RencanaKirim, RencanaKirimItem } from './RencanaKirimCreateModal';
+import type { DepoOption, RencanaKirim, RencanaKirimCreator, RencanaKirimItem } from './RencanaKirimCreateModal';
 
 /** Statistik global rencana kirim dari endpoint /rencana-kirim/stats. */
 interface RkStats {
@@ -826,6 +826,13 @@ export default function RencanaKirimPage() {
   const editLocked = !!editingId && !['DRAFT', 'SCHEDULED'].includes(editingStatus);
   const itemCount = createItems.filter(i => i.kode_barang).length;
   const fmt = (v: unknown): React.ReactNode => (v ?? '-') as React.ReactNode;
+  // Nama pembuat dokumen. `created_by` sudah tersimpan sejak awal; tampilkan
+  // agar user bisa menelusuri siapa yang membuat rencana kirim (mis. PO tes).
+  const creatorName = (creator?: RencanaKirimCreator | null): string => {
+    const name = creator?.full_name?.trim();
+    if (name) return name;
+    return creator?.email?.trim() || 'Tidak tercatat';
+  };
   const fmtDateId = (v?: string | null) => {
     if (!v) return '-';
     const d = new Date(v);
@@ -1074,7 +1081,10 @@ export default function RencanaKirimPage() {
                       )}
                       <tr className="group hover:bg-overlay-70 transition-colors">
                     <td className="px-5 py-3.5 text-sm text-muted-foreground whitespace-nowrap">{(page - 1) * 20 + index + 1}</td>
-                    <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{item.created_at?.split('T')[0] || '-'}</span></td>
+                    <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap">
+                      <span className="block font-mono">{item.created_at?.split('T')[0] || '-'}</span>
+                      <span className="block text-xs text-muted-foreground" title={`Dibuat oleh ${creatorName(item.creator)}`}>{creatorName(item.creator)}</span>
+                    </td>
                     <td className="px-5 py-3.5 text-sm text-foreground font-medium whitespace-nowrap"><span className="font-mono">{fmt(item.po_transporter)}</span></td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{fmt(toLocalYmd(item.rkh_date))}</span></td>
                     <td className="px-5 py-3.5 text-sm whitespace-nowrap"><span className="inline-flex items-center gap-1 font-mono font-semibold text-info">{item.eta_date ? fmt(toLocalYmd(item.eta_date)) : '-'}</span></td>
@@ -1199,7 +1209,7 @@ export default function RencanaKirimPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-mono text-sm font-bold text-foreground truncate">{fmt(item.po_transporter)}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">Kirim {toLocalYmd(item.rkh_date) || '-'} • Tiba <span className="font-semibold text-info">{toLocalYmd(item.eta_date) || '-'}</span> • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Kirim {toLocalYmd(item.rkh_date) || '-'} • Tiba <span className="font-semibold text-info">{toLocalYmd(item.eta_date) || '-'}</span> • Dibuat {item.created_at?.split('T')[0] || '-'} • oleh {creatorName(item.creator)}</p>
                     </div>
                     <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${st?.bg || 'bg-card'} ${st?.color || 'text-foreground'} ${st?.border || 'border-border'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-muted-foreground'}`} />
@@ -1328,7 +1338,7 @@ export default function RencanaKirimPage() {
                 <div>
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">PO Transporter</p>
                   <h3 className="mt-1 text-xl font-black tracking-tight">{fmt(viewItem.po_transporter)}</h3>
-                  <p className="mt-1 text-xs text-white/70"><span className="font-semibold">Rencana kirim:</span> {fmtDateId(toLocalYmd(viewItem.rkh_date))} <span className="text-white/40">•</span> <span className="font-semibold text-info">Rencana tiba:</span> {viewItem.eta_date ? fmtDateId(toLocalYmd(viewItem.eta_date)) : '-'} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
+                  <p className="mt-1 text-xs text-white/70"><span className="font-semibold">Rencana kirim:</span> {fmtDateId(toLocalYmd(viewItem.rkh_date))} <span className="text-white/40">•</span> <span className="font-semibold text-info">Rencana tiba:</span> {viewItem.eta_date ? fmtDateId(toLocalYmd(viewItem.eta_date)) : '-'} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])} <span className="text-white/40">•</span> <span className="font-semibold">Oleh:</span> {creatorName(viewItem.creator)}</p>
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white ring-1 ring-inset ring-white/20">
                   <span className={`w-2 h-2 rounded-full ${statusConfig[viewItem.status]?.dot || 'bg-slate-400'}`} />{statusConfig[viewItem.status]?.label || viewItem.status}

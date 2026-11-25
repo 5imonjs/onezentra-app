@@ -81,6 +81,23 @@ describe('Sidebar — ikon menu', () => {
     expect(monitoring).not.toEqual(stock);
   });
 
+  it('menampilkan menu "Riwayat Aktivitas" dengan ikon saat user punya activity.view', () => {
+    nav.pathname = '/activity';
+    renderSidebar();
+
+    const link = screen.getByRole('link', { name: 'Riwayat Aktivitas' });
+    expect(link).toHaveAttribute('href', '/activity');
+    expect(link.querySelector('svg')).not.toBeNull();
+  });
+
+  it('menyembunyikan menu "Riwayat Aktivitas" tanpa izin activity.view', () => {
+    nav.pathname = '/dashboard';
+    auth.can = (permission: string) => permission !== 'activity.view';
+    renderSidebar();
+
+    expect(screen.queryByRole('link', { name: 'Riwayat Aktivitas' })).not.toBeInTheDocument();
+  });
+
   it('menaruh satu laporan stok kedaluwarsa di grup Laporan', () => {
     nav.pathname = '/reports/expired-stock';
     renderSidebar();
