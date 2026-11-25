@@ -2,6 +2,7 @@
 
 import type { ComponentType, Dispatch, SetStateAction } from 'react';
 import Modal from '@/components/Modal';
+import DmyDateInput from '@/components/DmyDateInput';
 import { notifyGlobal } from '@/store/globalToast';
 import type { NpnProduct } from '@/components/NpnSearchInput';
 
@@ -210,13 +211,13 @@ export default function RencanaKirimCreateModal({
               </div>
               <div>
                 <label htmlFor="f-rkh-date" className="block text-xs font-medium text-muted-foreground mb-1">Tanggal Rencana Kirim (RKH) <span className="text-destructive">*</span></label>
-                <input id="f-rkh-date" type="date" min={editingId ? undefined : todayDateStr()} value={createForm.rkh_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, rkh_date: e.target.value }))} className="input-field text-sm py-2" />
+                <DmyDateInput id="f-rkh-date" value={createForm.rkh_date ?? ''} min={editingId ? undefined : todayDateStr()} onChange={(iso) => setCreateForm(prev => ({ ...prev, rkh_date: iso }))} className="input-field text-sm py-2" />
                 <p className="mt-1 text-[11px] text-muted-foreground">RKH = kapan barang direncanakan berangkat. Berbeda dengan &quot;Dibuat&quot; (waktu input dokumen).</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Tanggal pengiriman rencana</p>
               </div>
               <div>
                 <label htmlFor="f-eta-date" className="block text-xs font-medium text-muted-foreground mb-1">Rencana Tiba di Depo <span className="text-destructive">*</span></label>
-                <input id="f-eta-date" type="date" value={createForm.eta_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, eta_date: e.target.value }))} className="input-field text-sm py-2" />
+                <DmyDateInput id="f-eta-date" value={createForm.eta_date ?? ''} onChange={(iso) => setCreateForm(prev => ({ ...prev, eta_date: iso }))} className="input-field text-sm py-2" />
                 <p className="mt-1 text-[11px] text-info">Ditentukan planner saat membuat rencana. Rencana tiba = kapan barang diharapkan sampai di depo tujuan (berbeda dengan RKH = rencana berangkat).</p>
               </div>
             </div>
