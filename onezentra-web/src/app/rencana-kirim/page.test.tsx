@@ -57,6 +57,13 @@ vi.mock('@/store/globalToast', () => ({
   notifyGlobal: vi.fn(),
 }));
 
+/** Tanggal uji dalam format tampilan dd/mm/yyyy (form rencana kirim). */
+const dmy = (offset: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+};
+
 let productId = 0;
 const product = (code: string, name: string) => ({
   id: ++productId,
@@ -83,8 +90,8 @@ async function openItemsModal(): Promise<HTMLInputElement> {
   // auto-fill todayDateStr() hanya aktif saat state masih `undefined`,
   // sedangkan reset awal mengisinya dengan string kosong.
   fireEvent.change(await screen.findByPlaceholderText('cth: PO-2026-0001'), { target: { value: 'PO-TES-001' } });
-  fireEvent.change(screen.getByLabelText(/Tanggal Rencana Kirim/), { target: { value: '2026-10-23' } });
-  fireEvent.change(screen.getByLabelText(/Rencana Tiba di Depo/), { target: { value: '2026-10-25' } });
+  fireEvent.change(screen.getByLabelText(/Tanggal Rencana Kirim/), { target: { value: dmy(1) } });
+  fireEvent.change(screen.getByLabelText(/Rencana Tiba di Depo/), { target: { value: dmy(2) } });
   fireEvent.click(screen.getByRole('button', { name: /Selanjutnya/ }));
 
   // Langkah 2 — Kendaraan.
@@ -361,7 +368,7 @@ describe('Rencana Kirim — ETA wajib diisi planner', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Buat rencana kirim baru' }));
 
     fireEvent.change(await screen.findByPlaceholderText('cth: PO-2026-0001'), { target: { value: 'PO-WAJIB-ETA' } });
-    fireEvent.change(screen.getByLabelText(/Tanggal Rencana Kirim/), { target: { value: '2026-11-21' } });
+    fireEvent.change(screen.getByLabelText(/Tanggal Rencana Kirim/), { target: { value: dmy(1) } });
     fireEvent.click(screen.getByRole('button', { name: /Selanjutnya/ }));
 
     expect(notifyGlobal).toHaveBeenCalledWith(

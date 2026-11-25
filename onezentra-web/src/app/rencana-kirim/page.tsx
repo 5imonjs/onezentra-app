@@ -7,6 +7,7 @@ import { rencanaKirim, depo, depotSettings, getErrorMessage, reports } from '@/l
 import { notifyGlobal } from '@/store/globalToast';
 import { type RencanaKirimData } from '@/lib/suratJalanPdf';
 import SearchInput from '@/components/SearchInput';
+import DmyDateInput from '@/components/DmyDateInput';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Calendar from '@/components/Calendar';
@@ -1051,9 +1052,9 @@ export default function RencanaKirimPage() {
                       </div>
                       {filterDate === 'custom' && (
                         <div className="flex items-center gap-2">
-                          <input type="date" aria-label="Dari tanggal kirim" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="input-field text-sm py-2" />
+                          <DmyDateInput id="rkh-date-from" ariaLabel="Dari tanggal kirim" value={dateFrom} onChange={(iso) => { setDateFrom(iso); setPage(1); }} className="input-field text-sm py-2" />
                           <span className="text-xs text-muted-foreground">s/d</span>
-                          <input type="date" aria-label="Sampai tanggal kirim" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="input-field text-sm py-2" />
+                          <DmyDateInput id="rkh-date-to" ariaLabel="Sampai tanggal kirim" value={dateTo} onChange={(iso) => { setDateTo(iso); setPage(1); }} className="input-field text-sm py-2" />
                         </div>
                       )}
                       <div className="relative">
