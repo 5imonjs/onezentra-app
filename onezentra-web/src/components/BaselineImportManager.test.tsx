@@ -108,6 +108,9 @@ describe('BaselineImportManager — koreksi saldo awal', () => {
 
     const dateInput = screen.getByLabelText('Tanggal saldo baru') as HTMLInputElement;
     fireEvent.change(dateInput, { target: { value: '2026-09-06' } });
+    // Tunggu state React ter-flush sebelum klik — tombol koreksi dinonaktifkan
+    // saat editDate masih sama dengan tanggal lama/date kosong.
+    await waitFor(() => expect(dateInput).toHaveValue('2026-09-06'));
     fireEvent.click(screen.getByRole('button', { name: /Simpan koreksi/i }));
 
     await waitFor(() => {
