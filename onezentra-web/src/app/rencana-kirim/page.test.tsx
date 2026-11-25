@@ -457,6 +457,55 @@ describe('Rencana Kirim — filter ETA mengikuti URL', () => {
   });
 });
 
+describe('Rencana Kirim — PO duplikat', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    searchParamsGet.mockReturnValue(null);
+    depoList.mockResolvedValue({ data: { data: [{ kode_depo: '0127', nama_depo: 'Singkawang' }] } });
+    depotSettingsGet.mockResolvedValue({ data: { data: {} } });
+    searchProduct.mockResolvedValue({ data: { data: [product('B-DUP', 'MINYAK DUP')], total: 1 } });
+    list.mockImplementation((params: Record<string, unknown>) => Promise.resolve({
+      data: {
+        data: params?.po_transporter
+          ? [{
+            id: 54, po_transporter: 'PO-TES-001', driver_name: 'Tester', nopol: 'DA 1111 XX',
+            rkh_date: '2026-12-03T00:00:00', eta_date: '2026-12-02T00:00:00', status: 'DRAFT',
+            kode_depo: '0127', nama_depo: 'Singkawang', created_at: '2026-11-24T09:27:44',
+            creator: { id: 1, full_name: 'Simon Peres', email: 'simon@example.com', level: 'admin_master' },
+          }]
+          : [],
+        last_page: 1,
+      },
+    }));
+  });
+
+  it('memberi peringatan inline saat PO sudah dipakai rencana lain', async () => {
+    render(<RencanaKirimPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Buat rencana kirim baru' }));
+
+    fireEvent.change(await screen.findByPlaceholderText('cth: PO-2026-0001'), { target: { value: 'PO-DUP' } });
+
+    expect(await screen.findByText(/PO Transporter ini sudah dipakai rencana kirim lain/)).toBeInTheDocument();
+  });
+
+  it('klik Simpan memunculkan popup konfirmasi dengan dokumen lama', async () => {
+    const input = await openItemsModal();
+    fireEvent.change(input, { target: { value: 'minyak' } });
+    fireEvent.click(await screen.findByRole('button', { name: /MINYAK DUP/ }));
+
+    const jumlah = document.querySelector('#item-jumlah-0') as HTMLInputElement;
+    expect(jumlah).not.toBeNull();
+    fireEvent.change(jumlah, { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Selesai' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Simpan Rencana' }));
+
+    expect(await screen.findByText('PO Transporter sudah terdaftar')).toBeInTheDocument();
+    expect(screen.getByText('Simon Peres')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lihat Dokumen Lama' })).toBeInTheDocument();
+  });
+});
+
 describe('Rencana Kirim — pembuat dokumen', () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -20,6 +20,7 @@ const DynRencanaKirimCreateModal = dynamic(() => import('./RencanaKirimCreateMod
 const DynRencanaKirimBarangModal = dynamic(() => import('./RencanaKirimBarangModal'));
 const DynRencanaKirimImportModal = dynamic(() => import('./RencanaKirimImportModal'));
 const DynRencanaKirimSavePreviewModal = dynamic(() => import('./RencanaKirimSavePreviewModal'));
+const DynRencanaKirimDuplicatePoModal = dynamic(() => import('./RencanaKirimDuplicatePoModal'));
 
 import type { DepoOption, RencanaKirim, RencanaKirimCreator, RencanaKirimItem } from './RencanaKirimCreateModal';
 
@@ -255,6 +256,9 @@ export default function RencanaKirimPage() {
   };
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [poDuplicate, setPoDuplicate] = useState(false);
+  // Dokumen lama yang bentrok PO-nya — dipakai popup konfirmasi saat Simpan.
+  const [duplicatePo, setDuplicatePo] = useState<RencanaKirim | null>(null);
+  const [showDuplicatePoConfirm, setShowDuplicatePoConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   // Simpan harus lewat matriks verifikasi: klik "Simpan" TIDAK langsung
   // menulis — tampil pratinjau dokumen + barang; baru setelah eksplisit
@@ -437,24 +441,63 @@ export default function RencanaKirimPage() {
   const scheduledCount = rkStats?.scheduled ?? 0;
   const completedCountList = rkStats?.completed ?? 0;
 
-  // Cek PO duplikat (debounced) — backend yang memutus, frontend memberi peringatan awal.
-  useEffect(() => {
+  // Cek PO duplikat (debounced) — backend yang memutus, frontend memberi
+  // peringatan awal sekaligus menyiapkan data dokumen lama untuk popup Simpan.
+  const findDuplicatePo = useCallback(async (): Promise<RencanaKirim | null> => {
     const po = createForm.po_transporter?.trim().toUpperCase() ?? '';
-    if (!po || !showCreate) {
+    if (!po) {
+      return null;
+    }
+    try {
+      const res = await rencanaKirim.list({
+        po_transporter: po,
+        kode_depo: createForm.kode_depo || undefined,
+        per_page: 5,
+      });
+      const rows: RencanaKirim[] = res.data.data ?? [];
+      return rows.find(row => row.id !== editingId) ?? null;
+    } catch {
+      return null; // gagal cek → biarkan backend yang memutus saat simpan
+    }
+  }, [createForm.po_transporter, createForm.kode_depo, editingId]);
+
+  useEffect(() => {
+    if (!showCreate) {
       setPoDuplicate(false);
+      setDuplicatePo(null);
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(async () => {
-      try {
-        const res = await rencanaKirim.list({ po_transporter: po, kode_depo: createForm.kode_depo || undefined, per_page: 1 });
-        const rows: Array<{ id?: number }> = res.data.data;
-        setPoDuplicate(rows.some(row => row.id !== editingId));
-      } catch {
-        setPoDuplicate(false); // gagal cek → biarkan backend yang memutus saat simpan
-      }
+      const found = await findDuplicatePo();
+      if (cancelled) return;
+      setDuplicatePo(found);
+      setPoDuplicate(found !== null);
     }, 500);
-    return () => clearTimeout(timer);
-  }, [createForm.po_transporter, createForm.kode_depo, showCreate, editingId]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [showCreate, findDuplicatePo]);
+
+  /**
+   * Tombol Simpan selalu aktif. Kalau PO sudah dipakai, popup konfirmasi
+   * menampilkan dokumen lama — simpan tetap diblokir sesuai aturan backend.
+   */
+  const requestSavePreview = async () => {
+    if (editingId) {
+      setShowSavePreview(true);
+      return;
+    }
+    const found = await findDuplicatePo();
+    setDuplicatePo(found);
+    setPoDuplicate(found !== null);
+    if (found) {
+      setShowDuplicatePoConfirm(true);
+      return;
+    }
+    setShowSavePreview(true);
+  };
 
   const openCreate = (date?: string) => {
     if (!hasPermission('rencana_kirim.create')) return;
@@ -623,6 +666,8 @@ export default function RencanaKirimPage() {
     setTypingItems(new Set());
     setCurrentStep(1);
     setPoDuplicate(false);
+    setDuplicatePo(null);
+    setShowDuplicatePoConfirm(false);
     setEditSnapshot('');
   };
 
@@ -1418,7 +1463,7 @@ export default function RencanaKirimPage() {
         depoList={depoList}
         setShowBarangModal={setShowBarangModal}
         setShowImport={setShowImport}
-        setShowSavePreview={setShowSavePreview}
+        onRequestSave={requestSavePreview}
         clearNamaDepo={clearNamaDepo}
         handleNamaDepoChange={handleNamaDepoChange}
         poDuplicate={poDuplicate}
@@ -1448,6 +1493,19 @@ export default function RencanaKirimPage() {
         createItems={createItems}
         handleCreate={handleCreate}
         saving={saving}
+      />
+      {/* Popup konfirmasi PO duplikat — tampil saat Simpan diklik dan PO sudah dipakai. */}
+      <DynRencanaKirimDuplicatePoModal
+        show={showDuplicatePoConfirm}
+        onClose={() => setShowDuplicatePoConfirm(false)}
+        existing={duplicatePo}
+        onViewExisting={() => {
+          const target = duplicatePo;
+          setShowDuplicatePoConfirm(false);
+          setShowSavePreview(false);
+          setShowCreate(false);
+          setViewItem(target);
+        }}
       />
       {/* Daftar Barang Popup — kelola setelah informasi dokumen/kendaraan/alamat lengkap. Di-lazy-load. */}
       <DynRencanaKirimBarangModal
