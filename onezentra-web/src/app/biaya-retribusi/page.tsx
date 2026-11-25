@@ -601,6 +601,9 @@ export default function BiayaRetribusiPage() {
   const persistCreate = async (): Promise<number> => {
       const fd = new FormData();
       fd.append('tanggal_pengajuan', formData.tanggal_pengajuan);
+      // Kirim depo efektif: tanpa ini, pengajuan dengan baris manual (catatan
+      // luar rencana) tidak mewarisi depo receiving dan tarif koli jadi borongan.
+      if (effectiveDepo) fd.append('kode_depo', effectiveDepo);
       selectedCandidates.forEach((cId, i) => {
         const c = candidates.find((c2) => c2.id === cId);
         if (!c) return;
@@ -712,6 +715,7 @@ export default function BiayaRetribusiPage() {
   const buildUpdatePayload = (): FormData => {
       const fd = new FormData();
       fd.append('tanggal_pengajuan', formData.tanggal_pengajuan);
+      if (effectiveDepo) fd.append('kode_depo', effectiveDepo);
       fd.append('_method', 'PUT');
 
       formData.details.forEach((d, i) => {

@@ -81,9 +81,11 @@ class BiayaRetribusiCalculator
     }
 
     /**
-     * Bila seluruh baris berasal dari receiving yang se-depo, pengajuan
-     * mewarisi depo receiving (bukan depo pembuat) agar tarif koli,
-     * laporan, dan filter depo konsisten siapa pun yang membuat.
+     * Bila ada baris receiving dan semuanya se-depo, pengajuan mewarisi depo
+     * receiving (bukan depo pembuat) agar tarif koli, laporan, dan filter depo
+     * konsisten. Baris manual (catatan luar rencana) tidak menggagalkan
+     * pewarisan — nominalnya memang tetap manual, tetapi baris receiving tetap
+     * harus dihitung dengan tarif depo yang benar.
      *
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
@@ -94,13 +96,23 @@ class BiayaRetribusiCalculator
         if (count($details) === 0) {
             return $validated;
         }
-        foreach ($details as $detail) {
-            if (empty($detail['receiving_id'])) {
-                return $validated;
-            }
+
+        // Baris manual (tanpa receiving_id) dipakai untuk catatan di luar
+        // rencana kirim. Keberadaannya TIDAK boleh menggagalkan pewarisan
+        // depo: kalau ikut memblokir, depo kosong → resolveFor(null) jatuh ke
+        // mode borongan dan nominal baris receiving tidak dihitung ulang.
+        $receivingIds = collect($details)
+            ->pluck('receiving_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+        if ($receivingIds === []) {
+            return $validated;
         }
+
         $depots = Receiving::query()
-            ->whereIn('id', collect($details)->pluck('receiving_id')->unique()->values())
+            ->whereIn('id', $receivingIds)
             ->with('rencanaKirim')
             ->get()
             ->map(fn (Receiving $r) => [$r->rencanaKirim?->kode_depo, $r->rencanaKirim?->nama_depo])

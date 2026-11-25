@@ -149,6 +149,41 @@ class BiayaRetribusiKoliCalcTest extends TestCase
         $this->assertSame(123000.0, (float) $detail->nominal_biaya);
     }
 
+    public function test_baris_manual_tidak_menggagalkan_hitung_koli_baris_receiving(): void
+    {
+        $this->actingUser();
+        $this->koliRate();
+        $receiving = $this->completedReceiving(User::factory()->create());
+        $this->receivingItem($receiving, 'CRT', 4);
+
+        $response = $this->postJson('/api/v1/biaya-retribusi', [
+            'tanggal_pengajuan' => '2026-10-16',
+            'details' => [
+                [
+                    'receiving_id' => $receiving->id,
+                    'nopol_kendaraan' => 'KB 1234 XX',
+                    'type_kendaraan' => 'CDD',
+                    'qty_zak' => 0,
+                    'qty_crt' => 4,
+                    'nominal_biaya' => 999999,
+                ],
+                [
+                    'nopol_kendaraan' => 'KB 9999 ZZ',
+                    'type_kendaraan' => 'CDD',
+                    'qty_zak' => 0,
+                    'qty_crt' => 0,
+                    'nominal_biaya' => 50000,
+                ],
+            ],
+        ])->assertCreated();
+
+        $biaya = BiayaRetribusi::findOrFail($response->json('data.id'));
+        $this->assertSame('DPO', $biaya->kode_depo);
+        $details = $biaya->details()->get();
+        $this->assertSame(10000.0, (float) $details->firstWhere('receiving_id', $receiving->id)->nominal_biaya);
+        $this->assertSame(50000.0, (float) $details->firstWhere('receiving_id', null)->nominal_biaya);
+    }
+
     public function test_qty_retribusi_diderivasi_dari_ledger_receiving_bukan_request_client(): void
     {
         $this->actingUser();
