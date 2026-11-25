@@ -23,6 +23,7 @@ use App\Models\User;
 use App\Services\EmailNotificationService;
 use App\Services\ExportGuard;
 use App\Services\OpnameExpiredService;
+use App\Services\ReceivedQtySyncService;
 use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -409,19 +410,7 @@ class ReceivingController extends Controller
      */
     private function refreshReceivedQty(RencanaKirim $rencanaKirim): void
     {
-        $totals = ReceivingItem::query()
-            ->join('receivings', 'receivings.id', '=', 'receiving_items.receiving_id')
-            ->where('receivings.rencana_kirim_id', $rencanaKirim->id)
-            ->where('receivings.status', '!=', 'CANCELLED')
-            ->groupBy('receiving_items.rencana_kirim_item_id')
-            ->selectRaw('receiving_items.rencana_kirim_item_id as item_id, SUM(receiving_items.actual_qty) as total')
-            ->pluck('total', 'item_id');
-
-        RencanaKirimItem::where('rencana_kirim_id', $rencanaKirim->id)
-            ->get()
-            ->each(function (RencanaKirimItem $item) use ($totals): void {
-                $item->update(['received_qty' => $totals[$item->id] ?? 0]);
-            });
+        app(ReceivedQtySyncService::class)->sync((int) $rencanaKirim->id);
     }
 
     /**

@@ -20,6 +20,7 @@ use App\Models\StandarUmurProduk;
 use App\Models\User;
 use App\Services\Biaya\BiayaRetribusiSyncService;
 use App\Services\EmailNotificationService;
+use App\Services\ReceivedQtySyncService;
 use App\Support\EvidenceStorage;
 use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
@@ -486,9 +487,11 @@ class SjValidationController extends Controller
             'total_received_qty' => $receiving->items()->sum('actual_qty'),
         ]);
 
-        // Retribusi yang masih draft mengikuti qty aktual terbaru.
         if ($receiving) {
+            // Retribusi yang masih draft mengikuti qty aktual terbaru.
             app(BiayaRetribusiSyncService::class)->syncForReceiving((int) $receiving->id);
+            // "Qty Diterima" di laporan/ekspor rencana kirim juga harus ikut.
+            app(ReceivedQtySyncService::class)->sync((int) $receiving->rencana_kirim_id, validatedOnly: true);
         }
     }
 
@@ -1113,6 +1116,7 @@ class SjValidationController extends Controller
             ]);
 
             app(BiayaRetribusiSyncService::class)->syncForReceiving((int) $receiving->id);
+            app(ReceivedQtySyncService::class)->sync((int) $receiving->rencana_kirim_id, validatedOnly: true);
         }
 
         return $item;
@@ -1308,6 +1312,9 @@ class SjValidationController extends Controller
                 $receiving?->update([
                     'total_received_qty' => $receiving->items()->sum('actual_qty'),
                 ]);
+                if ($receiving) {
+                    app(ReceivedQtySyncService::class)->sync((int) $receiving->rencana_kirim_id, validatedOnly: true);
+                }
             }
 
             Batch::where('sj_validation_item_id', $locked->id)->delete();
@@ -1435,6 +1442,10 @@ class SjValidationController extends Controller
                 'tanggal_penerimaan' => $tanggalPenerimaan,
             ]);
         }
+
+        // Receiving lahir dari Validasi SJ: sinkronkan "Qty Diterima" di
+        // rencana kirim dari ledger yang baru saja dibuat.
+        app(ReceivedQtySyncService::class)->sync((int) $rencanaKirim->id, validatedOnly: true);
 
         return [$sjValidation, $receiving];
     }

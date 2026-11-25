@@ -472,6 +472,18 @@ class SjValidationFlowTest extends TestCase
         $this->assertDatabaseHas('receiving_items', ['sj_validation_item_id' => $itemId, 'actual_qty' => 100]);
     }
 
+    public function test_completed_validation_syncs_received_qty_on_rencana_item(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions([
+            'sj_validation.view', 'sj_validation.create', 'sj_validation.validate',
+            'sj_validation.complete',
+        ]));
+        [$validationId, $itemId] = $this->completedValidationWithOpenReceiving($user);
+
+        $planItemId = SjValidationItem::findOrFail($itemId)->rencana_kirim_item_id;
+        $this->assertEquals(100, (float) RencanaKirimItem::findOrFail($planItemId)->received_qty);
+    }
+
     /**
      * Pemegang `sj_validation.edit_completed` boleh mengoreksi selama Receiving
      * belum COMPLETED — DANReceivingItem wajib ikut tersinkron, karena sanalah
@@ -507,6 +519,10 @@ class SjValidationFlowTest extends TestCase
         // Header Receiving juga harus ikut, kalau tidak total dan detail beda.
         $receiving = Receiving::first();
         $this->assertEquals(80, (float) $receiving->total_received_qty);
+
+        // Laporan Replenishment membaca received_qty di rencana_kirim_items.
+        $planItemId = SjValidationItem::findOrFail($itemId)->rencana_kirim_item_id;
+        $this->assertEquals(80, (float) RencanaKirimItem::findOrFail($planItemId)->received_qty);
     }
 
     /**
