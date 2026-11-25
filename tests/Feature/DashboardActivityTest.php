@@ -267,7 +267,8 @@ class DashboardActivityTest extends TestCase
         Sanctum::actingAs($user);
 
         $this->withServerVariables([
-            'REMOTE_ADDR' => '203.0.113.7',
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTP_X_FORWARDED_FOR' => '203.0.113.7',
             'HTTP_USER_AGENT' => 'Mozilla/5.0 Test Browser',
         ])->getJson('/api/v1/user')->assertOk();
 

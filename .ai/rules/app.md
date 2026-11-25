@@ -13,3 +13,4 @@ Organization hierarchy is a separate account scope: Master manages Regions, Regi
 
 ## Activity log stores the actor's device
 `user_activity_logs` menyimpan `ip_address`, `user_agent`, dan `device_name` (nama token Sanctum untuk mobile; null untuk session/curl). `TrackUserActivity` dan `AuthController::trackAuthEvent()` wajib mengisi ketiganya lewat `LogUserActivity`. Jangan menghapusnya: satu-satunya cara menelusuri siapa/perangkat apa yang membuat dokumen adalah kombinasi `created_by` + jejak ini (log nginx hanya bertahan ~2 minggu).
+- `bootstrap/app.php` mempercayai proxy loopback (`127.0.0.1`, `::1`) karena nginx `proxy_pass` ke `127.0.0.1:8000`. Tanpa itu `$request->ip()` menyimpan `127.0.0.1` di log aktivitas, bukan IP klien asli dari `X-Forwarded-For`.

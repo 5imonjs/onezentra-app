@@ -21,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+        // nginx mem-proxy API ke 127.0.0.1:8000. Percayai loopback agar
+        // $request->ip() mengembalikan IP klien asli, bukan IP proxy.
+        $middleware->trustProxies(at: ['127.0.0.1', '::1']);
         // SecurityHeaders harus paling luar agar 401/422/500 juga ber-header.
         $middleware->prependToGroup('api', SecurityHeaders::class);
         $middleware->appendToGroup('api', TrackUserActivity::class);
