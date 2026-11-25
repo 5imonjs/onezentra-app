@@ -77,7 +77,8 @@ interface RencanaKirimCreateModalProps {
   depoList: DepoOption[];
   setShowBarangModal: Dispatch<SetStateAction<boolean>>;
   setShowImport: Dispatch<SetStateAction<boolean>>;
-  setShowSavePreview: Dispatch<SetStateAction<boolean>>;
+  /** Cek PO duplikat dulu; popup konfirmasi ditampilkan bila PO sudah dipakai. */
+  onRequestSave: () => void | Promise<void>;
   clearNamaDepo: () => void;
   handleNamaDepoChange: (nama: string) => void;
   poDuplicate: boolean;
@@ -101,7 +102,7 @@ interface RencanaKirimCreateModalProps {
 
 export default function RencanaKirimCreateModal({
   showCreate, requestCloseCreate, editingId, editingStatus, createForm, setCreateForm,
-  createItems, setCurrentStep, currentStep, depoList, setShowBarangModal, setShowImport, setShowSavePreview,
+  createItems, setCurrentStep, currentStep, depoList, setShowBarangModal, setShowImport, onRequestSave,
   clearNamaDepo, handleNamaDepoChange, poDuplicate, duplicateCount, saving, typingItems, sectionComplete,
   completedCount, isMainFormValid, canSave, editLocked, itemCount, totalQty, totalKubikasiDisplay,
   itemKubikasi, jenisKendaraanOptions, todayDateStr, hasPermission, NamaDepoInput,
@@ -125,9 +126,9 @@ export default function RencanaKirimCreateModal({
               <button type="button" onClick={requestCloseCreate} className="btn-secondary px-5">Batal</button>
               <button
                 type="button"
-                onClick={() => setShowSavePreview(true)}
-                disabled={saving || typingItems.size > 0 || !canSave || poDuplicate || editLocked || (editingId ? !hasPermission('rencana_kirim.edit') : !hasPermission('rencana_kirim.create'))}
-                title={poDuplicate ? 'PO Transporter sudah dipakai di depo yang sama' : !canSave ? (!isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat dulu' : duplicateCount > 0 ? `${duplicateCount} nama barang terduplikasi — gabungkan atau hapus dulu` : 'Isi minimal 1 barang') : undefined}
+                onClick={() => void onRequestSave()}
+                disabled={saving || typingItems.size > 0 || !canSave || editLocked || (editingId ? !hasPermission('rencana_kirim.edit') : !hasPermission('rencana_kirim.create'))}
+                title={poDuplicate ? 'PO sudah dipakai — klik untuk melihat dokumen yang sudah ada' : !canSave ? (!isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat dulu' : duplicateCount > 0 ? `${duplicateCount} nama barang terduplikasi — gabungkan atau hapus dulu` : 'Isi minimal 1 barang') : undefined}
                 className="btn-primary min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-600/20"
               >
                 <span className="flex items-center justify-center gap-2">
