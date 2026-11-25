@@ -10,3 +10,6 @@ Organization hierarchy is a separate account scope: Master manages Regions, Regi
 
 ## Activity logging runs after response, not on the queue
 `TrackUserActivity` dispatches `LogUserActivity` with `->afterResponse()`. That runs the job synchronously once the response is sent — it is NOT a queued job, so activity is still recorded on shared hosting with no queue worker. Do not "fix" it back to a queued dispatch, and do not log `dashboard/activity/live` or `dashboard/activity/history` (self-polling floods the table).
+
+## Activity log stores the actor's device
+`user_activity_logs` menyimpan `ip_address`, `user_agent`, dan `device_name` (nama token Sanctum untuk mobile; null untuk session/curl). `TrackUserActivity` dan `AuthController::trackAuthEvent()` wajib mengisi ketiganya lewat `LogUserActivity`. Jangan menghapusnya: satu-satunya cara menelusuri siapa/perangkat apa yang membuat dokumen adalah kombinasi `created_by` + jejak ini (log nginx hanya bertahan ~2 minggu).

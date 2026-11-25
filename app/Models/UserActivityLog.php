@@ -11,6 +11,7 @@ class UserActivityLog extends Model
 
     protected $fillable = [
         'user_id', 'method', 'route', 'occurred_at',
+        'ip_address', 'user_agent', 'device_name',
     ];
 
     protected function casts(): array

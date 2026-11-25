@@ -36,6 +36,9 @@ const log = (overrides: Record<string, unknown> = {}) => ({
   route: 'api/v1/rencana-kirim',
   module: 'Rencana Kirim',
   action: 'Memproses Rencana Kirim',
+  ip_address: '187.77.121.102',
+  user_agent: 'curl/8.18.0',
+  device_name: null,
   occurred_at: '2026-11-25T08:00:00+07:00',
   ...overrides,
 });
@@ -69,7 +72,26 @@ describe('Riwayat Aktivitas', () => {
     expect(screen.getAllByText('Rencana Kirim').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Memproses Rencana Kirim').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Singkawang').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('curl/8.18.0').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('187.77.121.102').length).toBeGreaterThan(0);
     expect(history).toHaveBeenCalledWith(expect.objectContaining({ page: 1, per_page: 25 }));
+  });
+
+  it('menampilkan nama perangkat mobile bila tersedia', async () => {
+    history.mockResolvedValue(historyResponse([log({
+      method: 'LOGIN',
+      module: 'Login & Logout',
+      action: 'Login ke sistem',
+      device_name: 'Android 3',
+      ip_address: '114.122.10.5',
+      user_agent: 'okhttp/4.12.0',
+    })]));
+
+    render(<ActivityHistoryPage />);
+
+    expect((await screen.findAllByText('Android 3')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('114.122.10.5').length).toBeGreaterThan(0);
+    expect(screen.queryByText('okhttp/4.12.0')).not.toBeInTheDocument();
   });
 
   it('filter modul langsung dikirim ke API dan mereset halaman', async () => {

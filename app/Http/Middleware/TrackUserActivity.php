@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Jobs\LogUserActivity;
 use Closure;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
 class TrackUserActivity
@@ -51,6 +52,13 @@ class TrackUserActivity
                 ? $routeName
                 : $request->path();
 
+            // Nama perangkat hanya tersedia untuk request Bearer (mobile).
+            // Untuk session/curl, IP + User-Agent yang jadi jejak perangkat.
+            $token = $user->currentAccessToken();
+            $deviceName = $token instanceof PersonalAccessToken
+                ? $token->name
+                : null;
+
             // afterResponse() mengeksekusi job secara sinkron SETELAH respons
             // terkirim (bukan lewat antrean), jadi log tetap tercatat walau
             // queue worker tidak berjalan dan latency API tidak bertambah.
@@ -59,6 +67,9 @@ class TrackUserActivity
                 $request->method(),
                 $route,
                 now()->toDateTimeString(),
+                $request->ip(),
+                $request->userAgent(),
+                $deviceName,
             ))->afterResponse();
         }
 

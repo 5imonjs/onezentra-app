@@ -38,6 +38,7 @@ class MobileAuthTest extends TestCase
             'user_id' => $user->id,
             'method' => 'LOGIN',
             'route' => 'auth.mobile_login',
+            'device_name' => 'pixel-8',
         ]);
     }
 

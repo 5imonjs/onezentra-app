@@ -139,7 +139,7 @@ class DashboardController extends Controller
             ->when($afterId > 0, fn ($query) => $query->where('id', '>', $afterId))
             ->orderByDesc('id')
             ->limit($limit)
-            ->get(['id', 'user_id', 'method', 'route', 'occurred_at'])
+            ->get(['id', 'user_id', 'method', 'route', 'occurred_at', 'ip_address', 'user_agent', 'device_name'])
             ->map(function (UserActivityLog $log): array {
                 $user = $log->user;
 
@@ -154,6 +154,9 @@ class DashboardController extends Controller
                     'route' => $log->route,
                     'module' => $this->activityModule($log->route),
                     'action' => $this->activityAction($log->method, $log->route),
+                    'ip_address' => $log->ip_address,
+                    'user_agent' => $log->user_agent,
+                    'device_name' => $log->device_name,
                     'occurred_at' => $log->occurred_at->toIso8601String(),
                 ];
             })
@@ -237,6 +240,9 @@ class DashboardController extends Controller
                 'route' => $log->route,
                 'module' => $this->activityModule($log->route),
                 'action' => $this->activityAction($log->method, $log->route),
+                'ip_address' => $log->ip_address,
+                'user_agent' => $log->user_agent,
+                'device_name' => $log->device_name,
                 'occurred_at' => $log->occurred_at?->toIso8601String(),
             ];
         });

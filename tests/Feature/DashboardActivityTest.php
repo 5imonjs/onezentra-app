@@ -226,6 +226,59 @@ class DashboardActivityTest extends TestCase
             ->assertJsonPath('data.0.action', 'Login ke sistem');
     }
 
+    public function test_activity_history_exposes_device_information(): void
+    {
+        $user = $this->liveActivityUser('history-device@example.com');
+
+        UserActivityLog::create([
+            'user_id' => $user->id,
+            'method' => 'POST',
+            'route' => 'api/v1/rencana-kirim',
+            'ip_address' => '187.77.121.102',
+            'user_agent' => 'curl/8.18.0',
+            'device_name' => null,
+            'occurred_at' => now(),
+        ]);
+        UserActivityLog::create([
+            'user_id' => $user->id,
+            'method' => 'LOGIN',
+            'route' => 'auth.mobile_login',
+            'ip_address' => '114.122.10.5',
+            'user_agent' => 'okhttp/4.12.0',
+            'device_name' => 'Android 3',
+            'occurred_at' => now(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/dashboard/activity/history')
+            ->assertOk()
+            ->assertJsonPath('data.0.device_name', 'Android 3')
+            ->assertJsonPath('data.0.ip_address', '114.122.10.5')
+            ->assertJsonPath('data.0.user_agent', 'okhttp/4.12.0')
+            ->assertJsonPath('data.1.device_name', null)
+            ->assertJsonPath('data.1.ip_address', '187.77.121.102')
+            ->assertJsonPath('data.1.user_agent', 'curl/8.18.0');
+    }
+
+    public function test_tracked_request_stores_ip_and_user_agent(): void
+    {
+        $user = $this->liveActivityUser('request-device@example.com');
+        Sanctum::actingAs($user);
+
+        $this->withServerVariables([
+            'REMOTE_ADDR' => '203.0.113.7',
+            'HTTP_USER_AGENT' => 'Mozilla/5.0 Test Browser',
+        ])->getJson('/api/v1/user')->assertOk();
+
+        $this->assertDatabaseHas('user_activity_logs', [
+            'user_id' => $user->id,
+            'route' => 'api/v1/user',
+            'ip_address' => '203.0.113.7',
+            'user_agent' => 'Mozilla/5.0 Test Browser',
+        ]);
+    }
+
     public function test_activity_history_respects_depot_scope(): void
     {
         $user = $this->liveActivityUser('history-scope@example.com');
