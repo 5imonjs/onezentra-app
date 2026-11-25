@@ -16,6 +16,9 @@ interface ActivityLog {
   route: string;
   module: string;
   action: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  device_name: string | null;
   occurred_at: string;
 }
 
@@ -59,6 +62,32 @@ function formatDateTime(value: string): string {
     minute: '2-digit',
     second: '2-digit',
   });
+}
+
+/** Ringkas User-Agent panjang agar tidak merusak tabel. */
+function shortAgent(agent: string | null): string {
+  if (!agent?.trim()) {
+    return '';
+  }
+  const value = agent.trim();
+  return value.length > 34 ? `${value.slice(0, 34)}…` : value;
+}
+
+/**
+ * Jejak perangkat: mobile memakai nama token (device_name), web/curl memakai
+ * User-Agent + IP. Semua disimpan supaya aksi bisa ditelusuri per perangkat.
+ */
+function deviceInfo(log: ActivityLog): { main: string; sub: string; title: string } {
+  const agent = shortAgent(log.user_agent);
+  const main = log.device_name?.trim() || agent || log.ip_address || '-';
+  const sub = log.device_name?.trim()
+    ? (log.ip_address || agent)
+    : (log.ip_address || '');
+  const title = [log.device_name, log.ip_address, log.user_agent]
+    .filter(Boolean)
+    .join(' | ') || 'Tidak tercatat';
+
+  return { main, sub, title };
 }
 
 function methodTone(method: string): string {
@@ -320,6 +349,7 @@ export default function ActivityHistoryPage() {
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Depo</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Modul</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Aksi</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Perangkat / IP</th>
                   <th scope="col" className="px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Metode</th>
                 </tr>
               </thead>
@@ -327,7 +357,7 @@ export default function ActivityHistoryPage() {
                 {loading && logs.length === 0 && (
                   Array.from({ length: 6 }).map((_, i) => (
                     <tr key={`activity-skeleton-${i}`} className="animate-pulse">
-                      {Array.from({ length: 6 }).map((__, j) => (
+                      {Array.from({ length: 7 }).map((__, j) => (
                         <td key={j} className="px-5 py-3.5"><div className="h-4 w-24 rounded bg-muted" /></td>
                       ))}
                     </tr>
@@ -335,7 +365,7 @@ export default function ActivityHistoryPage() {
                 )}
                 {!loading && logs.length === 0 && !error && (
                   <tr>
-                    <td colSpan={6} className="px-5 py-16 text-center">
+                    <td colSpan={7} className="px-5 py-16 text-center">
                       <p className="text-sm font-medium text-foreground">Belum ada aktivitas pada filter ini.</p>
                       <p className="mt-1 text-xs text-muted-foreground">Coba longgarkan filter tanggal atau modul.</p>
                     </td>
@@ -355,6 +385,12 @@ export default function ActivityHistoryPage() {
                     <td className="px-5 py-3.5 text-sm text-foreground">
                       <span className="block">{log.action}</span>
                       <span className="block truncate font-mono text-[11px] text-muted-foreground" title={log.route}>{log.route}</span>
+                    </td>
+                    <td className="px-5 py-3.5 text-sm text-foreground" title={deviceInfo(log).title}>
+                      <span className="block max-w-[220px] truncate font-medium">{deviceInfo(log).main}</span>
+                      {deviceInfo(log).sub && (
+                        <span className="block truncate font-mono text-[11px] text-muted-foreground">{deviceInfo(log).sub}</span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-center whitespace-nowrap">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold ring-1 ${methodTone(log.method)}`}>{log.method}</span>
@@ -393,6 +429,10 @@ export default function ActivityHistoryPage() {
                   <span className="inline-flex rounded-lg bg-chip-primary px-2 py-0.5 text-[11px] font-semibold text-accent-text ring-1 ring-chip-primary-border">{log.module}</span>
                   <span className="text-sm text-foreground">{log.action}</span>
                 </div>
+                <p className="text-xs text-foreground" title={deviceInfo(log).title}>
+                  <span className="font-semibold">Perangkat:</span> {deviceInfo(log).main}
+                  {deviceInfo(log).sub ? ` · ${deviceInfo(log).sub}` : ''}
+                </p>
                 <p className="font-mono text-[11px] text-muted-foreground">{formatDateTime(log.occurred_at)}</p>
               </div>
             ))}
