@@ -32,7 +32,7 @@ describe('DashboardInsights', () => {
     });
     stats.mockResolvedValue({ data: { data: { SCHEDULED: { count: 3 }, COMPLETED: { count: 7 } } } });
     progress.mockResolvedValue({ data: { data: { week_start: '2026-11-16', depots: [
-      { kode_depo: '0127', nama_depo: 'Singkawang', total: 10, validated: 8, submitted: true },
+      { kode_depo: '0127', nama_depo: 'Singkawang', total: 10, validated: 8, item_total: 0, item_counted: 0, submitted: true },
     ] } } });
     useSummary.mockReturnValue({
       loading: false,
@@ -71,6 +71,17 @@ describe('DashboardInsights', () => {
 
     expect(await screen.findByText('25%')).toBeInTheDocument();
     expect(screen.getByText('5 / 20 batch dihitung')).toBeInTheDocument();
+  });
+
+  it('memakai total wave saat sesi belum dibuat (item_total 0)', async () => {
+    progress.mockResolvedValue({ data: { data: { week_start: '2026-11-16', depots: [
+      { kode_depo: '0127', nama_depo: 'Singkawang', total: 10, validated: 3, item_total: 0, item_counted: 0 },
+    ] } } });
+
+    render(<DashboardInsights />);
+
+    expect(await screen.findByText('30%')).toBeInTheDocument();
+    expect(screen.getByText('3 / 10 batch dihitung')).toBeInTheDocument();
   });
 
   it('menarik ulang progres otomatis supaya dashboard hidup', async () => {

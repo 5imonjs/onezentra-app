@@ -1330,6 +1330,26 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertSame(50, $res->json('data.item_pct'));
     }
 
+    public function test_progress_ignores_items_from_cancelled_sessions(): void
+    {
+        $session = $this->countedSession();
+
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/cancel", [
+            'notes' => 'Salah pilih wave',
+        ])->assertOk();
+
+        $res = $this->getJson('/api/v1/opname-expired/progress?week_start=2026-09-07')->assertOk();
+        $depot = collect($res->json('data.depots'))->firstWhere('kode_depo', 'DPO');
+
+        // Baris sesi batal tetap tersimpan untuk audit, tapi tidak boleh
+        // menahan target/progres depo di dashboard.
+        $this->assertSame(0, $depot['item_total']);
+        $this->assertSame(0, $depot['item_counted']);
+        $this->assertSame(0, $res->json('data.item_total'));
+        $this->assertSame(0, $res->json('data.item_counted'));
+    }
+
     public function test_index_filters_multiple_statuses_for_mobile_history(): void
     {
         $approved = $this->makeSession();

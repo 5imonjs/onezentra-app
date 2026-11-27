@@ -63,6 +63,11 @@
   `submitted = seluruh wave depo tervalidasi`. Never mark a whole depot
   submitted just because one `COMPLETED` session exists — that session may
   cover only some waves.
+- Dashboard progress hitung fisik comes from session items (`verified_at`), and
+  `GET /opname-expired/progress` excludes `CANCELLED` session items from
+  `item_total`/`item_counted` (the rows stay in the DB for audit but must not
+  hold the depot percentage down). When no session exists yet (`item_total` 0),
+  the web card falls back to wave `total`/`validated` instead of showing 0/0.
 - `receiving_items` is the single ledger source of truth. The legacy
   `/api/v1/penerimaan` CRUD (`PenerimaanController`, `App\Models\Penerimaan`)
   was removed — no UI ever consumed it (web Inbound = `/receiving-items`,

@@ -311,10 +311,13 @@ class OpnameExpiredController extends Controller
         // Progres hitung fisik diambil dari ITEM SESI (verified_at), bukan dari
         // wave tervalidasi. Wave hanya berubah saat approver menyetujui di web,
         // sehingga dashboard lama diam meski petugas sudah menginput di mobile.
+        // Sesi CANCELLED dikecualikan: barisnya tetap tersimpan untuk audit,
+        // tapi tidak boleh menahan target/progres depo setelah sesi dibatalkan.
         // Satu query agregat per depo, bukan satu query per item.
         $itemStats = OpnameExpiredSessionItem::query()
             ->join('opname_expired_sessions as ses', 'ses.id', '=', 'opname_expired_session_items.session_id')
             ->where('ses.week_start', $weekStart)
+            ->where('ses.status', '!=', OpnameExpiredSession::STATUS_CANCELLED)
             ->when($scoped, fn ($q) => $user->applyDepotFilter($q, 'ses.kode_depo'))
             ->selectRaw(
                 'ses.kode_depo as kode_depo, '
