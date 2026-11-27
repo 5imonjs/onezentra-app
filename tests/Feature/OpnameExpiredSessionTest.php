@@ -1350,6 +1350,50 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertSame(0, $res->json('data.item_counted'));
     }
 
+    public function test_progress_follows_active_recount_session_not_approved_history(): void
+    {
+        // Sesi Senin sudah APPROVED. Petugas membuat sesi baru untuk menghitung
+        // ulang qty wave yang sama — dashboard harus mengikuti sesi recount
+        // yang berjalan, bukan menjumlahkan sesi lama + sesi baru.
+        $approved = $this->makeSession();
+        $approved->update(['status' => OpnameExpiredSession::STATUS_APPROVED]);
+        OpnameExpiredSessionItem::where('session_id', $approved->id)->update([
+            'qty_fisik_crt' => 5,
+            'qty_fisik_pcs' => 5,
+            'verified_at' => now(),
+            'verified_by' => $this->field->id,
+        ]);
+
+        Sanctum::actingAs($this->supervisor);
+        $res = $this->postJson('/api/v1/opname-sessions', [
+            'week_start' => '2026-09-07',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'assigned_to' => $this->field->id,
+            'wave_ids' => OpnameExpiredWave::where('week_start', '2026-09-07')->pluck('id')->all(),
+        ])->assertCreated();
+
+        $recountId = $res->json('data.id');
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$recountId}/start")->assertOk();
+        $item = OpnameExpiredSessionItem::where('session_id', $recountId)->firstOrFail();
+        $this->postJson("/api/v1/opname-sessions/{$recountId}/items/{$item->id}", [
+            'qty_fisik_crt' => 4,
+            'identified_via' => 'scan',
+        ])->assertOk();
+
+        Sanctum::actingAs($this->supervisor);
+        $progress = $this->getJson('/api/v1/opname-expired/progress?week_start=2026-09-07')->assertOk();
+        $depot = collect($progress->json('data.depots'))->firstWhere('kode_depo', 'DPO');
+
+        // Hanya sesi recount: 2 baris, 1 terhitung — bukan 4/3 hasil
+        // menjumlahkan sesi APPROVED + sesi recount.
+        $this->assertSame(2, $depot['item_total']);
+        $this->assertSame(1, $depot['item_counted']);
+        $this->assertSame(2, $progress->json('data.item_total'));
+        $this->assertSame(1, $progress->json('data.item_counted'));
+    }
+
     public function test_index_filters_multiple_statuses_for_mobile_history(): void
     {
         $approved = $this->makeSession();
