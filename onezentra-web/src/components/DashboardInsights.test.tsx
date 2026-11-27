@@ -55,6 +55,8 @@ describe('DashboardInsights', () => {
     expect(screen.getByText('Progres Monitoring Expired')).toBeInTheDocument();
 
     expect(await screen.findByText('80%')).toBeInTheDocument();
+    expect(screen.getByText('Minggu ini: 8/10 wave tervalidasi (80%)')).toBeInTheDocument();
+    expect(screen.queryByText(/Sesi berjalan:/)).not.toBeInTheDocument();
     expect(screen.getAllByText('10').length).toBeGreaterThan(0);
     expect(screen.getByText('5', { selector: '.font-bold' })).toBeInTheDocument();
     expect(activity).toHaveBeenCalledWith(7, undefined);
@@ -64,13 +66,15 @@ describe('DashboardInsights', () => {
 
   it('progres mengikuti hitungan item mobile, bukan wave tervalidasi', async () => {
     progress.mockResolvedValue({ data: { data: { week_start: '2026-11-16', depots: [
-      { kode_depo: '0127', nama_depo: 'Singkawang', total: 10, validated: 10, item_total: 20, item_counted: 5 },
+      { kode_depo: '0127', nama_depo: 'Singkawang', total: 10, validated: 10, item_total: 20, item_counted: 5, has_open_session: true },
     ] } } });
 
     render(<DashboardInsights />);
 
     expect(await screen.findByText('25%')).toBeInTheDocument();
     expect(screen.getByText('5 / 20 batch dihitung')).toBeInTheDocument();
+    expect(screen.getByText('Sesi berjalan: 5/20 (25%)')).toBeInTheDocument();
+    expect(screen.getByText('Minggu ini: 10/10 wave tervalidasi (100%)')).toBeInTheDocument();
   });
 
   it('memakai total wave saat sesi belum dibuat (item_total 0)', async () => {
@@ -82,6 +86,8 @@ describe('DashboardInsights', () => {
 
     expect(await screen.findByText('30%')).toBeInTheDocument();
     expect(screen.getByText('3 / 10 batch dihitung')).toBeInTheDocument();
+    expect(screen.getByText('Minggu ini: 3/10 wave tervalidasi (30%)')).toBeInTheDocument();
+    expect(screen.queryByText(/Sesi berjalan:/)).not.toBeInTheDocument();
   });
 
   it('menarik ulang progres otomatis supaya dashboard hidup', async () => {
