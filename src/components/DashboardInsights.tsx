@@ -209,6 +209,16 @@ function ProgressRing({ depots, onOpen }: { depots: DepotProgress[]; onOpen: () 
   const pct = total > 0 ? Math.round((counted / total) * 100) : 0;
   const sisa = Math.max(total - counted, 0);
   const hasRunningSession = depots.some((d) => d.has_open_session);
+  // Dua konteks yang sering tertukar: progres sesi recount yang sedang
+  // berjalan vs. capaian validasi wave minggu ini. Ditampilkan terpisah
+  // supaya angka besar tidak disalahartikan sebagai input hari ini.
+  const activeDepots = depots.filter((d) => (d.item_total ?? 0) > 0);
+  const activeTotal = activeDepots.reduce((a, d) => a + (d.item_total ?? 0), 0);
+  const activeCounted = activeDepots.reduce((a, d) => a + (d.item_counted ?? 0), 0);
+  const activePct = activeTotal > 0 ? Math.round((activeCounted / activeTotal) * 100) : 0;
+  const waveTotal = depots.reduce((a, d) => a + d.total, 0);
+  const waveValidated = depots.reduce((a, d) => a + d.validated, 0);
+  const wavePct = waveTotal > 0 ? Math.round((waveValidated / waveTotal) * 100) : 0;
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
 
@@ -230,6 +240,16 @@ function ProgressRing({ depots, onOpen }: { depots: DepotProgress[]; onOpen: () 
         <p className="text-base font-black tabular-nums text-foreground">{counted}/{total} terhitung{sisa > 0 ? ` · ${sisa} sisa` : ''}</p>
         <p className="text-sm font-bold tabular-nums text-foreground">{counted} / {total} batch dihitung</p>
         <p className="text-[11px] text-muted-foreground">{progress.filter((p) => p.total > 0 && p.counted >= p.total).length} dari {depots.length} depo tuntas hitung</p>
+        {hasRunningSession && activeTotal > 0 && (
+          <p className="mt-1 text-[11px] font-semibold text-emerald-600">
+            Sesi berjalan: {activeCounted}/{activeTotal} ({activePct}%)
+          </p>
+        )}
+        {waveTotal > 0 && (
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Minggu ini: {waveValidated}/{waveTotal} wave tervalidasi ({wavePct}%)
+          </p>
+        )}
         <ul className="mt-2 space-y-1">
           {depots.slice(0, 3).map((d) => {
             const p = depotProgress(d);
@@ -241,11 +261,6 @@ function ProgressRing({ depots, onOpen }: { depots: DepotProgress[]; onOpen: () 
             );
           })}
         </ul>
-        {hasRunningSession && (
-          <p className="mt-2 text-[11px] font-semibold text-emerald-600">
-            Sesi berjalan sedang dicatat — lihat per baris imputasi.
-          </p>
-        )}
       </div>
     </button>
   );
