@@ -70,6 +70,11 @@
   approved + 258 recount = 41% while the recount has barely started). With no
   active session `item_total` is 0 and the web card falls back to wave
   `total`/`validated` (the real weekly completion).
+- PDF lampiran (THL/retribusi) wajib mencari file via `EvidenceStorage::path()`
+  (atau `diskFor()`), **bukan** `storage_path('app/public/'.$path)`. Upload baru
+  masuk ke disk privat `storage/app/private/evidence`, jadi path legacy lama
+  membuat foto yang baru di-upload/edi diam-diam hilang dari PDF. Data URI
+  memakai `$photo->mime_type`, bukan ekstensi dari `file_name`.
 - `receiving_items` is the single ledger source of truth. The legacy
   `/api/v1/penerimaan` CRUD (`PenerimaanController`, `App\Models\Penerimaan`)
   was removed — no UI ever consumed it (web Inbound = `/receiving-items`,

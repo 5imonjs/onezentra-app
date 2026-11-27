@@ -205,9 +205,9 @@
     <tr><td class="thl-photos">
         @foreach($biayaRetribusi->details as $detail)
             @foreach($detail->biayaThlDetail?->photos ?? [] as $photo)
-                @php($photoPath = storage_path('app/public/'.$photo->file_path))
-                @if(file_exists($photoPath))
-                    <img src="data:image/{{ pathinfo($photo->file_name, PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents($photoPath)) }}" alt="{{ $photo->file_name }}">
+                @php($photoPath = \App\Support\EvidenceStorage::path($photo->file_path))
+                @if($photoPath && file_exists($photoPath))
+                    <img src="data:{{ $photo->mime_type ?: 'image/jpeg' }};base64,{{ base64_encode(file_get_contents($photoPath)) }}" alt="{{ $photo->file_name }}">
                 @endif
             @endforeach
         @endforeach

@@ -142,11 +142,9 @@
                 </tbody>
             </table>
             @foreach($biayaRetribusi->documents as $document)
-                @if(file_exists(storage_path('app/public/'.$document->file_path)))
-                    @php
-                        $path = storage_path('app/public/'.$document->file_path);
-                        $extension = strtolower(pathinfo($document->file_name, PATHINFO_EXTENSION));
-                    @endphp
+                @php($path = \App\Support\EvidenceStorage::path($document->file_path))
+                @if($path && file_exists($path))
+                    @php($extension = strtolower(pathinfo($document->file_name, PATHINFO_EXTENSION)))
                     @if(in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true))
                         <div class="attachment">
                             <div class="section-title">{{ strtoupper($document->document_type) }} - {{ $document->file_name }}</div>
